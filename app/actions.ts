@@ -346,3 +346,105 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
   revalidatePath("/");
   return { success: true, reassignedTo: availableTech?.id || null };
 }
+
+export async function createStaffMember(data: {
+  full_name: string;
+  role: "master" | "manager" | "receptionist" | "maintenance" | "governance";
+  department: "RECEPTION" | "HOUSEKEEPING" | "TECHNICAL" | "MANAGEMENT";
+  phone_number?: string;
+  skill_tags?: string[];
+  shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
+}) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase.from("staff").insert([
+    {
+      full_name: data.full_name,
+      role: data.role,
+      department: data.department,
+      phone_number: data.phone_number || null,
+      skill_tags: data.skill_tags || [],
+      shift_status: data.shift_status || "ON_SHIFT",
+      is_present: data.shift_status === "ON_SHIFT",
+      last_clock_in: new Date().toISOString(),
+    },
+  ]);
+
+  if (error) {
+    console.error("Failed to create staff member:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateStaffMember(
+  staffId: number,
+  data: {
+    full_name?: string;
+    role?: "master" | "manager" | "receptionist" | "maintenance" | "governance";
+    department?: "RECEPTION" | "HOUSEKEEPING" | "TECHNICAL" | "MANAGEMENT";
+    phone_number?: string;
+    skill_tags?: string[];
+    shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
+  }
+) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const updatePayload: Record<string, unknown> = {};
+  if (data.full_name !== undefined) updatePayload.full_name = data.full_name;
+  if (data.role !== undefined) updatePayload.role = data.role;
+  if (data.department !== undefined) updatePayload.department = data.department;
+  if (data.phone_number !== undefined) updatePayload.phone_number = data.phone_number;
+  if (data.skill_tags !== undefined) updatePayload.skill_tags = data.skill_tags;
+  if (data.shift_status !== undefined) {
+    updatePayload.shift_status = data.shift_status;
+    updatePayload.is_present = data.shift_status === "ON_SHIFT";
+  }
+
+  const { error } = await supabase
+    .from("staff")
+    .update(updatePayload)
+    .eq("id", staffId);
+
+  if (error) {
+    console.error("Failed to update staff member:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function deleteStaffMember(staffId: number) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  // Clear references in reclamations before deleting
+  await supabase
+    .from("reclamations")
+    .update({ assigned_staff_id: null })
+    .eq("assigned_staff_id", staffId);
+
+  await supabase
+    .from("reclamations")
+    .update({ created_by_staff_id: null })
+    .eq("created_by_staff_id", staffId);
+
+  const { error } = await supabase
+    .from("staff")
+    .delete()
+    .eq("id", staffId);
+
+  if (error) {
+    console.error("Failed to delete staff member:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
