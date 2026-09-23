@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "seed": "node scripts/seed_supabase_rooms.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
