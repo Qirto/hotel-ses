@@ -27,8 +27,8 @@ export interface Resident {
 export interface Staff {
   id: number;
   full_name: string;
-  role: "master" | "manager" | "receptionist" | "maintenance" | "governance";
-  department: "RECEPTION" | "HOUSEKEEPING" | "TECHNICAL" | "MANAGEMENT";
+  role: string;
+  department: string;
   phone_number?: string;
   shift_status: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
   skill_tags: string[];
@@ -38,13 +38,24 @@ export interface Staff {
   created_at?: string;
 }
 
+export interface Department {
+  id: number;
+  code: string;
+  name: string;
+  icon: string;
+  description?: string;
+  head_of_department?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Reclamation {
   id: number;
   room_id: number;
   resident_id?: number | null;
   created_by_staff_id?: number | null;
   assigned_staff_id?: number | null;
-  department: "MAINTENANCE" | "GOVERNANCE";
+  department: string;
   category: string;
   description: string;
   priority: "EMERGENCY" | "HIGH" | "STANDARD";

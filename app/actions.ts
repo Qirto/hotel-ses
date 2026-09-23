@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 
 export async function createRapidReclamation(data: {
   roomId: number;
-  department: "MAINTENANCE" | "GOVERNANCE";
+  department: string;
   category: string;
   description: string;
   isConfidential?: boolean;
@@ -28,9 +28,19 @@ export async function createRapidReclamation(data: {
     .limit(1)
     .single();
 
-  // Smart dispatch: find an on-shift technician for maintenance or housekeeper for governance
+  // Smart dispatch: find an on-shift staff member matching the department or role
   let assignedStaffId = null;
-  if (data.department === "MAINTENANCE") {
+  const { data: deptStaff } = await supabase
+    .from("staff")
+    .select("id")
+    .eq("department", data.department)
+    .eq("is_present", true)
+    .limit(1)
+    .single();
+
+  if (deptStaff) {
+    assignedStaffId = deptStaff.id;
+  } else if (data.department === "MAINTENANCE" || data.department === "TECHNICAL") {
     const { data: tech } = await supabase
       .from("staff")
       .select("id")
@@ -39,7 +49,7 @@ export async function createRapidReclamation(data: {
       .limit(1)
       .single();
     if (tech) assignedStaffId = tech.id;
-  } else {
+  } else if (data.department === "GOVERNANCE" || data.department === "HOUSEKEEPING") {
     const { data: gov } = await supabase
       .from("staff")
       .select("id")
@@ -80,12 +90,12 @@ export async function createRapidReclamation(data: {
  */
 export async function createHistoricalReclamation(data: {
   roomId: number;
-  department: "MAINTENANCE" | "GOVERNANCE";
+  department: string;
   category: string;
   description: string;
   status: "OPEN" | "ACKNOWLEDGED" | "IN_PROGRESS" | "RESOLVED";
   createdAt: string;
-  resolvedAt?: string;
+  resolvedAt?: string | null;
   isConfidential?: boolean;
 }) {
   const cookieStore = await cookies();
@@ -349,8 +359,8 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
 
 export async function createStaffMember(data: {
   full_name: string;
-  role: "master" | "manager" | "receptionist" | "maintenance" | "governance";
-  department: "RECEPTION" | "HOUSEKEEPING" | "TECHNICAL" | "MANAGEMENT";
+  role: string;
+  department: string;
   phone_number?: string;
   skill_tags?: string[];
   shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
@@ -384,8 +394,8 @@ export async function updateStaffMember(
   staffId: number,
   data: {
     full_name?: string;
-    role?: "master" | "manager" | "receptionist" | "maintenance" | "governance";
-    department?: "RECEPTION" | "HOUSEKEEPING" | "TECHNICAL" | "MANAGEMENT";
+    role?: string;
+    department?: string;
     phone_number?: string;
     skill_tags?: string[];
     shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
@@ -441,6 +451,93 @@ export async function deleteStaffMember(staffId: number) {
 
   if (error) {
     console.error("Failed to delete staff member:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+// =====================================================================
+// DEPARTMENT CRUD ACTIONS
+// =====================================================================
+
+export async function createDepartment(data: {
+  code: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  head_of_department?: string;
+}) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const cleanCode = data.code.trim().toUpperCase().replace(/\s+/g, "_");
+
+  const { error } = await supabase.from("departments").insert([
+    {
+      code: cleanCode,
+      name: data.name.trim(),
+      icon: data.icon?.trim() || "🏢",
+      description: data.description?.trim() || null,
+      head_of_department: data.head_of_department?.trim() || null,
+    },
+  ]);
+
+  if (error) {
+    console.error("Failed to create department:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function updateDepartment(
+  departmentId: number,
+  data: {
+    name?: string;
+    icon?: string;
+    description?: string;
+    head_of_department?: string;
+  }
+) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const updatePayload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (data.name !== undefined) updatePayload.name = data.name.trim();
+  if (data.icon !== undefined) updatePayload.icon = data.icon.trim() || "🏢";
+  if (data.description !== undefined) updatePayload.description = data.description.trim() || null;
+  if (data.head_of_department !== undefined) updatePayload.head_of_department = data.head_of_department.trim() || null;
+
+  const { error } = await supabase
+    .from("departments")
+    .update(updatePayload)
+    .eq("id", departmentId);
+
+  if (error) {
+    console.error("Failed to update department:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function deleteDepartment(departmentId: number) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("departments")
+    .delete()
+    .eq("id", departmentId);
+
+  if (error) {
+    console.error("Failed to delete department:", error);
     return { success: false, error: error.message };
   }
 

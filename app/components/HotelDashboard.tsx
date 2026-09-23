@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { HotelRoom, Staff, Resident, Reclamation } from "@/utils/roomsData";
+import { HotelRoom, Staff, Resident, Reclamation, Department } from "@/utils/roomsData";
 import ReceptionPortal from "@/app/components/ReceptionPortal";
 import MaintenancePortal from "@/app/components/MaintenancePortal";
 import GouvernantePortal from "@/app/components/GouvernantePortal";
@@ -14,6 +14,7 @@ interface Props {
   staffList?: Staff[];
   residentsList?: Resident[];
   reclamationsList?: Reclamation[];
+  departmentsList?: Department[];
 }
 
 type RoleTab = "reception" | "maintenance" | "gouvernante" | "manager" | "hr" | "erd";
@@ -24,6 +25,7 @@ export default function HotelDashboard({
   staffList = [],
   residentsList = [],
   reclamationsList = [],
+  departmentsList = [],
 }: Props) {
   const [activeRole, setActiveRole] = useState<RoleTab>("reception");
 
@@ -130,7 +132,11 @@ export default function HotelDashboard({
       {/* ACTIVE ROLE WORKSPACE */}
       <main>
         {activeRole === "reception" && (
-          <ReceptionPortal rooms={initialRooms} residents={residentsList} />
+          <ReceptionPortal
+            rooms={initialRooms}
+            residents={residentsList}
+            departmentsList={departmentsList}
+          />
         )}
 
         {activeRole === "maintenance" && (
@@ -152,7 +158,12 @@ export default function HotelDashboard({
           />
         )}
 
-        {activeRole === "hr" && <HrPortal staffList={staffList} />}
+        {activeRole === "hr" && (
+          <HrPortal
+            staffList={staffList}
+            departmentsList={departmentsList}
+          />
+        )}
 
         {activeRole === "erd" && (
           <div style={{ background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "1.5rem" }}>
@@ -174,12 +185,24 @@ export default function HotelDashboard({
               </div>
 
               <div style={{ background: "rgba(30, 41, 59, 0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#34d399", marginBottom: 6 }}>STAFF (5 rows)</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#e879f9", marginBottom: 6 }}>DEPARTMENTS ({departmentsList.length} rows)</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
+                  <code>id</code> (bigint PK)<br />
+                  <code>code</code> (text UNIQUE)<br />
+                  <code>name</code> (text)<br />
+                  <code>icon</code> (text emoji)<br />
+                  <code>head_of_department</code> (text)<br />
+                  <code>description</code> (text)
+                </div>
+              </div>
+
+              <div style={{ background: "rgba(30, 41, 59, 0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#34d399", marginBottom: 6 }}>STAFF ({staffList.length} rows)</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
                   <code>id</code> (bigint PK)<br />
                   <code>full_name</code> (text)<br />
-                  <code>role</code> (receptionist, maintenance, governance, manager, master)<br />
-                  <code>department</code> (RECEPTION, TECHNICAL, HOUSEKEEPING, MANAGEMENT)<br />
+                  <code>role</code> (receptionist, maintenance, chef, concierge, etc.)<br />
+                  <code>department</code> (All hotel departments)<br />
                   <code>skill_tags</code> (text[])<br />
                   <code>shift_status</code> (ON_SHIFT, OFF_SHIFT)
                 </div>

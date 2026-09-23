@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { HotelRoom, Resident } from "@/utils/roomsData";
+import React, { useState, useTransition, useMemo } from "react";
+import { HotelRoom, Resident, Department } from "@/utils/roomsData";
 import {
   createRapidReclamation,
   createHistoricalReclamation,
@@ -10,10 +10,18 @@ import {
 
 interface Props {
   rooms: HotelRoom[];
-  residents: Resident[];
+  residents?: Resident[];
+  departmentsList?: Department[];
 }
 
-const PRESET_ISSUES = {
+const PRESET_ISSUES: Record<string, { category: string; label: string }[]> = {
+  TECHNICAL: [
+    { category: "A/C", label: "❄️ A/C Not Cooling" },
+    { category: "Plumbing", label: "🚰 Leaking Sink / Shower" },
+    { category: "Electrical", label: "💡 Lighting / Power Issue" },
+    { category: "TV/Audio", label: "📺 TV / Remote Malfunction" },
+    { category: "Lock", label: "🔑 Door Lock Stiff" },
+  ],
   MAINTENANCE: [
     { category: "A/C", label: "❄️ A/C Not Cooling" },
     { category: "Plumbing", label: "🚰 Leaking Sink / Shower" },
@@ -21,18 +29,57 @@ const PRESET_ISSUES = {
     { category: "TV/Audio", label: "📺 TV / Remote Malfunction" },
     { category: "Lock", label: "🔑 Door Lock Stiff" },
   ],
-  GOVERNANCE: [
+  HOUSEKEEPING: [
     { category: "Towels", label: "🛁 Extra Towels Requested" },
     { category: "Bedding", label: "🛏️ Extra Blanket / Pillow" },
-    { category: "Toiletries", label: "🧴 Shampoos & Soap" },
+    { category: "Toiletries", label: "🧴 Shampoos & Soap Restock" },
     { category: "Cleaning", label: "🧹 Urgent Floor Clean" },
     { category: "Minibar", label: "🍫 Minibar Restock" },
   ],
+  GOVERNANCE: [
+    { category: "Towels", label: "🛁 Extra Towels Requested" },
+    { category: "Bedding", label: "🛏️ Extra Blanket / Pillow" },
+    { category: "Toiletries", label: "🧴 Shampoos & Soap Restock" },
+    { category: "Cleaning", label: "🧹 Urgent Floor Clean" },
+    { category: "Minibar", label: "🍫 Minibar Restock" },
+  ],
+  FOOD_AND_BEVERAGE: [
+    { category: "Room Service", label: "🍽️ Room Service Delivery" },
+    { category: "Breakfast", label: "🥐 Continental Breakfast Tray" },
+    { category: "Drinks", label: "🍾 Champagne & Ice Bucket" },
+    { category: "Cutlery", label: "🍴 Extra Plates & Cutlery" },
+    { category: "Dietary", label: "🥗 Special Dietary Meal" },
+  ],
+  CONCIERGE: [
+    { category: "Luggage", label: "🧳 Luggage Collection / Delivery" },
+    { category: "Transport", label: "🚕 Airport Transfer / Taxi" },
+    { category: "Valet", label: "🚗 Valet Parking Vehicle Request" },
+    { category: "Wakeup", label: "⏰ Morning Wake-Up Call" },
+    { category: "Excursion", label: "🗺️ City Tour / Dinner Booking" },
+  ],
+  SECURITY: [
+    { category: "Noise", label: "🔊 Late Night Noise Disturbance" },
+    { category: "Keycard", label: "💳 Keycard Reprogramming" },
+    { category: "Safe", label: "🔐 In-Room Electronic Safe Reset" },
+    { category: "Safety", label: "🛡️ Suspicious Activity Check" },
+  ],
+  SPA_AND_WELLNESS: [
+    { category: "Massage", label: "💆 In-Room Relaxation Massage" },
+    { category: "Spa Booking", label: "🧖 Thermal Spa Appointment" },
+    { category: "Fitness", label: "🏋️ Personal Trainer Session" },
+    { category: "Wellness", label: "🌿 Aromatherapy Kit Request" },
+  ],
 };
 
-export default function ReceptionPortal({ rooms }: Props) {
+const DEFAULT_PRESETS = [
+  { category: "General", label: "📋 General Guest Request" },
+  { category: "Follow-up", label: "📞 Department Assistance Needed" },
+  { category: "Urgent", label: "⚡ High-Priority Attention" },
+];
+
+export default function ReceptionPortal({ rooms, departmentsList = [] }: Props) {
   const [selectedRoomNumber, setSelectedRoomNumber] = useState<string>("");
-  const [selectedDept, setSelectedDept] = useState<"MAINTENANCE" | "GOVERNANCE">("MAINTENANCE");
+  const [selectedDept, setSelectedDept] = useState<string>("TECHNICAL");
   const [isConfidential, setIsConfidential] = useState(false);
   const [priority, setPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
   const [customDesc, setCustomDesc] = useState("");
@@ -42,7 +89,7 @@ export default function ReceptionPortal({ rooms }: Props) {
   // Historical Ticket Backfill Modal State
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [histRoom, setHistRoom] = useState("");
-  const [histDept, setHistDept] = useState<"MAINTENANCE" | "GOVERNANCE">("MAINTENANCE");
+  const [histDept, setHistDept] = useState<string>("TECHNICAL");
   const [histCategory, setHistCategory] = useState("A/C");
   const [histDesc, setHistDesc] = useState("");
   const [histDate, setHistDate] = useState(
@@ -50,7 +97,30 @@ export default function ReceptionPortal({ rooms }: Props) {
   );
   const [histStatus, setHistStatus] = useState<"RESOLVED" | "OPEN">("RESOLVED");
 
+  // Merge departments
+  const allDepartments = useMemo(() => {
+    const list: { code: string; name: string; icon: string }[] = [
+      { code: "TECHNICAL", name: "Technical Maintenance", icon: "🔧" },
+      { code: "HOUSEKEEPING", name: "Housekeeping & Linen", icon: "🧹" },
+      { code: "FOOD_AND_BEVERAGE", name: "Food & Beverage (F&B)", icon: "🍽️" },
+      { code: "CONCIERGE", name: "Concierge & Valet", icon: "🚗" },
+      { code: "SECURITY", name: "Security & Safety", icon: "🛡️" },
+      { code: "SPA_AND_WELLNESS", name: "Spa & Wellness", icon: "🧖" },
+      { code: "MANAGEMENT", name: "Executive & Direction", icon: "👔" },
+    ];
+
+    departmentsList.forEach((d) => {
+      if (!list.some((existing) => existing.code === d.code)) {
+        list.push({ code: d.code, name: d.name, icon: d.icon || "🏢" });
+      }
+    });
+
+    return list;
+  }, [departmentsList]);
+
   const activeRoom = rooms.find((r) => r.room_number === selectedRoomNumber);
+
+  const presetsToDisplay = PRESET_ISSUES[selectedDept] || DEFAULT_PRESETS;
 
   const handleRapidSubmit = (preset: { category: string; label: string }) => {
     if (!activeRoom) {
@@ -69,7 +139,7 @@ export default function ReceptionPortal({ rooms }: Props) {
       });
 
       if (res.success) {
-        setMessage(`✅ Dispatched "${preset.label}" for Room ${activeRoom.room_number}!`);
+        setMessage(`✅ Dispatched "${preset.label}" to ${selectedDept} for Room ${activeRoom.room_number}!`);
         setCustomDesc("");
         setTimeout(() => setMessage(null), 4000);
       } else {
@@ -116,37 +186,43 @@ export default function ReceptionPortal({ rooms }: Props) {
         alert(`Successfully backfilled historical reclamation for Room ${targetRoom.room_number}!`);
         setShowHistoryModal(false);
         setHistDesc("");
+      } else {
+        alert(`Error: ${res.error}`);
       }
     });
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Top Banner / Actions */}
+      {/* Top Banner */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, background: "rgba(15, 23, 42, 0.7)", padding: "1rem 1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
         <div>
           <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#38bdf8" }}>
-            🛎️ Front Desk Dispatcher
+            🛎️ Reception Rapid Dispatch & Stay Management
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
-            3-Tap guest call dispatcher, check-in / check-out stays, and historical paper archive entry.
+            3-Tap touch interface: Room &rarr; Department &rarr; Preset Issue. Dispatches to all operating departments.
           </p>
         </div>
 
+        {/* HISTORICAL LOGBOOK BACKFILL BUTTON */}
         <button
           onClick={() => setShowHistoryModal(true)}
           style={{
-            padding: "8px 14px",
+            padding: "8px 16px",
             borderRadius: 8,
-            border: "1px solid rgba(245, 158, 11, 0.4)",
-            background: "rgba(245, 158, 11, 0.15)",
+            border: "1px solid rgba(251, 191, 36, 0.4)",
+            background: "rgba(251, 191, 36, 0.15)",
             color: "#fbbf24",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 700,
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          📜 + Add Old / Historical Reclamation
+          <span>📜</span> Backfill Historical Reclamation
         </button>
       </div>
 
@@ -156,67 +232,71 @@ export default function ReceptionPortal({ rooms }: Props) {
         </div>
       )}
 
-      {/* 3-TAP DISPATCHER CONTAINER */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+      {/* 3-TAP OPERATIONAL WORKSPACE */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
         {/* TAP 1: ROOM SELECTION */}
         <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#38bdf8" }}>
-              1️⃣ Tap 1: Select Room
-            </span>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#38bdf8", marginBottom: 12, display: "flex", justifyContent: "space-between" }}>
+            <span>1️⃣ Tap 1: Select Room</span>
             {activeRoom && (
-              <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 6, background: activeRoom.is_occupied ? "#f59e0b" : "#22c55e", color: "#000", fontWeight: 700 }}>
-                #{activeRoom.room_number} ({activeRoom.is_occupied ? "Occupied" : "Vacant"})
-              </span>
+              <span style={{ color: "#4ade80" }}>Room {activeRoom.room_number}</span>
             )}
           </div>
 
           <div style={{ marginBottom: 12 }}>
             <input
               type="text"
-              placeholder="Type room # (e.g. 1001, 2071)..."
+              placeholder="Search room (e.g. 1001, 204)..."
               value={selectedRoomNumber}
-              onChange={(e) => setSelectedRoomNumber(e.target.value.trim())}
+              onChange={(e) => setSelectedRoomNumber(e.target.value)}
               style={{
                 width: "100%",
-                padding: "10px 12px",
+                padding: "8px 12px",
                 borderRadius: 8,
                 background: "rgba(15, 23, 42, 0.8)",
                 border: "1px solid rgba(255,255,255,0.1)",
                 color: "#f8fafc",
-                fontSize: 14,
+                fontSize: 13,
                 boxSizing: "border-box",
               }}
             />
           </div>
 
-          {/* Quick Room Selector Pills */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 150, overflowY: "auto", paddingRight: 4 }}>
-            {rooms.slice(0, 30).map((r) => (
-              <button
-                key={r.id}
-                onClick={() => setSelectedRoomNumber(r.room_number)}
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  border: "1px solid",
-                  borderColor: selectedRoomNumber === r.room_number ? "#38bdf8" : "rgba(255,255,255,0.1)",
-                  background: selectedRoomNumber === r.room_number ? "#0284c7" : "rgba(15, 23, 42, 0.6)",
-                  color: "#f8fafc",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                {r.room_number}
-              </button>
-            ))}
+          {/* Quick Room Grid (Sample first 24 rooms) */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, maxHeight: 180, overflowY: "auto", paddingRight: 4 }}>
+            {rooms
+              .filter((r) => !selectedRoomNumber || r.room_number.includes(selectedRoomNumber))
+              .slice(0, 24)
+              .map((r) => {
+                const isSelected = selectedRoomNumber === r.room_number;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedRoomNumber(r.room_number)}
+                    style={{
+                      padding: "6px 4px",
+                      borderRadius: 6,
+                      border: "1px solid",
+                      borderColor: isSelected ? "#38bdf8" : "rgba(255,255,255,0.08)",
+                      background: isSelected ? "rgba(56, 189, 248, 0.3)" : r.is_occupied ? "rgba(245, 158, 11, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                      color: isSelected ? "#ffffff" : r.is_occupied ? "#fbbf24" : "#cbd5e1",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    {r.room_number}
+                  </button>
+                );
+              })}
           </div>
 
-          {/* Stay State Quick Toggles */}
+          {/* Stay State Quick Actions */}
           {activeRoom && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase" }}>
-                Update Room Stay State:
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", marginBottom: 6, fontWeight: 700 }}>
+                Stay State: {activeRoom.is_occupied ? "Occupied" : "Vacant"} ({activeRoom.cleaning_status})
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button
@@ -248,44 +328,61 @@ export default function ReceptionPortal({ rooms }: Props) {
         {/* TAP 2: DEPARTMENT & CONFIDENTIALITY */}
         <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#a855f7", marginBottom: 12 }}>
-            2️⃣ Tap 2: Department & Routing
+            2️⃣ Tap 2: Target Hotel Department
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <button
-              onClick={() => setSelectedDept("MAINTENANCE")}
+          {/* Quick Department Buttons */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 12 }}>
+            {[
+              { code: "TECHNICAL", label: "🔧 Technical" },
+              { code: "HOUSEKEEPING", label: "🧹 Housekeeping" },
+              { code: "FOOD_AND_BEVERAGE", label: "🍽️ F&B Dining" },
+              { code: "CONCIERGE", label: "🚗 Concierge" },
+              { code: "SECURITY", label: "🛡️ Security" },
+              { code: "SPA_AND_WELLNESS", label: "🧖 Spa & Gym" },
+            ].map((d) => (
+              <button
+                key={d.code}
+                onClick={() => setSelectedDept(d.code)}
+                style={{
+                  padding: "8px 6px",
+                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: selectedDept === d.code ? "#a855f7" : "rgba(255,255,255,0.08)",
+                  background: selectedDept === d.code ? "rgba(168, 85, 247, 0.25)" : "rgba(15, 23, 42, 0.6)",
+                  color: selectedDept === d.code ? "#e879f9" : "#cbd5e1",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          {/* All Departments Dropdown Selector */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>Or All Hotel Departments:</label>
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
               style={{
-                flex: 1,
-                padding: "12px 10px",
-                borderRadius: 10,
-                border: "1px solid",
-                borderColor: selectedDept === "MAINTENANCE" ? "#38bdf8" : "rgba(255,255,255,0.1)",
-                background: selectedDept === "MAINTENANCE" ? "rgba(56, 189, 248, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                color: selectedDept === "MAINTENANCE" ? "#38bdf8" : "#94a3b8",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 8,
+                background: "rgba(15, 23, 42, 0.8)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: "#f8fafc",
+                fontSize: 12,
               }}
             >
-              🔧 Technical Maintenance
-            </button>
-            <button
-              onClick={() => setSelectedDept("GOVERNANCE")}
-              style={{
-                flex: 1,
-                padding: "12px 10px",
-                borderRadius: 10,
-                border: "1px solid",
-                borderColor: selectedDept === "GOVERNANCE" ? "#a855f7" : "rgba(255,255,255,0.1)",
-                background: selectedDept === "GOVERNANCE" ? "rgba(168, 85, 247, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                color: selectedDept === "GOVERNANCE" ? "#c084fc" : "#94a3b8",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              🧹 Housekeeping / Gouvernante
-            </button>
+              {allDepartments.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.icon} {d.name} ({d.code})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -334,7 +431,7 @@ export default function ReceptionPortal({ rooms }: Props) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {PRESET_ISSUES[selectedDept].map((preset) => (
+            {presetsToDisplay.map((preset) => (
               <button
                 key={preset.category}
                 disabled={isPending || !activeRoom}
@@ -408,11 +505,14 @@ export default function ReceptionPortal({ rooms }: Props) {
                   <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Department</label>
                   <select
                     value={histDept}
-                    onChange={(e) => setHistDept(e.target.value as "MAINTENANCE" | "GOVERNANCE")}
+                    onChange={(e) => setHistDept(e.target.value)}
                     style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff" }}
                   >
-                    <option value="MAINTENANCE">MAINTENANCE</option>
-                    <option value="GOVERNANCE">GOVERNANCE</option>
+                    {allDepartments.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.icon} {d.name} ({d.code})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -432,7 +532,7 @@ export default function ReceptionPortal({ rooms }: Props) {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. A/C, Plumbing, Towels, Noise"
+                  placeholder="e.g. A/C, Plumbing, Room Service, Towels, Noise"
                   value={histCategory}
                   onChange={(e) => setHistCategory(e.target.value)}
                   style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", boxSizing: "border-box" }}

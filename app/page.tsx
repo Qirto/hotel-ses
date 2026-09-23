@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { HotelRoom, Staff, Resident, Reclamation, INITIAL_ROOMS } from "@/utils/roomsData";
+import { HotelRoom, Staff, Resident, Reclamation, Department, INITIAL_ROOMS } from "@/utils/roomsData";
 import HotelDashboard from "@/app/components/HotelDashboard";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,18 @@ export default async function Page() {
     }
   } catch (err) {
     console.error("Failed to fetch rooms from Supabase:", err);
+  }
+
+  // Fetch departments
+  let departmentsList: Department[] = [];
+  try {
+    const { data: dbDepts } = await supabase
+      .from("departments")
+      .select("*")
+      .order("id", { ascending: true });
+    if (dbDepts) departmentsList = dbDepts as Department[];
+  } catch (err) {
+    console.error("Failed to fetch departments from Supabase:", err);
   }
 
   // Fetch staff
@@ -71,6 +83,7 @@ export default async function Page() {
         staffList={staffList}
         residentsList={residentsList}
         reclamationsList={reclamationsList}
+        departmentsList={departmentsList}
       />
     </main>
   );
