@@ -28,19 +28,24 @@ export async function createRapidReclamation(data: {
     .limit(1)
     .single();
 
+  // Normalize department code
+  let targetDepartment = data.department;
+  if (data.department === "TECHNICAL") targetDepartment = "MAINTENANCE";
+  if (data.department === "GOVERNANCE") targetDepartment = "HOUSEKEEPING";
+
   // Smart dispatch: find an on-shift staff member matching the department or role
   let assignedStaffId = null;
   const { data: deptStaff } = await supabase
     .from("staff")
     .select("id")
-    .eq("department", data.department)
+    .eq("department", targetDepartment)
     .eq("is_present", true)
     .limit(1)
     .single();
 
   if (deptStaff) {
     assignedStaffId = deptStaff.id;
-  } else if (data.department === "MAINTENANCE" || data.department === "TECHNICAL") {
+  } else if (targetDepartment === "MAINTENANCE") {
     const { data: tech } = await supabase
       .from("staff")
       .select("id")
@@ -49,7 +54,7 @@ export async function createRapidReclamation(data: {
       .limit(1)
       .single();
     if (tech) assignedStaffId = tech.id;
-  } else if (data.department === "GOVERNANCE" || data.department === "HOUSEKEEPING") {
+  } else if (targetDepartment === "HOUSEKEEPING") {
     const { data: gov } = await supabase
       .from("staff")
       .select("id")
@@ -66,7 +71,7 @@ export async function createRapidReclamation(data: {
       resident_id: data.residentId || null,
       created_by_staff_id: staffMember?.id || null,
       assigned_staff_id: assignedStaffId,
-      department: data.department,
+      department: targetDepartment,
       category: data.category,
       description: data.description,
       priority: data.priority || "STANDARD",

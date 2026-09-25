@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { HotelRoom, Staff, Resident, Reclamation, Department } from "@/utils/roomsData";
+import { HotelRoom, Staff, Resident, Reclamation, Department, isMaintenanceFixTicket, isHousekeepingMissingOrCleanTicket } from "@/utils/roomsData";
 import ReceptionPortal from "@/app/components/ReceptionPortal";
 import MaintenancePortal from "@/app/components/MaintenancePortal";
 import GouvernantePortal from "@/app/components/GouvernantePortal";
@@ -31,6 +31,14 @@ export default function HotelDashboard({
 
   const openTicketsCount = reclamationsList.filter(
     (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
+  ).length;
+
+  const openMaintTicketsCount = reclamationsList.filter(
+    (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && !r.is_confidential && isMaintenanceFixTicket(r)
+  ).length;
+
+  const openHkTicketsCount = reclamationsList.filter(
+    (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && !r.is_confidential && isHousekeepingMissingOrCleanTicket(r)
   ).length;
 
   const dirtyRoomsCount = initialRooms.filter((r) => r.cleaning_status === "DIRTY").length;
@@ -80,9 +88,9 @@ export default function HotelDashboard({
         <nav style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
           {[
             { id: "reception", label: "🛎️ Reception (Front Desk)", badge: null, color: "#38bdf8" },
-            { id: "maintenance", label: "🔧 Maintenance (Technical)", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#38bdf8" },
-            { id: "gouvernante", label: "🧹 Gouvernante (Housekeeping)", badge: dirtyRoomsCount > 0 ? dirtyRoomsCount : null, color: "#a855f7" },
-            { id: "manager", label: "📊 General Manager (Executive)", badge: null, color: "#f59e0b" },
+            { id: "maintenance", label: "🔧 Maintenance (Technical)", badge: openMaintTicketsCount > 0 ? openMaintTicketsCount : null, color: "#38bdf8" },
+            { id: "gouvernante", label: "🧹 Gouvernante (Housekeeping)", badge: (dirtyRoomsCount + openHkTicketsCount) > 0 ? (dirtyRoomsCount + openHkTicketsCount) : null, color: "#a855f7" },
+            { id: "manager", label: "📊 General Manager (Executive)", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#f59e0b" },
             { id: "hr", label: "👥 Human Resources (RH)", badge: staffList.length, color: "#34d399" },
             { id: "erd", label: "🗄️ Relational Schema", badge: null, color: "#94a3b8" },
           ].map((role) => {
@@ -147,7 +155,11 @@ export default function HotelDashboard({
         )}
 
         {activeRole === "gouvernante" && (
-          <GouvernantePortal rooms={initialRooms} />
+          <GouvernantePortal
+            rooms={initialRooms}
+            reclamations={reclamationsList}
+            staff={staffList}
+          />
         )}
 
         {activeRole === "manager" && (

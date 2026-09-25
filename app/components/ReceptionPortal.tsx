@@ -331,10 +331,25 @@ export default function ReceptionPortal({ rooms, departmentsList = [] }: Props) 
             2️⃣ Tap 2: Target Hotel Department
           </div>
 
+          {/* Department Routing Rule Indicator */}
+          { (selectedDept === "TECHNICAL" || selectedDept === "MAINTENANCE") ? (
+            <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 11, fontWeight: 600, marginBottom: 12 }}>
+              🔧 <strong>Room Repair Ticket:</strong> Action &rarr; Maintenance (To Fix) | 🔔 Notified &rarr; Housekeeper Manager & GM
+            </div>
+          ) : (selectedDept === "HOUSEKEEPING" || selectedDept === "GOVERNANCE") ? (
+            <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(168, 85, 247, 0.15)", border: "1px solid rgba(168, 85, 247, 0.3)", color: "#e879f9", fontSize: 11, fontWeight: 600, marginBottom: 12 }}>
+              🧹 <strong>Missing / Unclean Room:</strong> Action &rarr; Housekeeper Manager & GM | 🚫 <strong>Not</strong> Sent to Maintenance
+            </div>
+          ) : (
+            <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(148, 163, 184, 0.15)", border: "1px solid rgba(148, 163, 184, 0.3)", color: "#cbd5e1", fontSize: 11, fontWeight: 600, marginBottom: 12 }}>
+              🏢 <strong>Department Dispatch:</strong> Action &rarr; {selectedDept} | 🔔 Notified &rarr; GM Manager
+            </div>
+          )}
+
           {/* Quick Department Buttons */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 12 }}>
             {[
-              { code: "TECHNICAL", label: "🔧 Technical" },
+              { code: "TECHNICAL", label: "🔧 Technical (Fix)" },
               { code: "HOUSEKEEPING", label: "🧹 Housekeeping" },
               { code: "FOOD_AND_BEVERAGE", label: "🍽️ F&B Dining" },
               { code: "CONCIERGE", label: "🚗 Concierge" },

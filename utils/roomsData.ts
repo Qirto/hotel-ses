@@ -73,3 +73,40 @@ export interface Reclamation {
 
 export const INITIAL_ROOMS: HotelRoom[] = [];
 
+/**
+ * Checks if a reclamation is a room fix/repair ticket (sent to Maintenance to fix, notifies Housekeeping Manager & GM).
+ */
+export function isMaintenanceFixTicket(r: { department: string; category: string }): boolean {
+  const dept = (r.department || "").toUpperCase();
+  const cat = (r.category || "").toLowerCase();
+
+  // Explicit housekeeping categories overrides
+  const hkCategories = ["towels", "bedding", "toiletries", "cleaning", "minibar", "missing", "dirty", "pillow", "blanket", "soap", "shampoo"];
+  if (hkCategories.some((hk) => cat.includes(hk))) {
+    return false;
+  }
+
+  if (dept === "MAINTENANCE" || dept === "TECHNICAL") {
+    return true;
+  }
+
+  const maintCategories = ["a/c", "ac", "plumbing", "electrical", "tv/audio", "tv", "lock", "repair", "broken", "leak", "sink", "shower", "lighting", "safe"];
+  return maintCategories.some((mc) => cat.includes(mc));
+}
+
+/**
+ * Checks if a reclamation is about room missing something or not clean (sent to Housekeeping & GM, NOT sent to Maintenance).
+ */
+export function isHousekeepingMissingOrCleanTicket(r: { department: string; category: string }): boolean {
+  const dept = (r.department || "").toUpperCase();
+  const cat = (r.category || "").toLowerCase();
+
+  if (dept === "HOUSEKEEPING" || dept === "GOVERNANCE") {
+    return true;
+  }
+
+  const hkCategories = ["towels", "bedding", "toiletries", "cleaning", "minibar", "missing", "dirty", "pillow", "blanket", "soap", "shampoo", "floor clean", "restock"];
+  return hkCategories.some((hk) => cat.includes(hk));
+}
+
+

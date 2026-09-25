@@ -1,14 +1,29 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { HotelRoom } from "@/utils/roomsData";
-import { cycleRoomCleaning, updateRoomHeadcount, createRapidReclamation } from "@/app/actions";
+import {
+  HotelRoom,
+  Reclamation,
+  Staff,
+  isHousekeepingMissingOrCleanTicket,
+  isMaintenanceFixTicket,
+} from "@/utils/roomsData";
+import {
+  cycleRoomCleaning,
+  updateRoomHeadcount,
+  createRapidReclamation,
+  acknowledgeReclamation,
+  resolveReclamation,
+} from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
+  reclamations?: Reclamation[];
+  staff?: Staff[];
 }
 
-export default function GouvernantePortal({ rooms }: Props) {
+export default function GouvernantePortal({ rooms, reclamations = [], staff = [] }: Props) {
+  const [activeTab, setActiveTab] = useState<"rooms" | "hk_tickets" | "maint_notifications">("rooms");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterFloor, setFilterFloor] = useState<number | "ALL">("ALL");
   const [inspectingRoom, setInspectingRoom] = useState<HotelRoom | null>(null);
@@ -19,6 +34,8 @@ export default function GouvernantePortal({ rooms }: Props) {
     electronics: true,
   });
   const [brokenItemNote, setBrokenItemNote] = useState("");
+  const [resolvingId, setResolvingId] = useState<number | null>(null);
+  const [resolutionNote, setResolutionNote] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const filteredRooms = rooms.filter((r) => {
@@ -26,6 +43,17 @@ export default function GouvernantePortal({ rooms }: Props) {
     if (filterFloor !== "ALL" && r.floor !== filterFloor) return false;
     return true;
   });
+
+  // Filter Housekeeping Action tickets (Missing items / unclean rooms)
+  const hkActionTickets = reclamations.filter(
+    (r) => !r.is_confidential && isHousekeepingMissingOrCleanTicket(r)
+  );
+  const openHkTicketsCount = hkActionTickets.filter((r) => r.status !== "RESOLVED").length;
+
+  // Filter Maintenance Notifications (Room repair tickets in progress by Maintenance)
+  const maintNotifications = reclamations.filter(
+    (r) => !r.is_confidential && isMaintenanceFixTicket(r) && r.status !== "RESOLVED"
+  );
 
   const getNextStatus = (current: string): "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN" => {
     if (current === "DIRTY") return "CLEANING";
@@ -62,9 +90,23 @@ export default function GouvernantePortal({ rooms }: Props) {
         description: `[Housekeeping Inspection Fault]: ${brokenItemNote}`,
         priority: "HIGH",
       });
-      alert("Maintenance ticket successfully dispatched for this room!");
+      alert("Maintenance repair ticket dispatched! (Maintenance will fix it, Housekeeping Manager & GM notified).");
       setBrokenItemNote("");
       setInspectingRoom(null);
+    });
+  };
+
+  const handleAcknowledgeHkTicket = (id: number) => {
+    startTransition(async () => {
+      await acknowledgeReclamation(id);
+    });
+  };
+
+  const handleResolveHkTicket = (id: number) => {
+    startTransition(async () => {
+      await resolveReclamation(id, resolutionNote || "Missing item provided / Cleaning completed");
+      setResolvingId(null);
+      setResolutionNote("");
     });
   };
 
@@ -76,159 +118,386 @@ export default function GouvernantePortal({ rooms }: Props) {
           🧹 Housekeeping & Gouvernante Hub
         </h2>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
-          Manage room cleaning workflows (Dirty &rarr; Cleaning &rarr; Inspecting &rarr; Clean), guest audits, and digital room checklists.
+          Room cleaning management, missing item dispatches, and live room maintenance repair notifications for the Housekeeper Manager.
         </p>
       </div>
 
-      {/* Filter Tabs */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 6, background: "rgba(15, 23, 42, 0.8)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-          {["ALL", "DIRTY", "CLEANING", "INSPECTING", "CLEAN"].map((st) => (
-            <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "none",
-                background: filterStatus === st ? "#a855f7" : "transparent",
-                color: filterStatus === st ? "#fff" : "#94a3b8",
-                fontWeight: 600,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
+      {/* Main View Tabs */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button
+          onClick={() => setActiveTab("rooms")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 10,
+            border: "1px solid",
+            borderColor: activeTab === "rooms" ? "#a855f7" : "rgba(255,255,255,0.1)",
+            background: activeTab === "rooms" ? "rgba(168, 85, 247, 0.2)" : "rgba(15, 23, 42, 0.6)",
+            color: activeTab === "rooms" ? "#e879f9" : "#94a3b8",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          🏨 Room Cleaning Grid ({rooms.length})
+        </button>
 
-        <div style={{ display: "flex", gap: 6, background: "rgba(15, 23, 42, 0.8)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
-          {[
-            { label: "All Floors", value: "ALL" as const },
-            { label: "Floor 1", value: 1 },
-            { label: "Floor 2", value: 2 },
-            { label: "Floor 3", value: 3 },
-          ].map((f) => (
-            <button
-              key={f.label}
-              onClick={() => setFilterFloor(f.value)}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 8,
-                border: "none",
-                background: filterFloor === f.value ? "#38bdf8" : "transparent",
-                color: filterFloor === f.value ? "#fff" : "#94a3b8",
-                fontWeight: 600,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => setActiveTab("hk_tickets")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 10,
+            border: "1px solid",
+            borderColor: activeTab === "hk_tickets" ? "#a855f7" : "rgba(255,255,255,0.1)",
+            background: activeTab === "hk_tickets" ? "rgba(168, 85, 247, 0.2)" : "rgba(15, 23, 42, 0.6)",
+            color: activeTab === "hk_tickets" ? "#e879f9" : "#94a3b8",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>🧹 Housekeeping Action Tickets</span>
+          {openHkTicketsCount > 0 && (
+            <span style={{ padding: "1px 6px", borderRadius: 999, background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+              {openHkTicketsCount}
+            </span>
+          )}
+        </button>
 
-        <span style={{ fontSize: 13, color: "#94a3b8", marginLeft: "auto" }}>
-          Showing <strong>{filteredRooms.length}</strong> rooms
-        </span>
+        <button
+          onClick={() => setActiveTab("maint_notifications")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 10,
+            border: "1px solid",
+            borderColor: activeTab === "maint_notifications" ? "#38bdf8" : "rgba(255,255,255,0.1)",
+            background: activeTab === "maint_notifications" ? "rgba(56, 189, 248, 0.2)" : "rgba(15, 23, 42, 0.6)",
+            color: activeTab === "maint_notifications" ? "#38bdf8" : "#94a3b8",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>🔔 Room Maintenance Notifications</span>
+          {maintNotifications.length > 0 && (
+            <span style={{ padding: "1px 6px", borderRadius: 999, background: "#38bdf8", color: "#000", fontSize: 10, fontWeight: 800 }}>
+              {maintNotifications.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Room Cleaning Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-        {filteredRooms.map((room) => {
-          const statusColors: Record<string, { bg: string; text: string }> = {
-            DIRTY: { bg: "rgba(239, 68, 68, 0.2)", text: "#f87171" },
-            CLEANING: { bg: "rgba(245, 158, 11, 0.2)", text: "#fbbf24" },
-            INSPECTING: { bg: "rgba(56, 189, 248, 0.2)", text: "#38bdf8" },
-            CLEAN: { bg: "rgba(34, 197, 94, 0.2)", text: "#4ade80" },
-          };
-          const colors = statusColors[room.cleaning_status] || statusColors.CLEAN;
-
-          return (
-            <div
-              key={room.id}
-              style={{
-                borderRadius: 14,
-                padding: "16px",
-                background: "rgba(30, 41, 59, 0.6)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>
-                  #{room.room_number}
-                </span>
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(255,255,255,0.08)", color: "#cbd5e1" }}>
-                  Floor {room.floor} • {room.block === "BLOCK_A" ? "A" : "B"}
-                </span>
-              </div>
-
-              {/* Cleaning State Transition Button */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, color: "#94a3b8" }}>Cleaning State:</span>
+      {/* TAB 1: ROOM CLEANING GRID */}
+      {activeTab === "rooms" && (
+        <>
+          {/* Filter Bar */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 6, background: "rgba(15, 23, 42, 0.8)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+              {["ALL", "DIRTY", "CLEANING", "INSPECTING", "CLEAN"].map((st) => (
                 <button
-                  disabled={isPending}
-                  onClick={() => handleCycleStatus(room)}
-                  title="Click to advance status"
+                  key={st}
+                  onClick={() => setFilterStatus(st)}
                   style={{
-                    padding: "4px 10px",
-                    borderRadius: 6,
+                    padding: "6px 12px",
+                    borderRadius: 8,
                     border: "none",
-                    background: colors.bg,
-                    color: colors.text,
-                    fontWeight: 700,
+                    background: filterStatus === st ? "#a855f7" : "transparent",
+                    color: filterStatus === st ? "#fff" : "#94a3b8",
+                    fontWeight: 600,
                     fontSize: 12,
                     cursor: "pointer",
                   }}
                 >
-                  {room.cleaning_status} &rarr;
+                  {st}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {/* Guest Headcount Audit */}
-              <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "8px 10px", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Guests Audit:</span>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  {/* Adults */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-                    <span>👤 {room.adult_count || 0}</span>
-                    <button onClick={() => handleHeadcountChange(room, 1, 0)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
-                    <button onClick={() => handleHeadcountChange(room, -1, 0)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>-</button>
+            <div style={{ display: "flex", gap: 6, background: "rgba(15, 23, 42, 0.8)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)" }}>
+              {[
+                { label: "All Floors", value: "ALL" as const },
+                { label: "Floor 1", value: 1 },
+                { label: "Floor 2", value: 2 },
+                { label: "Floor 3", value: 3 },
+              ].map((f) => (
+                <button
+                  key={f.label}
+                  onClick={() => setFilterFloor(f.value)}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: filterFloor === f.value ? "#38bdf8" : "transparent",
+                    color: filterFloor === f.value ? "#fff" : "#94a3b8",
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <span style={{ fontSize: 13, color: "#94a3b8", marginLeft: "auto" }}>
+              Showing <strong>{filteredRooms.length}</strong> rooms
+            </span>
+          </div>
+
+          {/* Room Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+            {filteredRooms.map((room) => {
+              const statusColors: Record<string, { bg: string; text: string }> = {
+                DIRTY: { bg: "rgba(239, 68, 68, 0.2)", text: "#f87171" },
+                CLEANING: { bg: "rgba(245, 158, 11, 0.2)", text: "#fbbf24" },
+                INSPECTING: { bg: "rgba(56, 189, 248, 0.2)", text: "#38bdf8" },
+                CLEAN: { bg: "rgba(34, 197, 94, 0.2)", text: "#4ade80" },
+              };
+              const colors = statusColors[room.cleaning_status] || statusColors.CLEAN;
+
+              return (
+                <div
+                  key={room.id}
+                  style={{
+                    borderRadius: 14,
+                    padding: "16px",
+                    background: "rgba(30, 41, 59, 0.6)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>
+                      #{room.room_number}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, background: "rgba(255,255,255,0.08)", color: "#cbd5e1" }}>
+                      Floor {room.floor} • {room.block === "BLOCK_A" ? "A" : "B"}
+                    </span>
                   </div>
-                  {/* Children */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-                    <span>🧒 {room.child_count || 0}</span>
-                    <button onClick={() => handleHeadcountChange(room, 0, 1)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
-                    <button onClick={() => handleHeadcountChange(room, 0, -1)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>-</button>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 12, color: "#94a3b8" }}>Cleaning State:</span>
+                    <button
+                      disabled={isPending}
+                      onClick={() => handleCycleStatus(room)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: "none",
+                        background: colors.bg,
+                        color: colors.text,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {room.cleaning_status} &rarr;
+                    </button>
+                  </div>
+
+                  <div style={{ background: "rgba(15, 23, 42, 0.6)", padding: "8px 10px", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Guests Audit:</span>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                        <span>👤 {room.adult_count || 0}</span>
+                        <button onClick={() => handleHeadcountChange(room, 1, 0)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
+                        <button onClick={() => handleHeadcountChange(room, -1, 0)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>-</button>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                        <span>🧒 {room.child_count || 0}</span>
+                        <button onClick={() => handleHeadcountChange(room, 0, 1)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>+</button>
+                        <button onClick={() => handleHeadcountChange(room, 0, -1)} style={{ width: 18, height: 18, borderRadius: 4, border: "none", background: "#334155", color: "#fff", cursor: "pointer", fontSize: 10 }}>-</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setInspectingRoom(room)}
+                    style={{
+                      width: "100%",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#cbd5e1",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    📋 Room Inspection Checklist
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* TAB 2: HOUSEKEEPING ACTION TICKETS (MISSING ITEMS / CLEANING) */}
+      {activeTab === "hk_tickets" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(168, 85, 247, 0.15)", border: "1px solid rgba(168, 85, 247, 0.3)", color: "#e879f9", fontSize: 13, fontWeight: 600 }}>
+            🧹 <strong>Housekeeping Action Queue:</strong> Missing items (towels, bedding, toiletries, minibar) & unclean room requests. <em>(Not sent to Maintenance, actioned by Housekeeping & monitored by GM).</em>
+          </div>
+
+          {hkActionTickets.length === 0 ? (
+            <div style={{ padding: "2rem", textAlign: "center", background: "rgba(30, 41, 59, 0.4)", borderRadius: 12, color: "#94a3b8" }}>
+              🎉 No pending housekeeping or missing item requests!
+            </div>
+          ) : (
+            hkActionTickets.map((task) => (
+              <div
+                key={task.id}
+                style={{
+                  padding: "16px",
+                  borderRadius: 14,
+                  background: task.status === "RESOLVED" ? "rgba(30, 41, 59, 0.4)" : "rgba(168, 85, 247, 0.1)",
+                  border: task.status === "RESOLVED" ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(168, 85, 247, 0.3)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: "#e879f9" }}>
+                      Room #{task.room?.room_number || task.room_id}
+                    </span>
+                    <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 4, background: "rgba(168, 85, 247, 0.2)", color: "#e879f9", fontWeight: 700 }}>
+                      {task.category}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: task.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(245, 158, 11, 0.2)", color: task.status === "RESOLVED" ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
+                      {task.status}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.08)", color: "#94a3b8" }}>
+                      Action: Housekeeping & GM (🚫 Excluded from Maintenance)
+                    </span>
+                  </div>
+
+                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "#cbd5e1" }}>
+                    {task.description}
+                  </p>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
+                    Created: {task.created_at ? new Date(task.created_at).toLocaleString() : "Recently"}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {task.status === "OPEN" && (
+                    <button
+                      disabled={isPending}
+                      onClick={() => handleAcknowledgeHkTicket(task.id)}
+                      style={{ padding: "6px 12px", borderRadius: 8, background: "#a855f7", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                    >
+                      Acknowledge & Dispatch
+                    </button>
+                  )}
+
+                  {task.status !== "RESOLVED" && (
+                    resolvingId === task.id ? (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input
+                          type="text"
+                          placeholder="Fulfillment notes..."
+                          value={resolutionNote}
+                          onChange={(e) => setResolutionNote(e.target.value)}
+                          style={{ padding: "6px 8px", borderRadius: 6, background: "#1e293b", border: "1px solid #475569", color: "#fff", fontSize: 12 }}
+                        />
+                        <button
+                          disabled={isPending}
+                          onClick={() => handleResolveHkTicket(task.id)}
+                          style={{ padding: "6px 12px", borderRadius: 6, background: "#22c55e", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                        >
+                          Complete
+                        </button>
+                        <button
+                          onClick={() => setResolvingId(null)}
+                          style={{ padding: "6px 8px", borderRadius: 6, background: "transparent", border: "1px solid #475569", color: "#94a3b8", fontSize: 12, cursor: "pointer" }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setResolvingId(task.id)}
+                        style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(34, 197, 94, 0.2)", border: "1px solid rgba(34, 197, 94, 0.4)", color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Mark Delivered / Resolved
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: MAINTENANCE REPAIR NOTIFICATIONS FOR HOUSEKEEPER MANAGER */}
+      {activeTab === "maint_notifications" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 13, fontWeight: 600 }}>
+            🔔 <strong>Maintenance Notifications for Housekeeper Manager:</strong> Live room repair tickets assigned to Maintenance. <em>(Provides awareness to Housekeeper Manager so housekeeping teams know repairs are underway in these rooms).</em>
+          </div>
+
+          {maintNotifications.length === 0 ? (
+            <div style={{ padding: "2rem", textAlign: "center", background: "rgba(30, 41, 59, 0.4)", borderRadius: 12, color: "#94a3b8" }}>
+              👍 No active room maintenance repairs in progress right now.
+            </div>
+          ) : (
+            maintNotifications.map((task) => (
+              <div
+                key={task.id}
+                style={{
+                  padding: "16px",
+                  borderRadius: 14,
+                  background: "rgba(30, 41, 59, 0.6)",
+                  border: "1px solid rgba(56, 189, 248, 0.3)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>
+                      Room #{task.room?.room_number || task.room_id}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", fontWeight: 700 }}>
+                      {task.category}
+                    </span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(251, 191, 36, 0.2)", color: "#fbbf24", fontWeight: 700 }}>
+                      🔔 Housekeeper Manager Notified (Handled by Maintenance)
+                    </span>
+                  </div>
+
+                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "#cbd5e1" }}>
+                    {task.description}
+                  </p>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 6, display: "flex", gap: 12 }}>
+                    <span>Assigned: {task.assigned_to?.full_name || "Maintenance Technician"}</span>
+                    <span>Status: {task.status}</span>
+                    <span>Created: {task.created_at ? new Date(task.created_at).toLocaleTimeString() : "Recently"}</span>
                   </div>
                 </div>
               </div>
-
-              {/* Inspection Checklist Button */}
-              <button
-                onClick={() => setInspectingRoom(room)}
-                style={{
-                  width: "100%",
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#cbd5e1",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                📋 Room Inspection Checklist
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* INSPECTION CHECKLIST MODAL */}
       {inspectingRoom && (
@@ -287,7 +556,7 @@ export default function GouvernantePortal({ rooms }: Props) {
                   cursor: brokenItemNote.trim() ? "pointer" : "not-allowed",
                 }}
               >
-                🚨 Log Maintenance Ticket for Room #{inspectingRoom.room_number}
+                🚨 Log Maintenance Repair Ticket for Room #{inspectingRoom.room_number}
               </button>
             </div>
 
@@ -308,3 +577,4 @@ export default function GouvernantePortal({ rooms }: Props) {
     </div>
   );
 }
+

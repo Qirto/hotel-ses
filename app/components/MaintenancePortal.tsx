@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { Reclamation, Staff } from "@/utils/roomsData";
+import { Reclamation, Staff, isMaintenanceFixTicket } from "@/utils/roomsData";
 import { acknowledgeReclamation, resolveReclamation } from "@/app/actions";
 
 interface Props {
@@ -24,8 +24,9 @@ export default function MaintenancePortal({ reclamations, technicians }: Props) 
     return () => clearInterval(timer);
   }, []);
 
+  // Filter tasks: Strictly include room repair/technical fixes and EXCLUDE missing item / cleanliness tickets
   const maintenanceTasks = reclamations.filter(
-    (r) => r.department === "MAINTENANCE" && !r.is_confidential
+    (r) => !r.is_confidential && isMaintenanceFixTicket(r)
   );
 
   const filteredTasks = maintenanceTasks.filter((task) => {
@@ -55,11 +56,16 @@ export default function MaintenancePortal({ reclamations, technicians }: Props) 
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Top Banner */}
       <div style={{ background: "rgba(15, 23, 42, 0.7)", padding: "1rem 1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
-        <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#38bdf8" }}>
-          🔧 Technical Maintenance Task Queue
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#38bdf8" }}>
+            🔧 Technical Maintenance Task Queue
+          </h2>
+          <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", fontWeight: 700, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            Room Repair Fixes Only
+          </span>
+        </div>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
-          Smart task dispatch matched by technician skills, floor proximity, and 3-minute acknowledgment timers.
+          Room fix and repair dispatches. <em>(Note: Housekeeping & missing item tickets are excluded here and routed directly to Housekeeping & GM).</em>
         </p>
       </div>
 
