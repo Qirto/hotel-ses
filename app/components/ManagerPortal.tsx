@@ -11,10 +11,25 @@ interface Props {
 }
 
 export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
-  const [selectedSubTab, setSelectedSubTab] = useState<"matrix" | "tickets" | "confidential" | "backfill">("matrix");
+  const [selectedSubTab, setSelectedSubTab] = useState<"table" | "matrix" | "tickets" | "confidential" | "backfill">("table");
   const [ticketFilter, setTicketFilter] = useState<"ALL" | "MAINTENANCE" | "HOUSEKEEPING">("ALL");
   const [remedyNote, setRemedyNote] = useState("");
   const [selectedRecId, setSelectedRecId] = useState<number | null>(null);
+
+  // Helper for clear Date & Time formatting
+  const formatDateTime = (isoString?: string | null) => {
+    if (!isoString) return "—";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   // Matrix Filter & Room Details Modal State
   const [matrixSearch, setMatrixSearch] = useState("");
@@ -205,6 +220,22 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
       {/* GM Sub-Tabs */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
+          onClick={() => setSelectedSubTab("table")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            border: "1px solid",
+            borderColor: selectedSubTab === "table" ? "#22c55e" : "rgba(255,255,255,0.1)",
+            background: selectedSubTab === "table" ? "rgba(34, 197, 94, 0.15)" : "transparent",
+            color: selectedSubTab === "table" ? "#4ade80" : "#94a3b8",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          📊 Live BDD Rooms & Tickets Master Table ({filteredMatrixRooms.length})
+        </button>
+        <button
           onClick={() => setSelectedSubTab("matrix")}
           style={{
             padding: "8px 16px",
@@ -269,6 +300,243 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
           📖 Historical Backfill Tool
         </button>
       </div>
+
+      {/* VIEW 0: LIVE BDD ROOMS & TICKETS MASTER TABLE */}
+      {selectedSubTab === "table" && (
+        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, color: "#4ade80", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🏢 Live Supabase BDD Rooms & Ticket Audit Master Table</span>
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontWeight: 700 }}>
+                  Linked to `public.rooms` & `public.reclamations`
+                </span>
+              </h3>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                Direct database linkage showing actual room number, real-time stay/cleaning state, ticket creation date & time, resolution timestamp, and live status.
+              </p>
+            </div>
+
+            {/* Filter controls */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder="Search Room # (e.g. 1001)..."
+                value={matrixSearch}
+                onChange={(e) => setMatrixSearch(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+              />
+
+              <select
+                value={matrixFloorFilter}
+                onChange={(e) => setMatrixFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
+                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+              >
+                <option value="ALL">All Floors</option>
+                <option value={1}>Floor 1</option>
+                <option value={2}>Floor 2</option>
+                <option value={3}>Floor 3</option>
+              </select>
+
+              <select
+                value={matrixStatusFilter}
+                onChange={(e) => setMatrixStatusFilter(e.target.value)}
+                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+              >
+                <option value="ALL">All Room States</option>
+                <option value="OCCUPIED">Occupied Rooms</option>
+                <option value="VACANT_CLEAN">Vacant & Clean</option>
+                <option value="DIRTY">Dirty Rooms</option>
+                <option value="CLEANING">Cleaning / Inspecting</option>
+                <option value="REPAIR_NEEDED">Active Ticket / Repair</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Master Table */}
+          <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left", color: "#f8fafc" }}>
+              <thead>
+                <tr style={{ background: "rgba(30, 41, 59, 0.8)", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}>
+                  <th style={{ padding: "10px 12px" }}>Actual Room #</th>
+                  <th style={{ padding: "10px 12px" }}>BDD ID / Location</th>
+                  <th style={{ padding: "10px 12px" }}>Actual Room State</th>
+                  <th style={{ padding: "10px 12px" }}>Latest BDD Ticket / Category</th>
+                  <th style={{ padding: "10px 12px" }}>Ticket Date & Time Created</th>
+                  <th style={{ padding: "10px 12px" }}>Ticket Date & Time Resolved</th>
+                  <th style={{ padding: "10px 12px" }}>Actual Ticket Status</th>
+                  <th style={{ padding: "10px 12px" }}>Assigned Staff / Dept</th>
+                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Inspect</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMatrixRooms.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+                      No rooms match the search filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMatrixRooms.map((room) => {
+                    const roomTickets = reclamations.filter(
+                      (r) => r.room_id === room.id || r.room?.room_number === room.room_number
+                    );
+                    const latestTicket = roomTickets.length > 0 ? roomTickets[roomTickets.length - 1] : null;
+
+                    return (
+                      <tr
+                        key={room.id}
+                        style={{
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          background: latestTicket && latestTicket.status !== "RESOLVED" ? "rgba(245, 158, 11, 0.05)" : "transparent",
+                          transition: "background 0.15s ease",
+                        }}
+                      >
+                        {/* Actual Room Number */}
+                        <td style={{ padding: "10px 12px", fontWeight: 800, color: "#f59e0b", fontSize: 13 }}>
+                          Room #{room.room_number}
+                        </td>
+
+                        {/* BDD ID & Location */}
+                        <td style={{ padding: "10px 12px", color: "#cbd5e1" }}>
+                          <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)", fontFamily: "monospace" }}>
+                            ID #{room.id}
+                          </span>
+                          <span style={{ marginLeft: 6, fontSize: 11, color: "#94a3b8" }}>
+                            Floor {room.floor} • Block {room.block === "BLOCK_A" ? "A" : "B"}
+                          </span>
+                        </td>
+
+                        {/* Actual Room State */}
+                        <td style={{ padding: "10px 12px" }}>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "2px 8px",
+                                borderRadius: 4,
+                                fontWeight: 700,
+                                background: room.is_occupied ? "rgba(251, 191, 36, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                                color: room.is_occupied ? "#fbbf24" : "#4ade80",
+                              }}
+                            >
+                              {room.is_occupied ? "Occupied" : "Vacant"}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "2px 8px",
+                                borderRadius: 4,
+                                fontWeight: 700,
+                                background:
+                                  room.cleaning_status === "CLEAN"
+                                    ? "rgba(34, 197, 94, 0.15)"
+                                    : room.cleaning_status === "DIRTY"
+                                    ? "rgba(239, 68, 68, 0.2)"
+                                    : "rgba(245, 158, 11, 0.2)",
+                                color:
+                                  room.cleaning_status === "CLEAN"
+                                    ? "#4ade80"
+                                    : room.cleaning_status === "DIRTY"
+                                    ? "#f87171"
+                                    : "#fbbf24",
+                              }}
+                            >
+                              {room.cleaning_status}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Latest Ticket Category & Description */}
+                        <td style={{ padding: "10px 12px" }}>
+                          {latestTicket ? (
+                            <div>
+                              <span style={{ fontWeight: 700, color: "#38bdf8" }}>{latestTicket.category}</span>
+                              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#cbd5e1", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {latestTicket.description}
+                              </p>
+                            </div>
+                          ) : (
+                            <span style={{ color: "#64748b", fontStyle: "italic" }}>No Ticket Logged</span>
+                          )}
+                        </td>
+
+                        {/* Ticket Date & Time Created */}
+                        <td style={{ padding: "10px 12px", fontSize: 11, color: "#e2e8f0" }}>
+                          {latestTicket ? formatDateTime(latestTicket.created_at) : "—"}
+                        </td>
+
+                        {/* Ticket Date & Time Resolved */}
+                        <td style={{ padding: "10px 12px", fontSize: 11, color: latestTicket?.resolved_at ? "#4ade80" : "#94a3b8" }}>
+                          {latestTicket?.resolved_at ? formatDateTime(latestTicket.resolved_at) : latestTicket ? "Pending Resolution" : "—"}
+                        </td>
+
+                        {/* Actual Ticket Status */}
+                        <td style={{ padding: "10px 12px" }}>
+                          {latestTicket ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 4,
+                                fontWeight: 800,
+                                background:
+                                  latestTicket.status === "RESOLVED"
+                                    ? "rgba(34, 197, 94, 0.2)"
+                                    : latestTicket.status === "IN_PROGRESS"
+                                    ? "rgba(56, 189, 248, 0.2)"
+                                    : "rgba(245, 158, 11, 0.2)",
+                                color:
+                                  latestTicket.status === "RESOLVED"
+                                    ? "#4ade80"
+                                    : latestTicket.status === "IN_PROGRESS"
+                                    ? "#38bdf8"
+                                    : "#fbbf24",
+                              }}
+                            >
+                              {latestTicket.status}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "#64748b" }}>OK</span>
+                          )}
+                        </td>
+
+                        {/* Assigned Staff / Dept */}
+                        <td style={{ padding: "10px 12px", fontSize: 11, color: "#cbd5e1" }}>
+                          {latestTicket ? (
+                            <span>{latestTicket.assigned_to?.full_name || `${latestTicket.department} Team`}</span>
+                          ) : (
+                            "Unassigned"
+                          )}
+                        </td>
+
+                        {/* Inspect Action */}
+                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                          <button
+                            onClick={() => setSelectedRoomModal(room)}
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 6,
+                              background: "#0284c7",
+                              border: "none",
+                              color: "#fff",
+                              fontWeight: 700,
+                              fontSize: 11,
+                              cursor: "pointer",
+                            }}
+                          >
+                            🔍 Audit
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* VIEW 1: 341-ROOM COLOR-CODED MATRIX & SEARCH CONTROLS */}
       {selectedSubTab === "matrix" && (
@@ -697,16 +965,20 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
                 }
 
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflowY: "auto" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
                     {roomTickets.map((t) => (
                       <div key={t.id} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontWeight: 700, color: "#38bdf8" }}>{t.category}</span>
-                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: t.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(245, 158, 11, 0.2)", color: t.status === "RESOLVED" ? "#4ade80" : "#fbbf24" }}>
+                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: t.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(245, 158, 11, 0.2)", color: t.status === "RESOLVED" ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
                             {t.status}
                           </span>
                         </div>
                         <div style={{ color: "#cbd5e1", marginTop: 2 }}>{t.description}</div>
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
+                          <span>🕒 Created: {formatDateTime(t.created_at)}</span>
+                          <span>✅ Resolved: {t.resolved_at ? formatDateTime(t.resolved_at) : "Pending"}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
