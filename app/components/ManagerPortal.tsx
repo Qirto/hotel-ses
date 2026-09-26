@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition, useMemo } from "react";
 import { HotelRoom, Reclamation, Staff, isMaintenanceFixTicket, isHousekeepingMissingOrCleanTicket } from "@/utils/roomsData";
-import { resolveConfidentialGrievance, createHistoricalReclamation, cycleRoomCleaning } from "@/app/actions";
+import { resolveConfidentialGrievance, createHistoricalReclamation, cycleRoomCleaning, resolveReclamation } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
@@ -11,25 +11,11 @@ interface Props {
 }
 
 export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
-  const [selectedSubTab, setSelectedSubTab] = useState<"table" | "matrix" | "tickets" | "confidential" | "backfill">("table");
-  const [ticketFilter, setTicketFilter] = useState<"ALL" | "MAINTENANCE" | "HOUSEKEEPING">("ALL");
+  const [activeTab, setActiveTab] = useState<"STATS" | "RECLAMATIONS" | "ROOM_STATE">("STATS");
+  const [ticketFilter, setTicketFilter] = useState<string>("ALL");
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<string>("ALL");
   const [remedyNote, setRemedyNote] = useState("");
   const [selectedRecId, setSelectedRecId] = useState<number | null>(null);
-
-  // Helper for clear Date & Time formatting
-  const formatDateTime = (isoString?: string | null) => {
-    if (!isoString) return "—";
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return isoString;
-    return d.toLocaleString("en-GB", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
 
   // Matrix Filter & Room Details Modal State
   const [matrixSearch, setMatrixSearch] = useState("");
@@ -39,15 +25,8 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
 
   const [isPending, startTransition] = useTransition();
 
-  // Backfill form state
-  const [bfRoom, setBfRoom] = useState("");
-  const [bfDept, setBfDept] = useState<"MAINTENANCE" | "GOVERNANCE">("MAINTENANCE");
-  const [bfCategory, setBfCategory] = useState("A/C");
-  const [bfDate, setBfDate] = useState("2026-09-01");
-  const [bfDesc, setBfDesc] = useState("");
-
   // BDD Live Room Statistics
-  const totalBddRooms = rooms.length;
+  const totalRooms = rooms.length;
   const occupiedRoomsCount = useMemo(() => rooms.filter((r) => r.is_occupied).length, [rooms]);
   const vacantCleanCount = useMemo(() => rooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length, [rooms]);
   const dirtyRoomsCount = useMemo(() => rooms.filter((r) => r.cleaning_status === "DIRTY").length, [rooms]);
@@ -121,9 +100,8 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
   const confidentialGrievances = reclamations.filter((r) => r.is_confidential);
 
   const filteredReclamations = reclamations.filter((r) => {
-    if (r.is_confidential) return false;
-    if (ticketFilter === "MAINTENANCE") return isMaintenanceFixTicket(r);
-    if (ticketFilter === "HOUSEKEEPING") return isHousekeepingMissingOrCleanTicket(r);
+    if (ticketFilter !== "ALL" && r.department !== ticketFilter) return false;
+    if (ticketStatusFilter !== "ALL" && r.status !== ticketStatusFilter) return false;
     return true;
   });
 
@@ -140,420 +118,380 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
     });
   };
 
-  const handleBackfillSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetRoom = rooms.find((r) => r.room_number === bfRoom);
-    if (!targetRoom) {
-      alert("Invalid room number!");
-      return;
-    }
+  const handleResolveNormalTicket = (id: number) => {
     startTransition(async () => {
-      const res = await createHistoricalReclamation({
-        roomId: targetRoom.id,
-        department: bfDept,
-        category: bfCategory,
-        description: bfDesc || `Digitized paper logbook entry for Room ${bfRoom}`,
-        status: "RESOLVED",
-        createdAt: bfDate,
-      });
-      if (res.success) {
-        alert(`Historical ticket digitized for Room ${bfRoom}!`);
-        setBfDesc("");
-      }
+      await resolveReclamation(id, "Resolved by General Manager Oversight");
     });
   };
 
+  // Department ticket counts
+  const deptCounts: Record<string, number> = {};
+  reclamations.forEach((r) => {
+    deptCounts[r.department] = (deptCounts[r.department] || 0) + 1;
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Top Banner */}
-      <div style={{ background: "rgba(15, 23, 42, 0.7)", padding: "1rem 1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+      {/* Top Executive Header */}
+      <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.25rem 1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
           <div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#f59e0b" }}>
-              📊 General Manager Executive Control & BDD Room Analytics
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "#fbbf24", fontSize: 11, fontWeight: 700, marginBottom: 6 }}>
+              <span>👔 GENERAL MANAGER EXECUTIVE DASHBOARD</span>
+            </div>
+            <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: 0, color: "#ffffff" }}>
+              Palace Executive Oversight & Operations Analytics
             </h2>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
-              Live BDD fetch ({totalBddRooms} rooms), real-time occupancy statistics, room inspection modal, and ticket routing oversight.
+              Executive view: analyze statistics & KPIs, monitor room state, and oversee all hotel reclamations.
             </p>
           </div>
-          <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(34, 197, 94, 0.15)", color: "#4ade80", fontWeight: 700, border: "1px solid rgba(34, 197, 94, 0.3)" }}>
-            ⚡ Supabase BDD Live Sync ({totalBddRooms} Rooms)
-          </span>
-        </div>
-      </div>
-
-      {/* KPI & Live BDD Room Stats Overview Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <div style={{ padding: "14px", borderRadius: 12, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Total BDD Rooms</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>{totalBddRooms}</div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{occupiedRoomsCount} Occupied • {totalBddRooms - occupiedRoomsCount} Vacant</div>
         </div>
 
-        <div style={{ padding: "14px", borderRadius: 12, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Vacant & Clean</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#4ade80", marginTop: 4 }}>{vacantCleanCount}</div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Ready for guest check-in</div>
-        </div>
-
-        <div style={{ padding: "14px", borderRadius: 12, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Dirty & Cleaning</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#f87171", marginTop: 4 }}>{dirtyRoomsCount + cleaningCount}</div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{dirtyRoomsCount} Dirty • {cleaningCount} Cleaning</div>
-        </div>
-
-        <div style={{ padding: "14px", borderRadius: 12, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>MTTR Resolution</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#38bdf8", marginTop: 4 }}>{mttrMinutes} min</div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>SLA Compliance: {slaCompliance}%</div>
-        </div>
-
-        <div style={{ padding: "14px", borderRadius: 12, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Active Room Tickets</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: roomsWithActiveTickets.size > 0 ? "#f59e0b" : "#4ade80", marginTop: 4 }}>
-            {roomsWithActiveTickets.size} rooms
+        {/* Executive Quick KPIs */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Occupancy Rate</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fbbf24" }}>{Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%</div>
           </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Pending dispatch/fix</div>
+          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>SLA Compliance</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: slaCompliance >= 90 ? "#4ade80" : "#f87171" }}>{slaCompliance}%</div>
+          </div>
+          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Avg MTTR</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8" }}>{mttrMinutes} min</div>
+          </div>
+          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Active Tickets</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: totalOpen > 0 ? "#f87171" : "#4ade80" }}>{totalOpen}</div>
+          </div>
+          <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>Confidential Issues</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: confidentialGrievances.length > 0 ? "#e879f9" : "#4ade80" }}>{confidentialGrievances.length}</div>
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div style={{ display: "flex", gap: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12 }}>
+          <button
+            onClick={() => setActiveTab("STATS")}
+            style={{
+              padding: "9px 18px",
+              borderRadius: 10,
+              border: "1px solid",
+              borderColor: activeTab === "STATS" ? "#fbbf24" : "rgba(255,255,255,0.08)",
+              background: activeTab === "STATS" ? "rgba(251, 191, 36, 0.2)" : "rgba(15, 23, 42, 0.6)",
+              color: activeTab === "STATS" ? "#ffffff" : "#94a3b8",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>📊</span> 1. Executive Statistics & Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab("RECLAMATIONS")}
+            style={{
+              padding: "9px 18px",
+              borderRadius: 10,
+              border: "1px solid",
+              borderColor: activeTab === "RECLAMATIONS" ? "#e879f9" : "rgba(255,255,255,0.08)",
+              background: activeTab === "RECLAMATIONS" ? "rgba(232, 121, 249, 0.2)" : "rgba(15, 23, 42, 0.6)",
+              color: activeTab === "RECLAMATIONS" ? "#ffffff" : "#94a3b8",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>🛎️</span> 2. Reclamations & Grievances ({reclamations.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("ROOM_STATE")}
+            style={{
+              padding: "9px 18px",
+              borderRadius: 10,
+              border: "1px solid",
+              borderColor: activeTab === "ROOM_STATE" ? "#38bdf8" : "rgba(255,255,255,0.08)",
+              background: activeTab === "ROOM_STATE" ? "rgba(56, 189, 248, 0.2)" : "rgba(15, 23, 42, 0.6)",
+              color: activeTab === "ROOM_STATE" ? "#ffffff" : "#94a3b8",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span>🔑</span> 3. Room State & Floor Matrix ({totalRooms})
+          </button>
         </div>
       </div>
 
-      {/* GM Sub-Tabs */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          onClick={() => setSelectedSubTab("table")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid",
-            borderColor: selectedSubTab === "table" ? "#22c55e" : "rgba(255,255,255,0.1)",
-            background: selectedSubTab === "table" ? "rgba(34, 197, 94, 0.15)" : "transparent",
-            color: selectedSubTab === "table" ? "#4ade80" : "#94a3b8",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          📊 Live BDD Rooms & Tickets Master Table ({filteredMatrixRooms.length})
-        </button>
-        <button
-          onClick={() => setSelectedSubTab("matrix")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid",
-            borderColor: selectedSubTab === "matrix" ? "#f59e0b" : "rgba(255,255,255,0.1)",
-            background: selectedSubTab === "matrix" ? "rgba(245, 158, 11, 0.15)" : "transparent",
-            color: selectedSubTab === "matrix" ? "#fbbf24" : "#94a3b8",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          🗺️ 341-Room Color Live Matrix ({filteredMatrixRooms.length})
-        </button>
-        <button
-          onClick={() => setSelectedSubTab("tickets")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid",
-            borderColor: selectedSubTab === "tickets" ? "#38bdf8" : "rgba(255,255,255,0.1)",
-            background: selectedSubTab === "tickets" ? "rgba(56, 189, 248, 0.15)" : "transparent",
-            color: selectedSubTab === "tickets" ? "#38bdf8" : "#94a3b8",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          📋 Ticket Dispatch & Routing Monitor ({reclamations.length})
-        </button>
-        <button
-          onClick={() => setSelectedSubTab("confidential")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid",
-            borderColor: selectedSubTab === "confidential" ? "#f87171" : "rgba(255,255,255,0.1)",
-            background: selectedSubTab === "confidential" ? "rgba(239, 68, 68, 0.15)" : "transparent",
-            color: selectedSubTab === "confidential" ? "#f87171" : "#94a3b8",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          🔒 Confidential Grievance Desk ({confidentialGrievances.length})
-        </button>
-        <button
-          onClick={() => setSelectedSubTab("backfill")}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid",
-            borderColor: selectedSubTab === "backfill" ? "#38bdf8" : "rgba(255,255,255,0.1)",
-            background: selectedSubTab === "backfill" ? "rgba(56, 189, 248, 0.15)" : "transparent",
-            color: selectedSubTab === "backfill" ? "#38bdf8" : "#94a3b8",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          📖 Historical Backfill Tool
-        </button>
-      </div>
+      {/* ========================================================================= */}
+      {/* TAB 1: EXECUTIVE STATISTICS & ANALYTICS */}
+      {/* ========================================================================= */}
+      {activeTab === "STATS" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* Key Metric Overview Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.25rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h4 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#fbbf24" }}>
+                🏨 Room Occupancy Distribution
+              </h4>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                {occupiedRoomsCount} / {totalRooms} Rooms
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 10 }}>
+                <div style={{ background: "#fbbf24", width: `${(occupiedRoomsCount / (totalRooms || 1)) * 100}%`, height: "100%" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8" }}>
+                <span>Occupied: {occupiedRoomsCount}</span>
+                <span>Vacant: {totalRooms - occupiedRoomsCount}</span>
+              </div>
+            </div>
 
-      {/* VIEW 0: LIVE BDD ROOMS & TICKETS MASTER TABLE */}
-      {selectedSubTab === "table" && (
-        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 16, color: "#4ade80", display: "flex", alignItems: "center", gap: 8 }}>
-                <span>🏢 Live Supabase BDD Rooms & Ticket Audit Master Table</span>
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontWeight: 700 }}>
-                  Linked to `public.rooms` & `public.reclamations`
-                </span>
+            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.25rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h4 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#4ade80" }}>
+                🧹 Housekeeping Floor Cleanliness
+              </h4>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                {vacantCleanCount} Vacant Clean
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 10 }}>
+                <div style={{ background: "#4ade80", width: `${(vacantCleanCount / (totalRooms || 1)) * 100}%`, height: "100%" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8" }}>
+                <span>Dirty Rooms: {dirtyRoomsCount}</span>
+                <span>In Progress: {cleaningCount}</span>
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.25rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h4 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#e879f9" }}>
+                ⏱️ Resolution MTTR & Performance
+              </h4>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 6 }}>
+                {mttrMinutes} Minutes Avg
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 10 }}>
+                <div style={{ background: "#e879f9", width: `${slaCompliance}%`, height: "100%" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8" }}>
+                <span>SLA Target: &lt; 30 min</span>
+                <span>Compliance: {slaCompliance}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Department Workload Breakdown */}
+          <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.25rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 700, color: "#38bdf8" }}>
+              🏢 Department Workload & Reclamations Distribution
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              {Object.entries(deptCounts).map(([dept, count]) => {
+                const openCount = reclamations.filter((r) => r.department === dept && (r.status === "OPEN" || r.status === "IN_PROGRESS")).length;
+                return (
+                  <div key={dept} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#ffffff", marginBottom: 4 }}>{dept}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#38bdf8" }}>{count} Total Tickets</div>
+                    <div style={{ fontSize: 11, color: openCount > 0 ? "#f87171" : "#4ade80", marginTop: 4 }}>
+                      {openCount} Open / Pending
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Repeat Issue Hotspots */}
+          {hotspotRooms.length > 0 && (
+            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.25rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 700, color: "#f87171" }}>
+                🔥 Room Issue Hotspots (Rooms with Multiple Reclamations)
               </h3>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                Direct database linkage showing actual room number, real-time stay/cleaning state, ticket creation date & time, resolution timestamp, and live status.
-              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+                {hotspotRooms.map(([roomNum, count]) => (
+                  <div key={roomNum} style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 10, padding: "10px" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#f87171" }}>Room {roomNum}</div>
+                    <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 2 }}>{count} Reported Issues</div>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Filter controls */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <input
-                type="text"
-                placeholder="Search Room # (e.g. 1001)..."
-                value={matrixSearch}
-                onChange={(e) => setMatrixSearch(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-              />
+      {/* ========================================================================= */}
+      {/* TAB 2: RECLAMATIONS & GRIEVANCES OVERSIGHT */}
+      {/* ========================================================================= */}
+      {activeTab === "RECLAMATIONS" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* CONFIDENTIAL EXECUTIVE GRIEVANCES */}
+          {confidentialGrievances.length > 0 && (
+            <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 16, padding: "1.25rem" }}>
+              <h3 style={{ margin: "0 0 10px", fontSize: "1.2rem", fontWeight: 800, color: "#f87171" }}>
+                🔒 Executive Confidential Grievances ({confidentialGrievances.length})
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {confidentialGrievances.map((rec) => (
+                  <div key={rec.id} style={{ background: "rgba(15, 23, 42, 0.8)", padding: "12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, color: "#f87171" }}>
+                        #{rec.id} • Room {rec.room?.room_number || rec.room_id} [{rec.department}]
+                      </div>
+                      <div style={{ fontSize: 13, color: "#f8fafc", marginTop: 2 }}>{rec.category}: {rec.description}</div>
+                    </div>
 
-              <select
-                value={matrixFloorFilter}
-                onChange={(e) => setMatrixFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-              >
-                <option value="ALL">All Floors</option>
-                <option value={1}>Floor 1</option>
-                <option value={2}>Floor 2</option>
-                <option value={3}>Floor 3</option>
-              </select>
-
-              <select
-                value={matrixStatusFilter}
-                onChange={(e) => setMatrixStatusFilter(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-              >
-                <option value="ALL">All Room States</option>
-                <option value="OCCUPIED">Occupied Rooms</option>
-                <option value="VACANT_CLEAN">Vacant & Clean</option>
-                <option value="DIRTY">Dirty Rooms</option>
-                <option value="CLEANING">Cleaning / Inspecting</option>
-                <option value="REPAIR_NEEDED">Active Ticket / Repair</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Master Table */}
-          <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12 }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left", color: "#f8fafc" }}>
-              <thead>
-                <tr style={{ background: "rgba(30, 41, 59, 0.8)", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}>
-                  <th style={{ padding: "10px 12px" }}>Actual Room #</th>
-                  <th style={{ padding: "10px 12px" }}>BDD ID / Location</th>
-                  <th style={{ padding: "10px 12px" }}>Actual Room State</th>
-                  <th style={{ padding: "10px 12px" }}>Latest BDD Ticket / Category</th>
-                  <th style={{ padding: "10px 12px" }}>Ticket Date & Time Created</th>
-                  <th style={{ padding: "10px 12px" }}>Ticket Date & Time Resolved</th>
-                  <th style={{ padding: "10px 12px" }}>Actual Ticket Status</th>
-                  <th style={{ padding: "10px 12px" }}>Assigned Staff / Dept</th>
-                  <th style={{ padding: "10px 12px", textAlign: "right" }}>Inspect</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMatrixRooms.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
-                      No rooms match the search filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMatrixRooms.map((room) => {
-                    const roomTickets = reclamations.filter(
-                      (r) => r.room_id === room.id || r.room?.room_number === room.room_number
-                    );
-                    const latestTicket = roomTickets.length > 0 ? roomTickets[roomTickets.length - 1] : null;
-
-                    return (
-                      <tr
-                        key={room.id}
-                        style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
-                          background: latestTicket && latestTicket.status !== "RESOLVED" ? "rgba(245, 158, 11, 0.05)" : "transparent",
-                          transition: "background 0.15s ease",
-                        }}
-                      >
-                        {/* Actual Room Number */}
-                        <td style={{ padding: "10px 12px", fontWeight: 800, color: "#f59e0b", fontSize: 13 }}>
-                          Room #{room.room_number}
-                        </td>
-
-                        {/* BDD ID & Location */}
-                        <td style={{ padding: "10px 12px", color: "#cbd5e1" }}>
-                          <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)", fontFamily: "monospace" }}>
-                            ID #{room.id}
-                          </span>
-                          <span style={{ marginLeft: 6, fontSize: 11, color: "#94a3b8" }}>
-                            Floor {room.floor} • Block {room.block === "BLOCK_A" ? "A" : "B"}
-                          </span>
-                        </td>
-
-                        {/* Actual Room State */}
-                        <td style={{ padding: "10px 12px" }}>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                padding: "2px 8px",
-                                borderRadius: 4,
-                                fontWeight: 700,
-                                background: room.is_occupied ? "rgba(251, 191, 36, 0.2)" : "rgba(34, 197, 94, 0.2)",
-                                color: room.is_occupied ? "#fbbf24" : "#4ade80",
-                              }}
-                            >
-                              {room.is_occupied ? "Occupied" : "Vacant"}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                padding: "2px 8px",
-                                borderRadius: 4,
-                                fontWeight: 700,
-                                background:
-                                  room.cleaning_status === "CLEAN"
-                                    ? "rgba(34, 197, 94, 0.15)"
-                                    : room.cleaning_status === "DIRTY"
-                                    ? "rgba(239, 68, 68, 0.2)"
-                                    : "rgba(245, 158, 11, 0.2)",
-                                color:
-                                  room.cleaning_status === "CLEAN"
-                                    ? "#4ade80"
-                                    : room.cleaning_status === "DIRTY"
-                                    ? "#f87171"
-                                    : "#fbbf24",
-                              }}
-                            >
-                              {room.cleaning_status}
-                            </span>
+                    {rec.status !== "RESOLVED" && (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {selectedRecId === rec.id ? (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <input
+                              type="text"
+                              placeholder="Remedy notes..."
+                              value={remedyNote}
+                              onChange={(e) => setRemedyNote(e.target.value)}
+                              style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                            />
+                            <button onClick={() => handleResolveConfidential(rec.id)} style={{ padding: "6px 12px", borderRadius: 6, background: "#10b981", border: "none", color: "#000", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                              Confirm Resolve
+                            </button>
                           </div>
-                        </td>
-
-                        {/* Latest Ticket Category & Description */}
-                        <td style={{ padding: "10px 12px" }}>
-                          {latestTicket ? (
-                            <div>
-                              <span style={{ fontWeight: 700, color: "#38bdf8" }}>{latestTicket.category}</span>
-                              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#cbd5e1", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {latestTicket.description}
-                              </p>
-                            </div>
-                          ) : (
-                            <span style={{ color: "#64748b", fontStyle: "italic" }}>No Ticket Logged</span>
-                          )}
-                        </td>
-
-                        {/* Ticket Date & Time Created */}
-                        <td style={{ padding: "10px 12px", fontSize: 11, color: "#e2e8f0" }}>
-                          {latestTicket ? formatDateTime(latestTicket.created_at) : "—"}
-                        </td>
-
-                        {/* Ticket Date & Time Resolved */}
-                        <td style={{ padding: "10px 12px", fontSize: 11, color: latestTicket?.resolved_at ? "#4ade80" : "#94a3b8" }}>
-                          {latestTicket?.resolved_at ? formatDateTime(latestTicket.resolved_at) : latestTicket ? "Pending Resolution" : "—"}
-                        </td>
-
-                        {/* Actual Ticket Status */}
-                        <td style={{ padding: "10px 12px" }}>
-                          {latestTicket ? (
-                            <span
-                              style={{
-                                fontSize: 11,
-                                padding: "3px 8px",
-                                borderRadius: 4,
-                                fontWeight: 800,
-                                background:
-                                  latestTicket.status === "RESOLVED"
-                                    ? "rgba(34, 197, 94, 0.2)"
-                                    : latestTicket.status === "IN_PROGRESS"
-                                    ? "rgba(56, 189, 248, 0.2)"
-                                    : "rgba(245, 158, 11, 0.2)",
-                                color:
-                                  latestTicket.status === "RESOLVED"
-                                    ? "#4ade80"
-                                    : latestTicket.status === "IN_PROGRESS"
-                                    ? "#38bdf8"
-                                    : "#fbbf24",
-                              }}
-                            >
-                              {latestTicket.status}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 11, color: "#64748b" }}>OK</span>
-                          )}
-                        </td>
-
-                        {/* Assigned Staff / Dept */}
-                        <td style={{ padding: "10px 12px", fontSize: 11, color: "#cbd5e1" }}>
-                          {latestTicket ? (
-                            <span>{latestTicket.assigned_to?.full_name || `${latestTicket.department} Team`}</span>
-                          ) : (
-                            "Unassigned"
-                          )}
-                        </td>
-
-                        {/* Inspect Action */}
-                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                          <button
-                            onClick={() => setSelectedRoomModal(room)}
-                            style={{
-                              padding: "4px 10px",
-                              borderRadius: 6,
-                              background: "#0284c7",
-                              border: "none",
-                              color: "#fff",
-                              fontWeight: 700,
-                              fontSize: 11,
-                              cursor: "pointer",
-                            }}
-                          >
-                            🔍 Audit
+                        ) : (
+                          <button onClick={() => setSelectedRecId(rec.id)} style={{ padding: "6px 12px", borderRadius: 6, background: "#ef4444", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                            Executive Resolve
                           </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ALL RECLAMATIONS TABLE */}
+          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#e879f9" }}>
+                🛎️ All Reclamations Log ({filteredReclamations.length})
+              </h3>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  value={ticketFilter}
+                  onChange={(e) => setTicketFilter(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                >
+                  <option value="ALL">All Departments</option>
+                  <option value="MAINTENANCE">Technical / Maintenance</option>
+                  <option value="HOUSEKEEPING">Housekeeping</option>
+                  <option value="FOOD_AND_BEVERAGE">F&B</option>
+                  <option value="CONCIERGE">Concierge</option>
+                  <option value="SECURITY">Security</option>
+                </select>
+
+                <select
+                  value={ticketStatusFilter}
+                  onChange={(e) => setTicketStatusFilter(e.target.value)}
+                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="OPEN">Open Only</option>
+                  <option value="IN_PROGRESS">In Progress Only</option>
+                  <option value="RESOLVED">Resolved Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+                <thead>
+                  <tr style={{ background: "rgba(30, 41, 59, 0.8)", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}>
+                    <th style={{ padding: "10px" }}>ID / Room</th>
+                    <th style={{ padding: "10px" }}>Department</th>
+                    <th style={{ padding: "10px" }}>Category / Description</th>
+                    <th style={{ padding: "10px" }}>Priority</th>
+                    <th style={{ padding: "10px" }}>Status</th>
+                    <th style={{ padding: "10px" }}>Assigned Staff</th>
+                    <th style={{ padding: "10px", textAlign: "right" }}>GM Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReclamations.map((rec) => {
+                    const isResolved = rec.status === "RESOLVED";
+                    return (
+                      <tr key={rec.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <td style={{ padding: "10px", fontWeight: 700, color: "#38bdf8" }}>
+                          #{rec.id} • Room {rec.room?.room_number || rec.room_id}
+                        </td>
+                        <td style={{ padding: "10px", color: "#cbd5e1" }}>{rec.department}</td>
+                        <td style={{ padding: "10px" }}>
+                          <div style={{ fontWeight: 700, color: "#f8fafc" }}>{rec.category}</div>
+                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{rec.description}</div>
+                        </td>
+                        <td style={{ padding: "10px" }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "#ef4444" : rec.priority === "HIGH" ? "#f59e0b" : "rgba(59,130,246,0.3)", color: "#fff" }}>
+                            {rec.priority || "STANDARD"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: isResolved ? "#4ade80" : "#f87171" }}>
+                            {rec.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px", color: "#94a3b8", fontSize: 12 }}>
+                          {rec.assigned_to ? rec.assigned_to.full_name : "— Unassigned —"}
+                        </td>
+                        <td style={{ padding: "10px", textAlign: "right" }}>
+                          {!isResolved && (
+                            <button
+                              disabled={isPending}
+                              onClick={() => handleResolveNormalTicket(rec.id)}
+                              style={{ padding: "4px 8px", borderRadius: 6, background: "#10b981", border: "none", color: "#000", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              Resolve
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* VIEW 1: 341-ROOM COLOR-CODED MATRIX & SEARCH CONTROLS */}
-      {selectedSubTab === "matrix" && (
-        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+      {/* ========================================================================= */}
+      {/* TAB 3: ROOM STATE & FLOOR MATRIX */}
+      {/* ========================================================================= */}
+      {activeTab === "ROOM_STATE" && (
+        <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, color: "#f8fafc" }}>Property 341-Room BDD Live Matrix</h3>
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
+                🔑 Executive Live Room State Matrix ({filteredMatrixRooms.length} rooms)
+              </h3>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                Click any room box to inspect its live BDD status, guest audit, and reclamation history.
+                Property room statuses across all 3 floors & blocks.
               </p>
             </div>
 
-            {/* Matrix Filters */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="text"
-                placeholder="Search room (e.g. 1001)..."
+                placeholder="Search room #..."
                 value={matrixSearch}
                 onChange={(e) => setMatrixSearch(e.target.value)}
                 style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
@@ -576,432 +514,84 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
                 style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
               >
                 <option value="ALL">All Statuses</option>
-                <option value="OCCUPIED">Occupied Rooms</option>
-                <option value="VACANT_CLEAN">Vacant & Clean</option>
-                <option value="DIRTY">Dirty Rooms</option>
-                <option value="CLEANING">Cleaning / Inspecting</option>
-                <option value="REPAIR_NEEDED">Active Repair / Ticket</option>
+                <option value="OCCUPIED">Occupied Only</option>
+                <option value="VACANT_CLEAN">Vacant Clean</option>
+                <option value="DIRTY">Dirty Only</option>
+                <option value="REPAIR_NEEDED">Repair Needed</option>
               </select>
             </div>
           </div>
 
-          {/* Color Legend */}
-          <div style={{ display: "flex", gap: 14, fontSize: 11, marginBottom: 14, flexWrap: "wrap", background: "rgba(30, 41, 59, 0.4)", padding: "8px 12px", borderRadius: 8 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: "#22c55e", borderRadius: 3 }}></span> Vacant & Clean
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: "#3b82f6", borderRadius: 3 }}></span> Occupied & Clean
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: "#f59e0b", borderRadius: 3 }}></span> Cleaning In Progress
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 12, height: 12, background: "#ef4444", borderRadius: 3 }}></span> Dirty (Pending Cleaning)
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", color: "#94a3b8" }}>
-              💡 <em>Click any room box for detailed BDD stats</em>
-            </span>
-          </div>
+          {/* Rooms Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10, maxHeight: 520, overflowY: "auto", paddingRight: 4 }}>
+            {filteredMatrixRooms.map((room) => {
+              const isDirty = room.cleaning_status === "DIRTY";
+              const isClean = room.cleaning_status === "CLEAN";
+              const hasTicket = roomsWithActiveTickets.has(room.room_number);
 
-          {/* 341-Room Matrix Grid */}
-          {filteredMatrixRooms.length === 0 ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-              No rooms match the search filter.
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(44px, 1fr))",
-                gap: 4,
-              }}
-            >
-              {filteredMatrixRooms.map((room) => {
-                const hasTicket = roomsWithActiveTickets.has(room.room_number);
-                let cellColor = "#22c55e"; // default vacant & clean
-                if (room.is_occupied && room.cleaning_status === "CLEAN") cellColor = "#3b82f6";
-                else if (room.cleaning_status === "CLEANING" || room.cleaning_status === "INSPECTING") cellColor = "#f59e0b";
-                else if (room.cleaning_status === "DIRTY") cellColor = "#ef4444";
-
-                return (
-                  <div
-                    key={room.id}
-                    onClick={() => setSelectedRoomModal(room)}
-                    title={`Room #${room.room_number} | Block ${room.block === "BLOCK_A" ? "A" : "B"} | Floor ${room.floor} | ${room.is_occupied ? "Occupied" : "Vacant"} | ${room.cleaning_status}`}
-                    style={{
-                      height: 34,
-                      background: cellColor,
-                      borderRadius: 4,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      color: "#000",
-                      cursor: "pointer",
-                      userSelect: "none",
-                      position: "relative",
-                      border: hasTicket ? "2px solid #fbbf24" : "1px solid rgba(0,0,0,0.1)",
-                      boxShadow: hasTicket ? "0 0 6px rgba(251, 191, 36, 0.6)" : "none",
-                      transition: "transform 0.1s ease",
-                    }}
-                  >
-                    {room.room_number.slice(-3)}
-                    {hasTicket && (
-                      <span style={{ position: "absolute", top: -2, right: -2, fontSize: 8, background: "#fbbf24", borderRadius: "50%", width: 8, height: 8 }}></span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* VIEW 2: TICKET DISPATCH & ROUTING MONITOR */}
-      {selectedSubTab === "tickets" && (
-        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 16, color: "#38bdf8" }}>Property Ticket Dispatch & Department Routing Monitor</h3>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                Executive monitoring of all hotel room tickets. Differentiates Room Repair (Maintenance) vs Missing Item / Cleanliness (Housekeeping).
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: 6 }}>
-              {(["ALL", "MAINTENANCE", "HOUSEKEEPING"] as const).map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setTicketFilter(tf)}
+              return (
+                <div
+                  key={room.id}
+                  onClick={() => setSelectedRoomModal(room)}
                   style={{
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: ticketFilter === tf ? "#0284c7" : "rgba(30, 41, 59, 0.6)",
-                    color: ticketFilter === tf ? "#fff" : "#94a3b8",
-                    fontSize: 12,
-                    fontWeight: 700,
+                    background: "rgba(30, 41, 59, 0.6)",
+                    border: "1px solid",
+                    borderColor: hasTicket ? "#ef4444" : isDirty ? "rgba(239, 68, 68, 0.4)" : isClean ? "rgba(34, 197, 94, 0.3)" : "rgba(255,255,255,0.08)",
+                    borderRadius: 10,
+                    padding: "10px",
                     cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
                   }}
                 >
-                  {tf === "ALL" ? "All Tickets" : tf === "MAINTENANCE" ? "🔧 Maintenance Fixes" : "🧹 Housekeeping Requests"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {filteredReclamations.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", background: "rgba(30, 41, 59, 0.4)", borderRadius: 12, color: "#94a3b8" }}>
-                No active tickets found matching filter.
-              </div>
-            ) : (
-              filteredReclamations.map((rec) => {
-                const isMaint = isMaintenanceFixTicket(rec);
-                const isHk = isHousekeepingMissingOrCleanTicket(rec);
-
-                return (
-                  <div
-                    key={rec.id}
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: 12,
-                      background: "rgba(30, 41, 59, 0.6)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      flexWrap: "wrap",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>
-                          Room #{rec.room?.room_number || rec.room_id}
-                        </span>
-                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#cbd5e1" }}>
-                          {rec.category}
-                        </span>
-                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(245, 158, 11, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
-                          {rec.status}
-                        </span>
-
-                        {isMaint ? (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", fontWeight: 700 }}>
-                            🔧 Action: Maintenance (To Fix) | 🔔 Notified: Housekeeper Manager & GM
-                          </span>
-                        ) : isHk ? (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(168, 85, 247, 0.2)", color: "#e879f9", fontWeight: 700 }}>
-                            🧹 Action: Housekeeper Manager & GM | 🚫 Excluded from Maintenance
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(148, 163, 184, 0.2)", color: "#cbd5e1", fontWeight: 700 }}>
-                            🏢 Department: {rec.department} | 🔔 Notified: GM
-                          </span>
-                        )}
-                      </div>
-
-                      <p style={{ margin: "4px 0 0", fontSize: 13, color: "#cbd5e1" }}>
-                        {rec.description}
-                      </p>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 6, display: "flex", gap: 12 }}>
-                        <span>Created: {rec.created_at ? new Date(rec.created_at).toLocaleString() : "Recently"}</span>
-                        <span>Assigned: {rec.assigned_to?.full_name || "Department On-Shift"}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* VIEW 2: CONFIDENTIAL GRIEVANCES */}
-      {selectedSubTab === "confidential" && (
-        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-          <h3 style={{ margin: "0 0 12px 0", fontSize: 16, color: "#f87171" }}>
-            🔒 Confidential Guest Grievances (Visible to GM & Reception Only)
-          </h3>
-          {confidentialGrievances.length === 0 ? (
-            <p style={{ color: "#94a3b8", fontSize: 14 }}>No confidential grievances pending review.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {confidentialGrievances.map((cg) => (
-                <div key={cg.id} style={{ padding: 14, borderRadius: 10, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>
-                      Room #{cg.room?.room_number || cg.room_id} • {cg.category}
-                    </span>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: cg.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: cg.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 700 }}>
-                      {cg.status}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>Room {room.room_number}</span>
+                    <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: room.is_occupied ? "#f59e0b" : "#10b981", color: "#000", fontWeight: 800 }}>
+                      {room.is_occupied ? "Occupied" : "Vacant"}
                     </span>
                   </div>
-                  <p style={{ margin: "4px 0 10px 0", fontSize: 13, color: "#cbd5e1" }}>{cg.description}</p>
 
-                  {cg.status !== "RESOLVED" && (
-                    <div style={{ marginTop: 8 }}>
-                      {selectedRecId === cg.id ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <input
-                            type="text"
-                            placeholder="Executive remedy / resolution notes (e.g. Free dinner voucher & room upgrade)..."
-                            value={remedyNote}
-                            onChange={(e) => setRemedyNote(e.target.value)}
-                            style={{ padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #475569", color: "#fff", fontSize: 12 }}
-                          />
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button onClick={() => setSelectedRecId(null)} style={{ padding: "4px 10px", borderRadius: 6, background: "transparent", border: "1px solid #64748b", color: "#94a3b8", cursor: "pointer", fontSize: 12 }}>Cancel</button>
-                            <button disabled={isPending} onClick={() => handleResolveConfidential(cg.id)} style={{ padding: "4px 12px", borderRadius: 6, background: "#16a34a", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Confirm Resolution</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button onClick={() => setSelectedRecId(cg.id)} style={{ padding: "6px 12px", borderRadius: 6, background: "#f59e0b", border: "none", color: "#000", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
-                          ⚖️ Review & Resolve Grievance
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                    Floor {room.floor} • {room.block?.replace("_", " ") || "Main"}
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: isDirty ? "#f87171" : isClean ? "#4ade80" : "#fbbf24" }}>
+                      {isDirty ? "🧹 DIRTY" : isClean ? "✨ CLEAN" : `🧼 ${room.cleaning_status}`}
+                    </span>
+                    {hasTicket && <span style={{ fontSize: 10, color: "#f87171", fontWeight: 800 }}>⚠️ Issue</span>}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* VIEW 3: HISTORICAL BACKFILL TOOL */}
-      {selectedSubTab === "backfill" && (
-        <div style={{ background: "rgba(15, 23, 42, 0.8)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-          <h3 style={{ margin: "0 0 8px 0", fontSize: 16, color: "#38bdf8" }}>
-            📖 Historical Paper Logbook Digitizer (/manager/backfill)
-          </h3>
-          <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#94a3b8" }}>
-            Digitize paper maintenance sheets, guest complaint logs, and archive incident history into system analytics.
-          </p>
-
-          <form onSubmit={handleBackfillSubmit} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Room Number</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. 1001, 2071"
-                value={bfRoom}
-                onChange={(e) => setBfRoom(e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", boxSizing: "border-box" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Department</label>
-              <select
-                value={bfDept}
-                onChange={(e) => setBfDept(e.target.value as "MAINTENANCE" | "GOVERNANCE")}
-                style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff" }}
-              >
-                <option value="MAINTENANCE">MAINTENANCE</option>
-                <option value="GOVERNANCE">GOVERNANCE</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Historical Date</label>
-              <input
-                type="date"
-                required
-                value={bfDate}
-                onChange={(e) => setBfDate(e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", boxSizing: "border-box" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Category</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. A/C, Plumbing, TV, Bedding"
-                value={bfCategory}
-                onChange={(e) => setBfCategory(e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", boxSizing: "border-box" }}
-              />
-            </div>
-
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>Historical Notes</label>
-              <input
-                type="text"
-                placeholder="Transcribe description from paper log..."
-                value={bfDesc}
-                onChange={(e) => setBfDesc(e.target.value)}
-                style={{ width: "100%", padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", boxSizing: "border-box" }}
-              />
-            </div>
-
-            <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                type="submit"
-                disabled={isPending}
-                style={{ padding: "10px 20px", borderRadius: 8, background: "#0284c7", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer" }}
-              >
-                📥 Digitize Paper Record
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* GM INTERACTIVE ROOM STATISTICS MODAL */}
+      {/* ROOM DETAILS MODAL */}
       {selectedRoomModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, maxWidth: 560, width: "100%", padding: "1.5rem", color: "#f8fafc" }}>
-            {/* Modal Header */}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
+          <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, maxWidth: 440, width: "100%", padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18, color: "#f59e0b", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>🏨 Room #{selectedRoomModal.room_number}</span>
-                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#cbd5e1" }}>
-                    BDD Record ID #{selectedRoomModal.id}
-                  </span>
-                </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                  Floor {selectedRoomModal.floor} • Block {selectedRoomModal.block === "BLOCK_A" ? "A" : "B"}
-                </p>
-              </div>
-              <button onClick={() => setSelectedRoomModal(null)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer" }}>✕</button>
+              <h3 style={{ margin: 0, fontSize: 18, color: "#38bdf8" }}>🏨 Room {selectedRoomModal.room_number} Overview</h3>
+              <button onClick={() => setSelectedRoomModal(null)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
 
-            {/* Room Stats Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 16 }}>
-              <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Stay State</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: selectedRoomModal.is_occupied ? "#fbbf24" : "#4ade80", marginTop: 2 }}>
-                  {selectedRoomModal.is_occupied ? "Occupied" : "Vacant"}
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, color: "#cbd5e1" }}>
+              <div><strong>Floor:</strong> Floor {selectedRoomModal.floor} ({selectedRoomModal.block?.replace("_", " ")})</div>
+              <div><strong>Occupancy:</strong> {selectedRoomModal.is_occupied ? "Occupied (Guest In-House)" : "Vacant"}</div>
+              <div><strong>Cleanliness:</strong> {selectedRoomModal.cleaning_status}</div>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button
+                  disabled={isPending}
+                  onClick={() => handleAdvanceRoomState(selectedRoomModal)}
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "#38bdf8", border: "none", color: "#000", fontWeight: 700, cursor: "pointer" }}
+                >
+                  Advance Clean Status &rarr;
+                </button>
               </div>
-
-              <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Cleaning Status</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: selectedRoomModal.cleaning_status === "CLEAN" ? "#4ade80" : selectedRoomModal.cleaning_status === "DIRTY" ? "#f87171" : "#fbbf24", marginTop: 2 }}>
-                  {selectedRoomModal.cleaning_status}
-                </div>
-              </div>
-
-              <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>Guest Audit</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginTop: 2 }}>
-                  👤 {selectedRoomModal.adult_count || 0} Adults • 🧒 {selectedRoomModal.child_count || 0} Children
-                </div>
-              </div>
-
-              <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase" }}>QR Key Hash</div>
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: "#38bdf8", marginTop: 2, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-                  {selectedRoomModal.qr_code_hash || "qr_room_" + selectedRoomModal.room_number}
-                </div>
-              </div>
-            </div>
-
-            {/* Room Reclamations History from BDD */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6, textTransform: "uppercase" }}>
-                📜 Room Ticket History in BDD
-              </div>
-
-              {(() => {
-                const roomTickets = reclamations.filter(
-                  (r) => r.room_id === selectedRoomModal.id || r.room?.room_number === selectedRoomModal.room_number
-                );
-
-                if (roomTickets.length === 0) {
-                  return (
-                    <div style={{ padding: "10px", background: "rgba(30, 41, 59, 0.4)", borderRadius: 8, fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
-                      No reclamations or tickets logged for Room #{selectedRoomModal.room_number}
-                    </div>
-                  );
-                }
-
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
-                    {roomTickets.map((t) => (
-                      <div key={t.id} style={{ padding: "8px 10px", borderRadius: 8, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontWeight: 700, color: "#38bdf8" }}>{t.category}</span>
-                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: t.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(245, 158, 11, 0.2)", color: t.status === "RESOLVED" ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
-                            {t.status}
-                          </span>
-                        </div>
-                        <div style={{ color: "#cbd5e1", marginTop: 2 }}>{t.description}</div>
-                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 4, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
-                          <span>🕒 Created: {formatDateTime(t.created_at)}</span>
-                          <span>✅ Resolved: {t.resolved_at ? formatDateTime(t.resolved_at) : "Pending"}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Modal Controls */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 12 }}>
-              <button
-                disabled={isPending}
-                onClick={() => handleAdvanceRoomState(selectedRoomModal)}
-                style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(168, 85, 247, 0.2)", border: "1px solid rgba(168, 85, 247, 0.4)", color: "#e879f9", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-              >
-                Cycle Cleaning Status ({selectedRoomModal.cleaning_status} &rarr;)
-              </button>
-
-              <button
-                onClick={() => setSelectedRoomModal(null)}
-                style={{ padding: "6px 16px", borderRadius: 8, background: "#334155", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

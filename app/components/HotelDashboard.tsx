@@ -17,7 +17,7 @@ interface Props {
   departmentsList?: Department[];
 }
 
-type RoleTab = "reception" | "maintenance" | "gouvernante" | "manager" | "hr" | "erd";
+type RoleTab = "reception" | "hr" | "manager" | "gouvernante" | "maintenance" | "erd";
 
 export default function HotelDashboard({
   initialRooms,
@@ -44,8 +44,8 @@ export default function HotelDashboard({
   const dirtyRoomsCount = initialRooms.filter((r) => r.cleaning_status === "DIRTY").length;
 
   return (
-    <div style={{ maxWidth: 1360, margin: "0 auto", padding: "1.5rem 1.25rem", color: "#f8fafc" }}>
-      {/* Top Application Bar */}
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "1.5rem 1.25rem", color: "#f8fafc" }}>
+      {/* Top Header Application Bar */}
       <header
         style={{
           marginBottom: "1.75rem",
@@ -59,18 +59,18 @@ export default function HotelDashboard({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "3px 10px", borderRadius: 999, background: "rgba(56, 189, 248, 0.12)", border: "1px solid rgba(56, 189, 248, 0.25)", color: "#38bdf8", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-              <span>🏨 Hotel Operational System</span>
+              <span>🏨 Hotel Operations & Role Dashboards</span>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: isLiveSupabase ? "#22c55e" : "#f59e0b" }}></span>
-              <span style={{ fontSize: 11 }}>{isLiveSupabase ? "Supabase Live" : "Offline"}</span>
+              <span style={{ fontSize: 11 }}>{isLiveSupabase ? "Supabase Live" : "Offline Mode"}</span>
             </div>
             <h1 style={{ fontSize: "1.9rem", fontWeight: 800, margin: 0, letterSpacing: "-0.02em", background: "linear-gradient(135deg, #ffffff 40%, #cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Palace Operations & Floor Dispatch
+              Palace Multi-Role Executive Workspaces
             </h1>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ padding: "8px 14px", borderRadius: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Rooms</div>
+              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Total Rooms</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc" }}>{initialRooms.length}</div>
             </div>
             <div style={{ padding: "8px 14px", borderRadius: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
@@ -84,14 +84,14 @@ export default function HotelDashboard({
           </div>
         </div>
 
-        {/* 5-ROLE WORKSPACE NAVIGATION BAR */}
+        {/* ROLE DASHBOARDS NAVIGATION BAR */}
         <nav style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
           {[
-            { id: "reception", label: "🛎️ Reception (Front Desk)", badge: null, color: "#38bdf8" },
+            { id: "reception", label: "🛎️ Reception Dashboard", badge: null, color: "#38bdf8", subtitle: "Rooms & Reclamations" },
+            { id: "hr", label: "👥 HR Manager Dashboard", badge: staffList.length, color: "#34d399", subtitle: "Employees, Shifts, Reclamations & Rooms" },
+            { id: "manager", label: "📊 General Manager Dashboard", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#fbbf24", subtitle: "Reclamations, Rooms & Statistics" },
+            { id: "gouvernante", label: "🧹 Housekeeping (Gouvernante)", badge: (dirtyRoomsCount + openHkTicketsCount) > 0 ? (dirtyRoomsCount + openHkTicketsCount) : null, color: "#a855f7" },
             { id: "maintenance", label: "🔧 Maintenance (Technical)", badge: openMaintTicketsCount > 0 ? openMaintTicketsCount : null, color: "#38bdf8" },
-            { id: "gouvernante", label: "🧹 Gouvernante (Housekeeping)", badge: (dirtyRoomsCount + openHkTicketsCount) > 0 ? (dirtyRoomsCount + openHkTicketsCount) : null, color: "#a855f7" },
-            { id: "manager", label: "📊 General Manager (Executive)", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#f59e0b" },
-            { id: "hr", label: "👥 Human Resources (RH)", badge: staffList.length, color: "#34d399" },
             { id: "erd", label: "🗄️ Relational Schema", badge: null, color: "#94a3b8" },
           ].map((role) => {
             const isActive = activeRole === role.id;
@@ -100,11 +100,11 @@ export default function HotelDashboard({
                 key={role.id}
                 onClick={() => setActiveRole(role.id as RoleTab)}
                 style={{
-                  padding: "9px 16px",
+                  padding: "10px 16px",
                   borderRadius: 10,
                   border: "1px solid",
                   borderColor: isActive ? role.color : "rgba(255, 255, 255, 0.08)",
-                  background: isActive ? "rgba(255, 255, 255, 0.1)" : "rgba(15, 23, 42, 0.5)",
+                  background: isActive ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.5)",
                   color: isActive ? "#ffffff" : "#94a3b8",
                   cursor: "pointer",
                   fontWeight: 700,
@@ -144,21 +144,17 @@ export default function HotelDashboard({
             rooms={initialRooms}
             residents={residentsList}
             departmentsList={departmentsList}
+            reclamationsList={reclamationsList}
+            staffList={staffList}
           />
         )}
 
-        {activeRole === "maintenance" && (
-          <MaintenancePortal
-            reclamations={reclamationsList}
-            technicians={staffList.filter((s) => s.role === "maintenance")}
-          />
-        )}
-
-        {activeRole === "gouvernante" && (
-          <GouvernantePortal
+        {activeRole === "hr" && (
+          <HrPortal
+            staffList={staffList}
+            departmentsList={departmentsList}
+            reclamationsList={reclamationsList}
             rooms={initialRooms}
-            reclamations={reclamationsList}
-            staff={staffList}
           />
         )}
 
@@ -170,10 +166,18 @@ export default function HotelDashboard({
           />
         )}
 
-        {activeRole === "hr" && (
-          <HrPortal
-            staffList={staffList}
-            departmentsList={departmentsList}
+        {activeRole === "gouvernante" && (
+          <GouvernantePortal
+            rooms={initialRooms}
+            reclamations={reclamationsList}
+            staff={staffList}
+          />
+        )}
+
+        {activeRole === "maintenance" && (
+          <MaintenancePortal
+            reclamations={reclamationsList}
+            technicians={staffList.filter((s) => s.role === "maintenance")}
           />
         )}
 
@@ -184,7 +188,7 @@ export default function HotelDashboard({
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
               <div style={{ background: "rgba(30, 41, 59, 0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#38bdf8", marginBottom: 6 }}>ROOMS (341 rows)</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#38bdf8", marginBottom: 6 }}>ROOMS ({initialRooms.length} rows)</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
                   <code>id</code> (bigint PK)<br />
                   <code>room_number</code> (text UNIQUE)<br />
@@ -232,7 +236,7 @@ export default function HotelDashboard({
               </div>
 
               <div style={{ background: "rgba(30, 41, 59, 0.5)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>RECLAMATIONS</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>RECLAMATIONS ({reclamationsList.length} rows)</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
                   <code>id</code> (bigint PK)<br />
                   <code>room_id</code> (FK &rarr; ROOMS)<br />
