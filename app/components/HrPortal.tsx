@@ -75,6 +75,8 @@ export default function HrPortal({
   rooms = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState<"ROOMS" | "RECLAMATIONS" | "STATS" | "EMPLOYEES">("EMPLOYEES");
+  const [empSubTab, setEmpSubTab] = useState<"DIRECTORY" | "SHIFTS">("DIRECTORY");
+  const [rosterDeptFilter, setRosterDeptFilter] = useState<string>("ALL");
   const [search, setSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [message, setMessage] = useState<string | null>(null);
@@ -272,6 +274,45 @@ export default function HrPortal({
     });
   };
 
+  const handleDeleteStaff = (id: number, name: string) => {
+    if (confirm(`Are you sure you want to remove "${name}" from the staff directory?`)) {
+      startTransition(async () => {
+        const res = await deleteStaffMember(id);
+        if (res.success) {
+          setMessage(`🗑️ Removed ${name} from staff directory.`);
+          setTimeout(() => setMessage(null), 3000);
+        } else {
+          setMessage(`❌ Error removing staff member.`);
+        }
+      });
+    }
+  };
+
+  // Filtered Roster Staff
+  const filteredRosterStaff = useMemo(() => {
+    return staffList.filter((s) => {
+      if (rosterDeptFilter !== "ALL" && s.department !== rosterDeptFilter) return false;
+      return true;
+    });
+  }, [staffList, rosterDeptFilter]);
+
+  // Shift Roster Aggregations
+  const rosterStats = useMemo(() => {
+    let morning = 0;
+    let evening = 0;
+    let night = 0;
+    let off = 0;
+    Object.values(shiftRoster).forEach((memberDays) => {
+      Object.values(memberDays).forEach((shift) => {
+        if (shift === "MORNING") morning++;
+        else if (shift === "EVENING") evening++;
+        else if (shift === "NIGHT") night++;
+        else if (shift === "OFF") off++;
+      });
+    });
+    return { morning, evening, night, off };
+  }, [shiftRoster]);
+
   // Stats Data
   const totalStaff = staffList.length;
   const onShiftCount = staffList.filter((s) => s.shift_status === "ON_SHIFT").length;
@@ -400,109 +441,346 @@ export default function HrPortal({
           </div>
         )}
 
-        {/* TAB: EMPLOYEES & SHIFTS */}
+        {/* TAB: EMPLOYEES & SHIFTS WITH SUB-CATEGORIES */}
         {activeTab === "EMPLOYEES" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#34d399" }}>
-                  👥 Staff Roster ({filteredStaff.length} employees)
-                </h3>
-                <input
-                  type="text"
-                  placeholder="Search staff..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ padding: "6px 12px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-                />
-              </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            {/* SUB-CATEGORY SWITCHER BAR */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                padding: "6px 8px",
+                background: "rgba(15, 23, 42, 0.85)",
+                borderRadius: 14,
+                border: "1px solid rgba(52, 211, 153, 0.25)",
+                width: "fit-content",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+              }}
+            >
+              <button
+                onClick={() => setEmpSubTab("DIRECTORY")}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: empSubTab === "DIRECTORY" ? "linear-gradient(135deg, #059669, #34d399)" : "transparent",
+                  color: empSubTab === "DIRECTORY" ? "#000000" : "#94a3b8",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  transition: "all 0.2s ease-in-out",
+                  boxShadow: empSubTab === "DIRECTORY" ? "0 4px 12px rgba(52, 211, 153, 0.3)" : "none",
+                }}
+              >
+                <span>👥 1. Employees Directory</span>
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: empSubTab === "DIRECTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                    color: empSubTab === "DIRECTORY" ? "#000" : "#cbd5e1",
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  {filteredStaff.length}
+                </span>
+              </button>
 
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                  <thead>
-                    <tr style={{ background: "rgba(30, 41, 59, 0.8)", color: "#94a3b8" }}>
-                      <th style={{ padding: "10px" }}>Employee Name</th>
-                      <th style={{ padding: "10px" }}>Role</th>
-                      <th style={{ padding: "10px" }}>Department</th>
-                      <th style={{ padding: "10px" }}>Shift Status</th>
-                      <th style={{ padding: "10px", textAlign: "right" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStaff.map((member) => (
-                      <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        <td style={{ padding: "10px", fontWeight: 700, color: "#fff" }}>{member.full_name}</td>
-                        <td style={{ padding: "10px", color: "#38bdf8" }}>{member.role}</td>
-                        <td style={{ padding: "10px", color: "#e879f9" }}>{member.department || "RECEPTION"}</td>
-                        <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "rgba(34, 197, 94, 0.2)" : "rgba(148, 163, 184, 0.2)", color: member.shift_status === "ON_SHIFT" ? "#4ade80" : "#94a3b8" }}>
-                            {member.shift_status || "OFF_SHIFT"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "right" }}>
-                          <button onClick={() => handleToggleShift(member)} style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(56, 189, 248, 0.2)", border: "1px solid #38bdf8", color: "#38bdf8", fontSize: 11, cursor: "pointer", marginRight: 6 }}>
-                            Shift
-                          </button>
-                          <button onClick={() => handleMarkAbsent(member)} style={{ padding: "4px 8px", borderRadius: 6, background: "#f59e0b", border: "none", color: "#000", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                            Absent
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <button
+                onClick={() => setEmpSubTab("SHIFTS")}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: empSubTab === "SHIFTS" ? "linear-gradient(135deg, #0284c7, #38bdf8)" : "transparent",
+                  color: empSubTab === "SHIFTS" ? "#000000" : "#94a3b8",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  transition: "all 0.2s ease-in-out",
+                  boxShadow: empSubTab === "SHIFTS" ? "0 4px 12px rgba(56, 189, 248, 0.3)" : "none",
+                }}
+              >
+                <span>🗓️ 2. Weekly Shift Roster & Schedules</span>
+                <span
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: empSubTab === "SHIFTS" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
+                    color: empSubTab === "SHIFTS" ? "#000" : "#cbd5e1",
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  7 Days
+                </span>
+              </button>
             </div>
 
-            {/* SHIFT MATRIX */}
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
-                🗓️ Weekly Shift Roster Matrix
-              </h3>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "center" }}>
-                  <thead>
-                    <tr style={{ background: "rgba(30, 41, 59, 0.9)", color: "#94a3b8" }}>
-                      <th style={{ padding: "10px", textAlign: "left", minWidth: 160 }}>Employee</th>
-                      {WEEKDAYS.map((day) => (
-                        <th key={day} style={{ padding: "10px", minWidth: 110 }}>{day}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staffList.map((member) => {
-                      const memberShifts = shiftRoster[member.id] || {};
-                      return (
-                        <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                          <td style={{ padding: "8px 10px", textAlign: "left" }}>
-                            <div style={{ fontWeight: 700, color: "#ffffff" }}>{member.full_name}</div>
-                            <div style={{ fontSize: 11, color: "#34d399" }}>{member.role}</div>
-                          </td>
-                          {WEEKDAYS.map((day) => {
-                            const currentShift: ShiftType = memberShifts[day] || "MORNING";
-                            const shiftInfo = SHIFT_LABELS[currentShift];
-                            return (
-                              <td key={day} style={{ padding: "6px" }}>
-                                <select
-                                  value={currentShift}
-                                  onChange={(e) => handleShiftChange(member.id, day, e.target.value as ShiftType)}
-                                  style={{ width: "100%", padding: "5px", borderRadius: 6, background: shiftInfo.bg, border: `1px solid ${shiftInfo.color}`, color: shiftInfo.color, fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                                >
-                                  <option value="MORNING">🌅 Morning</option>
-                                  <option value="EVENING">🌇 Evening</option>
-                                  <option value="NIGHT">🌃 Night</option>
-                                  <option value="OFF">🏖️ Off</option>
-                                </select>
-                              </td>
-                            );
-                          })}
+            {/* SUB-CATEGORY 1: EMPLOYEES DIRECTORY */}
+            {empSubTab === "DIRECTORY" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {/* SUMMARY CARDS BAR */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(52, 211, 153, 0.25)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Total Staff Members</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#34d399", marginTop: 2 }}>{totalStaff}</div>
+                  </div>
+                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Active On Shift</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#38bdf8", marginTop: 2 }}>{onShiftCount}</div>
+                  </div>
+                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(251, 191, 36, 0.25)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Off Shift / Standby</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#fbbf24", marginTop: 2 }}>{totalStaff - onShiftCount}</div>
+                  </div>
+                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(232, 121, 249, 0.25)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Departments Managed</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#e879f9", marginTop: 2 }}>{activeDepartments.length}</div>
+                  </div>
+                </div>
+
+                {/* DIRECTORY CONTROLS & TABLE */}
+                <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#34d399" }}>
+                        👥 Employees Master Directory
+                      </h3>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                        Manage staff profiles, department assignments, and live shift status
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <input
+                        type="text"
+                        placeholder="Search staff name or role..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        style={{ padding: "8px 14px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12, width: 220 }}
+                      />
+
+                      <select
+                        value={selectedDept}
+                        onChange={(e) => setSelectedDept(e.target.value)}
+                        style={{ padding: "8px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#34d399", fontSize: 12, fontWeight: 700 }}
+                      >
+                        <option value="ALL">All Departments ({totalStaff})</option>
+                        {activeDepartments.map((d) => (
+                          <option key={d.code} value={d.code}>
+                            {d.icon} {d.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        style={{ padding: "8px 16px", borderRadius: 8, background: "#34d399", border: "none", color: "#000", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                      >
+                        ➕ Add New Employee
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "rgba(30, 41, 59, 0.8)", color: "#94a3b8" }}>
+                          <th style={{ padding: "12px 10px" }}>Employee Name</th>
+                          <th style={{ padding: "12px 10px" }}>Role</th>
+                          <th style={{ padding: "12px 10px" }}>Department</th>
+                          <th style={{ padding: "12px 10px" }}>Phone / Contact</th>
+                          <th style={{ padding: "12px 10px" }}>Shift Status</th>
+                          <th style={{ padding: "12px 10px", textAlign: "right" }}>Actions</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {filteredStaff.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+                              No staff members found matching search & department filters.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStaff.map((member) => (
+                            <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              <td style={{ padding: "12px 10px", fontWeight: 700, color: "#fff" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ fontSize: 16 }}>👤</span>
+                                  <span>{member.full_name}</span>
+                                </div>
+                              </td>
+                              <td style={{ padding: "12px 10px", color: "#38bdf8", fontWeight: 600 }}>{member.role}</td>
+                              <td style={{ padding: "12px 10px" }}>
+                                <span style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(232, 121, 249, 0.15)", border: "1px solid rgba(232, 121, 249, 0.3)", color: "#e879f9", fontSize: 11, fontWeight: 700 }}>
+                                  {member.department || "RECEPTION"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 12 }}>
+                                {member.phone_number || "📞 Unlisted"}
+                              </td>
+                              <td style={{ padding: "12px 10px" }}>
+                                <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "rgba(34, 197, 94, 0.2)" : "rgba(148, 163, 184, 0.2)", color: member.shift_status === "ON_SHIFT" ? "#4ade80" : "#94a3b8", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "rgba(74, 222, 128, 0.4)" : "rgba(148, 163, 184, 0.3)"}` }}>
+                                  {member.shift_status === "ON_SHIFT" ? "🟢 ON SHIFT" : "⚪ OFF SHIFT"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px 10px", textAlign: "right" }}>
+                                <button
+                                  onClick={() => handleToggleShift(member)}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.4)", color: "#38bdf8", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
+                                >
+                                  ⚡ Toggle Shift
+                                </button>
+                                <button
+                                  onClick={() => handleMarkAbsent(member)}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(245, 158, 11, 0.2)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#fbbf24", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
+                                >
+                                  🚨 Absent
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteStaff(member.id, member.full_name)}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#f87171", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                >
+                                  🗑️ Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* SUB-CATEGORY 2: SHIFT SCHEDULING & ROSTER */}
+            {empSubTab === "SHIFTS" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                {/* SHIFT SUMMARY CARDS */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                  <div style={{ background: "rgba(56, 189, 248, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "#38bdf8", fontWeight: 700 }}>🌅 Morning Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.morning} slots</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>07:00 - 15:00</div>
+                  </div>
+
+                  <div style={{ background: "rgba(251, 191, 36, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(251, 191, 36, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>🌇 Evening Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.evening} slots</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>15:00 - 23:00</div>
+                  </div>
+
+                  <div style={{ background: "rgba(168, 85, 247, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(168, 85, 247, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "#a855f7", fontWeight: 700 }}>🌃 Night Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.night} slots</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>23:00 - 07:00</div>
+                  </div>
+
+                  <div style={{ background: "rgba(148, 163, 184, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(148, 163, 184, 0.3)" }}>
+                    <div style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 700 }}>🏖️ Rest Days</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.off} days</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Off / Rest</div>
+                  </div>
+                </div>
+
+                {/* WEEKLY ROSTER MATRIX */}
+                <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
+                        🗓️ Weekly Shift Roster & Planning Matrix
+                      </h3>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                        Assign and adjust daily working shifts for all hotel departments across the week
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <label style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>Filter Roster:</label>
+                      <select
+                        value={rosterDeptFilter}
+                        onChange={(e) => setRosterDeptFilter(e.target.value)}
+                        style={{ padding: "6px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#38bdf8", fontSize: 12, fontWeight: 700 }}
+                      >
+                        <option value="ALL">All Departments</option>
+                        {activeDepartments.map((d) => (
+                          <option key={d.code} value={d.code}>
+                            {d.icon} {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "center" }}>
+                      <thead>
+                        <tr style={{ background: "rgba(30, 41, 59, 0.9)", color: "#94a3b8" }}>
+                          <th style={{ padding: "12px 10px", textAlign: "left", minWidth: 170 }}>Employee / Role</th>
+                          {WEEKDAYS.map((day) => (
+                            <th key={day} style={{ padding: "12px 10px", minWidth: 115 }}>
+                              <div style={{ color: "#ffffff", fontWeight: 800 }}>{day}</div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRosterStaff.map((member) => {
+                          const memberShifts = shiftRoster[member.id] || {};
+                          return (
+                            <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              <td style={{ padding: "10px", textAlign: "left" }}>
+                                <div style={{ fontWeight: 700, color: "#ffffff", fontSize: 13 }}>{member.full_name}</div>
+                                <div style={{ fontSize: 11, color: "#34d399", fontWeight: 600 }}>{member.role}</div>
+                                <div style={{ fontSize: 10, color: "#94a3b8" }}>{member.department}</div>
+                              </td>
+                              {WEEKDAYS.map((day) => {
+                                const currentShift: ShiftType = memberShifts[day] || "MORNING";
+                                const shiftInfo = SHIFT_LABELS[currentShift];
+                                return (
+                                  <td key={day} style={{ padding: "6px" }}>
+                                    <select
+                                      value={currentShift}
+                                      onChange={(e) => handleShiftChange(member.id, day, e.target.value as ShiftType)}
+                                      style={{
+                                        width: "100%",
+                                        padding: "6px 4px",
+                                        borderRadius: 8,
+                                        background: shiftInfo.bg,
+                                        border: `1px solid ${shiftInfo.color}`,
+                                        color: shiftInfo.color,
+                                        fontSize: 11,
+                                        fontWeight: 800,
+                                        cursor: "pointer",
+                                        textAlign: "center",
+                                      }}
+                                    >
+                                      <option value="MORNING">🌅 Morning (07-15)</option>
+                                      <option value="EVENING">🌇 Evening (15-23)</option>
+                                      <option value="NIGHT">🌃 Night (23-07)</option>
+                                      <option value="OFF">🏖️ Off / Rest</option>
+                                    </select>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -654,6 +932,91 @@ export default function HrPortal({
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ADD EMPLOYEE MODAL */}
+      {showCreateModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+          <div style={{ background: "#0f172a", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 20, maxWidth: 500, width: "100%", padding: "1.5rem", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#34d399" }}>
+                ➕ Add New Employee
+              </h3>
+              <button onClick={() => setShowCreateModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer" }}>✕</button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Marc Vance"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Role Position *</label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#38bdf8", fontSize: 13, fontWeight: 700 }}
+                >
+                  {STANDARD_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r.replace("_", " ").toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Department *</label>
+                <select
+                  value={newDept}
+                  onChange={(e) => setNewDept(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#e879f9", fontSize: 13, fontWeight: 700 }}
+                >
+                  {activeDepartments.map((d) => (
+                    <option key={d.code} value={d.code}>
+                      {d.icon} {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Phone Number (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="+33 6 12 34 56 78"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  style={{ padding: "10px 16px", borderRadius: 8, background: "transparent", border: "1px solid #334155", color: "#cbd5e1", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  style={{ padding: "10px 20px", borderRadius: 8, background: "#34d399", border: "none", color: "#000", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+                >
+                  Create Staff Profile
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
