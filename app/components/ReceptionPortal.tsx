@@ -69,6 +69,47 @@ export default function ReceptionPortal({
   // Room Pop-up Modal State
   const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
   const [modalTab, setModalTab] = useState<"RECLAMATIONS" | "ROOM_STAT">("ROOM_STAT");
+  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY">("ACTIVE");
+
+  // Specific Room Reclamations for Modal
+  const roomModalReclamations = useMemo(() => {
+    if (!selectedRoomModal) return [];
+    return reclamationsList.filter(
+      (r) =>
+        r.room_id === selectedRoomModal.id ||
+        r.room?.room_number === selectedRoomModal.room_number
+    );
+  }, [reclamationsList, selectedRoomModal]);
+
+  // Active Reclamations for Room Modal
+  const roomActiveReclamations = useMemo(() => {
+    return roomModalReclamations.filter(
+      (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
+    );
+  }, [roomModalReclamations]);
+
+  // Most Reported Problem Categories for Room Modal
+  const roomProblemStats = useMemo(() => {
+    if (!selectedRoomModal) return [];
+    const counts: Record<string, { count: number; department: string; lastDate?: string }> = {};
+    roomModalReclamations.forEach((rec) => {
+      const cat = rec.category || "General";
+      if (!counts[cat]) {
+        counts[cat] = { count: 0, department: rec.department, lastDate: rec.created_at };
+      }
+      counts[cat].count += 1;
+    });
+    const total = roomModalReclamations.length || 1;
+    return Object.entries(counts)
+      .map(([category, info]) => ({
+        category,
+        count: info.count,
+        department: info.department,
+        percentage: Math.round((info.count / total) * 100),
+        lastDate: info.lastDate,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [roomModalReclamations, selectedRoomModal]);
 
   // Modal New Ticket Form State
   const [modalDept, setModalDept] = useState<string>("TECHNICAL");
@@ -136,15 +177,7 @@ export default function ReceptionPortal({
     });
   }, [reclamationsList, recStatusFilter, recDeptFilter]);
 
-  // Specific Room Reclamations for Modal
-  const roomModalReclamations = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    return reclamationsList.filter(
-      (r) =>
-        r.room_id === selectedRoomModal.id ||
-        r.room?.room_number === selectedRoomModal.room_number
-    );
-  }, [reclamationsList, selectedRoomModal]);
+
 
   // Stay State Handler
   const handleStayState = (roomId: number, state: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED") => {
@@ -827,77 +860,261 @@ export default function ReceptionPortal({
                   </div>
                 )}
 
-                {/* MODAL TAB 2: RECLAMATIONS */}
+                {/* MODAL TAB 2: RECLAMATIONS WITH SUB-CATEGORIES */}
                 {modalTab === "RECLAMATIONS" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, color: "#e879f9", fontWeight: 800 }}>
-                      🛎️ Room Reclamations & Ticket Dispatch
-                    </h4>
-
-                    {/* Create Reclamation Form inside Modal */}
-                    <form onSubmit={handleModalCreateReclamation} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8" }}>➕ Log New Reclamation for Room {selectedRoomModal.room_number}</div>
-
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <select
-                          value={modalDept}
-                          onChange={(e) => setModalDept(e.target.value)}
-                          style={{ flex: 1, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-                        >
-                          {allDepartments.map((d) => (
-                            <option key={d.code} value={d.code}>{d.name}</option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={modalPriority}
-                          onChange={(e) => setModalPriority(e.target.value as any)}
-                          style={{ width: 110, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-                        >
-                          <option value="STANDARD">STANDARD</option>
-                          <option value="HIGH">HIGH</option>
-                          <option value="EMERGENCY">EMERGENCY</option>
-                        </select>
-                      </div>
-
-                      <input
-                        type="text"
-                        placeholder="Description of issue..."
-                        value={modalDesc}
-                        onChange={(e) => setModalDesc(e.target.value)}
-                        style={{ padding: "8px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
-                      />
+                    {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS */}
+                    <div style={{ display: "flex", gap: 8, padding: "4px", background: "rgba(15, 23, 42, 0.8)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <button
+                        onClick={() => setRoomModalSubTab("ACTIVE")}
+                        style={{
+                          flex: 1,
+                          padding: "7px 10px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: roomModalSubTab === "ACTIVE" ? "#38bdf8" : "transparent",
+                          color: roomModalSubTab === "ACTIVE" ? "#000000" : "#94a3b8",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span>⚡ Active Issues</span>
+                        {roomActiveReclamations.length > 0 && (
+                          <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+                            {roomActiveReclamations.length}
+                          </span>
+                        )}
+                      </button>
 
                       <button
-                        type="submit"
-                        disabled={isPending}
-                        style={{ padding: "8px", borderRadius: 8, background: "#e879f9", border: "none", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
+                        onClick={() => setRoomModalSubTab("MOST_REPORTED")}
+                        style={{
+                          flex: 1,
+                          padding: "7px 10px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: roomModalSubTab === "MOST_REPORTED" ? "#fbbf24" : "transparent",
+                          color: roomModalSubTab === "MOST_REPORTED" ? "#000000" : "#94a3b8",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
                       >
-                        Dispatch Reclamation &rarr;
+                        <span>💥 Most Reported</span>
+                        <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "MOST_REPORTED" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                          {roomProblemStats.length}
+                        </span>
                       </button>
-                    </form>
 
-                    {/* Existing Tickets List for this Room */}
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", marginBottom: 6 }}>Existing Room Tickets ({roomModalReclamations.length}):</div>
-                      {roomModalReclamations.length === 0 ? (
-                        <div style={{ padding: "1rem", textAlign: "center", color: "#64748b", fontSize: 12 }}>No active or past reclamations recorded for Room {selectedRoomModal.room_number}.</div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {roomModalReclamations.map((rec) => (
-                            <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.5)", padding: "10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>#{rec.id} • {rec.category} ({rec.department})</div>
-                                <div style={{ fontSize: 11, color: "#94a3b8" }}>{rec.description}</div>
-                              </div>
-                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 800 }}>
-                                {rec.status}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <button
+                        onClick={() => setRoomModalSubTab("HISTORY")}
+                        style={{
+                          flex: 1,
+                          padding: "7px 10px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: roomModalSubTab === "HISTORY" ? "#e879f9" : "transparent",
+                          color: roomModalSubTab === "HISTORY" ? "#000000" : "#94a3b8",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span>📜 Full History</span>
+                        <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "HISTORY" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                          {roomModalReclamations.length}
+                        </span>
+                      </button>
                     </div>
+
+                    {/* SUB-CATEGORY 1: ACTIVE PROBLEMS (IF EXIST) */}
+                    {roomModalSubTab === "ACTIVE" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "#38bdf8", fontWeight: 800 }}>
+                            ⚡ Active Reclamations ({roomActiveReclamations.length})
+                          </h4>
+                        </div>
+
+                        {roomActiveReclamations.length === 0 ? (
+                          <div style={{ padding: "12px", borderRadius: 10, background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                            <span>✅</span>
+                            <span>No active problems recorded for Room {selectedRoomModal.room_number}. Operations normal.</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {roomActiveReclamations.map((rec) => (
+                              <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.7)", padding: "12px", borderRadius: 10, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                                  <div>
+                                    <span style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
+                                    <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8" }}>{rec.department}</span>
+                                  </div>
+                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)", color: rec.status === "OPEN" ? "#f87171" : "#fbbf24", fontWeight: 800, border: "1px solid currentColor" }}>
+                                    {rec.status}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>{rec.description}</div>
+                                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
+                                  <button
+                                    onClick={() => handleAcknowledgeTicket(rec.id)}
+                                    style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(251, 191, 36, 0.2)", border: "1px solid #fbbf24", color: "#fbbf24", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                  >
+                                    Acknowledge
+                                  </button>
+                                  <button
+                                    onClick={() => handleResolveTicket(rec.id)}
+                                    style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(34, 197, 94, 0.2)", border: "1px solid #4ade80", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                  >
+                                    Mark Resolved ✓
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* LOG NEW RECLAMATION FORM */}
+                        <form onSubmit={handleModalCreateReclamation} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>➕ Log New Reclamation for Room {selectedRoomModal.room_number}</div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <select
+                              value={modalDept}
+                              onChange={(e) => setModalDept(e.target.value)}
+                              style={{ flex: 1, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                            >
+                              {allDepartments.map((d) => (
+                                <option key={d.code} value={d.code}>{d.name}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={modalPriority}
+                              onChange={(e) => setModalPriority(e.target.value as any)}
+                              style={{ width: 110, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                            >
+                              <option value="STANDARD">STANDARD</option>
+                              <option value="HIGH">HIGH</option>
+                              <option value="EMERGENCY">EMERGENCY</option>
+                            </select>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Description of issue..."
+                            value={modalDesc}
+                            onChange={(e) => setModalDesc(e.target.value)}
+                            style={{ padding: "8px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                          />
+                          <button
+                            type="submit"
+                            disabled={isPending}
+                            style={{ padding: "8px", borderRadius: 8, background: "#38bdf8", border: "none", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
+                          >
+                            Dispatch Reclamation &rarr;
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
+                    {/* SUB-CATEGORY 2: MOST REPORTED PROBLEMS */}
+                    {roomModalSubTab === "MOST_REPORTED" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, color: "#fbbf24", fontWeight: 800 }}>
+                          💥 Most Reported Problem Categories
+                        </h4>
+
+                        {roomProblemStats.length === 0 ? (
+                          <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                            No problem patterns recorded for Room {selectedRoomModal.room_number} yet.
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {roomProblemStats.map((stat) => (
+                              <div key={stat.category} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 10, border: "1px solid rgba(251, 191, 36, 0.25)" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                  <div>
+                                    <span style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>{stat.category}</span>
+                                    <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 8 }}>({stat.department})</span>
+                                  </div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    {stat.count >= 2 && (
+                                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239, 68, 68, 0.2)", color: "#f87171", fontWeight: 800 }}>
+                                        ⚠️ Frequent Issue
+                                      </span>
+                                    )}
+                                    <span style={{ fontWeight: 800, color: "#fbbf24", fontSize: 13 }}>{stat.count} Reports</span>
+                                  </div>
+                                </div>
+
+                                <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 8 }}>
+                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "linear-gradient(90deg, #d97706, #fbbf24)" }} />
+                                </div>
+
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#94a3b8" }}>
+                                  <span>{stat.percentage}% of total issues in Room {selectedRoomModal.room_number}</span>
+                                  <button
+                                    onClick={() => {
+                                      setModalCategory(stat.category);
+                                      setModalDept(stat.department);
+                                      setRoomModalSubTab("ACTIVE");
+                                    }}
+                                    style={{ padding: "3px 8px", borderRadius: 4, background: "rgba(251, 191, 36, 0.15)", border: "1px solid rgba(251, 191, 36, 0.4)", color: "#fbbf24", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
+                                  >
+                                    ➕ Log {stat.category} Ticket
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SUB-CATEGORY 3: FULL HISTORY FOR EACH ROOM */}
+                    {roomModalSubTab === "HISTORY" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, color: "#e879f9", fontWeight: 800 }}>
+                          📜 Complete Room {selectedRoomModal.room_number} Ticket History ({roomModalReclamations.length})
+                        </h4>
+
+                        {roomModalReclamations.length === 0 ? (
+                          <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                            No past or historical tickets logged for Room {selectedRoomModal.room_number}.
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
+                            {roomModalReclamations.map((rec) => (
+                              <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.5)", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
+                                    #{rec.id} • {rec.category} <span style={{ color: "#e879f9", fontWeight: 600 }}>({rec.department})</span>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>{rec.description}</div>
+                                  {rec.created_at && (
+                                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Logged: {rec.created_at}</div>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 800 }}>
+                                  {rec.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
