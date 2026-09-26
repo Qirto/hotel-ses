@@ -2,12 +2,13 @@
 
 import React, { useState, useTransition, useMemo } from "react";
 import { HotelRoom, Reclamation, Staff, isMaintenanceFixTicket, isHousekeepingMissingOrCleanTicket } from "@/utils/roomsData";
-import { resolveConfidentialGrievance, createHistoricalReclamation, cycleRoomCleaning, resolveReclamation } from "@/app/actions";
+import { resolveConfidentialGrievance, createHistoricalReclamation, cycleRoomCleaning, resolveReclamation, logoutRole } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
   reclamations: Reclamation[];
   staff: Staff[];
+  isLiveSupabase?: boolean;
 }
 
 export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
@@ -145,6 +146,33 @@ export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
               Executive view: analyze statistics & KPIs, monitor room state, and oversee all hotel reclamations.
             </p>
+          </div>
+
+          <div>
+            <button
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await logoutRole();
+                  window.location.href = "/login";
+                });
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>🔒</span> Log Out
+            </button>
           </div>
         </div>
 

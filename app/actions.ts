@@ -5,6 +5,43 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 // =====================================================================
+// AUTHENTICATION & ROLE ACCESS CONTROL ACTIONS
+// =====================================================================
+
+export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: string) {
+  const cookieStore = await cookies();
+
+  const VALID_CODES: Record<string, string> = {
+    reception: "1111",
+    rh: "2222",
+    gm: "3333",
+  };
+
+  if (passcode && passcode.trim() !== VALID_CODES[role] && passcode.trim() !== role) {
+    return {
+      success: false,
+      error: `Invalid passcode for ${role.toUpperCase()} portal! Hint: Default PIN is ${VALID_CODES[role]}`,
+    };
+  }
+
+  cookieStore.set("hotel_role", role, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax",
+  });
+
+  revalidatePath("/");
+  return { success: true, redirectUrl: `/${role}` };
+}
+
+export async function logoutRole() {
+  const cookieStore = await cookies();
+  cookieStore.delete("hotel_role");
+  revalidatePath("/");
+  return { success: true, redirectUrl: "/login" };
+}
+
+// =====================================================================
 // RECEPTION ACTIONS
 // =====================================================================
 

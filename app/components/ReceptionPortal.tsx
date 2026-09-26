@@ -9,6 +9,7 @@ import {
   acknowledgeReclamation,
   resolveReclamation,
   cycleRoomCleaning,
+  logoutRole,
 } from "@/app/actions";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
   departmentsList?: Department[];
   reclamationsList?: Reclamation[];
   staffList?: Staff[];
+  isLiveSupabase?: boolean;
 }
 
 const PRESET_ISSUES: Record<string, { category: string; label: string }[]> = {
@@ -301,7 +303,7 @@ export default function ReceptionPortal({
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button
               onClick={() => setShowHistoryModal(true)}
               style={{
@@ -319,6 +321,30 @@ export default function ReceptionPortal({
               }}
             >
               <span>📜</span> Backfill Past Ticket
+            </button>
+            <button
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await logoutRole();
+                  window.location.href = "/login";
+                });
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>🔒</span> Log Out
             </button>
           </div>
         </div>

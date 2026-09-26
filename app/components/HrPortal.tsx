@@ -11,6 +11,7 @@ import {
   createDepartment,
   updateDepartment,
   deleteDepartment,
+  logoutRole,
 } from "@/app/actions";
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
   departmentsList?: Department[];
   reclamationsList?: Reclamation[];
   rooms?: HotelRoom[];
+  isLiveSupabase?: boolean;
 }
 
 export const DEFAULT_HOTEL_DEPARTMENTS: Department[] = [
@@ -426,7 +428,7 @@ export default function HrPortal({
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {activeTab === "STAFF" && (
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -451,6 +453,30 @@ export default function HrPortal({
                 <span>➕</span> Add Department
               </button>
             )}
+            <button
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await logoutRole();
+                  window.location.href = "/login";
+                });
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>🔒</span> Log Out
+            </button>
           </div>
         </div>
 
