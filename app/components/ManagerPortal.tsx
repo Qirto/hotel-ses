@@ -4,6 +4,7 @@ import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
+import { computeAllRoomsAnalytics, RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 import {
   resolveConfidentialGrievance,
   cycleRoomCleaning,
@@ -22,12 +23,18 @@ interface Props {
 
 export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupabase = false }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"STATS" | "ROOMS" | "RECLAMATIONS">("STATS");
+  const [activeTab, setActiveTab] = useState<"STATS" | "ROOMS" | "RECLAMATIONS" | "ANALYTICS">("STATS");
   const [ticketFilter, setTicketFilter] = useState<string>("ALL");
   const [ticketStatusFilter, setTicketStatusFilter] = useState<string>("ALL");
   const [remedyNote, setRemedyNote] = useState("");
   const [selectedRecId, setSelectedRecId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Analytics Filter States
+  const [analyticsSearch, setAnalyticsSearch] = useState("");
+  const [analyticsFloorFilter, setAnalyticsFloorFilter] = useState<number | "ALL">("ALL");
+  const [analyticsBlockFilter, setAnalyticsBlockFilter] = useState<string | "ALL">("ALL");
+  const [analyticsSort, setAnalyticsSort] = useState<"MOST_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER" | "OPEN_TICKETS">("MOST_TICKETS");
 
   // Real-time synchronization
   useEffect(() => {
@@ -90,6 +97,68 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
       return true;
     });
   }, [rooms, matrixSearch, matrixFloorFilter, matrixStatusFilter, roomsWithActiveTickets]);
+
+  // Room Analytics computation
+  const roomAnalyticsMap = useMemo(() => {
+    return computeAllRoomsAnalytics(rooms, reclamations);
+  }, [rooms, reclamations]);
+
+  const filteredAnalyticsRooms = useMemo(() => {
+    const list = rooms.filter((r) => {
+      if (analyticsSearch && !r.room_number.includes(analyticsSearch.trim())) return false;
+      if (analyticsFloorFilter !== "ALL" && r.floor !== analyticsFloorFilter) return false;
+      if (analyticsBlockFilter !== "ALL" && r.block !== analyticsBlockFilter) return false;
+      return true;
+    });
+
+    return list.sort((a, b) => {
+      const statsA = roomAnalyticsMap.get(a.id);
+      const statsB = roomAnalyticsMap.get(b.id);
+      if (analyticsSort === "MOST_TICKETS") {
+        return (statsB?.totalTickets || 0) - (statsA?.totalTickets || 0);
+      }
+      if (analyticsSort === "OPEN_TICKETS") {
+        return (statsB?.openTickets || 0) - (statsA?.openTickets || 0);
+      }
+      if (analyticsSort === "RUSH_HOUR") {
+        return (statsB?.rushHour?.count || 0) - (statsA?.rushHour?.count || 0);
+      }
+      return a.room_number.localeCompare(b.room_number, undefined, { numeric: true });
+    });
+  }, [rooms, roomAnalyticsMap, analyticsSearch, analyticsFloorFilter, analyticsBlockFilter, analyticsSort]);
+
+  // Analytics Metrics Overview
+  const analyticsSummary = useMemo<{
+    roomsWithIssues: number;
+    roomsWithRush: number;
+    maxTicketsRoom: { roomNumber: string; count: number } | null;
+    totalAllTickets: number;
+  }>(() => {
+    let roomsWithIssues = 0;
+    let roomsWithRush = 0;
+    let maxTicketsRoom: { roomNumber: string; count: number } | null = null;
+    let totalAllTickets = 0;
+
+    roomAnalyticsMap.forEach((stats) => {
+      if (stats.totalTickets > 0) {
+        roomsWithIssues++;
+        totalAllTickets += stats.totalTickets;
+        if (!maxTicketsRoom || stats.totalTickets > maxTicketsRoom.count) {
+          maxTicketsRoom = { roomNumber: stats.roomNumber, count: stats.totalTickets };
+        }
+      }
+      if (stats.rushHour) {
+        roomsWithRush++;
+      }
+    });
+
+    return {
+      roomsWithIssues,
+      roomsWithRush,
+      maxTicketsRoom,
+      totalAllTickets,
+    };
+  }, [roomAnalyticsMap]);
 
   // KPI Calculations
   const resolvedTasks = reclamations.filter((r) => r.status === "RESOLVED" && r.created_at && r.resolved_at);
@@ -272,6 +341,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
               { id: "STATS", label: "📊 1. Stats & Graphs", count: null, color: "#fbbf24" },
               { id: "ROOMS", label: "🏨 2. Rooms Map", count: totalRooms, color: "#38bdf8" },
               { id: "RECLAMATIONS", label: "🛎️ 3. Reclamations", count: reclamations.length, color: "#e879f9" },
+              { id: "ANALYTICS", label: "📈 4. Room Analytics", count: totalRooms, color: "#f59e0b" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -484,6 +554,449 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
             </div>
           </div>
         )}
+
+        {/* TAB 4: ROOM ANALYTICS, RUSH HOUR & REPEATED PROBLEMS */}
+        {activeTab === "ANALYTICS" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* TOP HEADER & CONTROLS */}
+            <div
+              style={{
+                background: "rgba(15, 23, 42, 0.85)",
+                borderRadius: 16,
+                padding: "1.5rem",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: "1.25rem" }}>
+                <div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "#f59e0b", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
+                    <span>📈 INCIDENT INTELLIGENCE & PATTERNS</span>
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "#ffffff" }}>
+                    Room Rush Hour & Pattern Analytics
+                  </h3>
+                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+                    Detailed breakdown of each room: current status, peak complaint hours with exact dates, and top repeated complaints.
+                  </p>
+                </div>
+
+                {/* SUMMARY CHIPS */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Active Rooms with Issues</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#f59e0b" }}>{analyticsSummary.roomsWithIssues} / {totalRooms}</div>
+                  </div>
+                  <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Identified Rush Hours</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>{analyticsSummary.roomsWithRush} rooms</div>
+                  </div>
+                  {analyticsSummary.maxTicketsRoom && (
+                    <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
+                      <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Highest Incident Room</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#f87171" }}>
+                        Room {analyticsSummary.maxTicketsRoom.roomNumber} ({analyticsSummary.maxTicketsRoom.count} tickets)
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SEARCH & FILTERS BAR */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingTop: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                {/* Search */}
+                <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+                  <input
+                    type="text"
+                    placeholder="Search by room number (e.g. 101, 204)..."
+                    value={analyticsSearch}
+                    onChange={(e) => setAnalyticsSearch(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 10,
+                      background: "rgba(30, 41, 59, 0.6)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#fff",
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                  />
+                  {analyticsSearch && (
+                    <button
+                      onClick={() => setAnalyticsSearch("")}
+                      style={{
+                        position: "absolute",
+                        right: 10,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        color: "#94a3b8",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Floor Filter */}
+                <select
+                  value={analyticsFloorFilter}
+                  onChange={(e) => setAnalyticsFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "rgba(30, 41, 59, 0.8)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">🏢 All Floors</option>
+                  <option value="1">Floor 1</option>
+                  <option value="2">Floor 2</option>
+                  <option value="3">Floor 3</option>
+                </select>
+
+                {/* Block Filter */}
+                <select
+                  value={analyticsBlockFilter}
+                  onChange={(e) => setAnalyticsBlockFilter(e.target.value)}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "rgba(30, 41, 59, 0.8)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#fff",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">🏛️ All Blocks</option>
+                  <option value="BLOCK_A">Block A</option>
+                  <option value="BLOCK_B">Block B</option>
+                </select>
+
+                {/* Sort Order */}
+                <select
+                  value={analyticsSort}
+                  onChange={(e) => setAnalyticsSort(e.target.value as any)}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "rgba(245, 158, 11, 0.15)",
+                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                    color: "#fbbf24",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="MOST_TICKETS">Sort: 📉 Most Incidents First</option>
+                  <option value="OPEN_TICKETS">Sort: ⚠️ Most Open Issues</option>
+                  <option value="RUSH_HOUR">Sort: ⏰ Highest Rush Hour Spike</option>
+                  <option value="ROOM_NUMBER">Sort: 🔢 Room Number</option>
+                </select>
+              </div>
+            </div>
+
+            {/* ROOM CARDS GRID */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
+                gap: 16,
+              }}
+            >
+              {filteredAnalyticsRooms.map((room) => {
+                const stats = roomAnalyticsMap.get(room.id) || {
+                  roomId: room.id,
+                  roomNumber: room.room_number,
+                  totalTickets: 0,
+                  resolvedTickets: 0,
+                  openTickets: 0,
+                  hasEmergency: false,
+                  hasHighPriority: false,
+                  rushHour: null,
+                  topProblems: [],
+                  avgResolutionMinutes: null,
+                  lastReclamationDate: null,
+                };
+
+                // Determine border and accent styling based on severity
+                let borderColor = "rgba(255, 255, 255, 0.08)";
+                let glowShadow = "none";
+                let statusHeaderBadge = null;
+
+                if (stats.hasEmergency || stats.hasHighPriority) {
+                  borderColor = "rgba(239, 68, 68, 0.6)";
+                  glowShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
+                  statusHeaderBadge = (
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171", fontSize: 10, fontWeight: 800 }}>
+                      🔥 CRITICAL OPEN
+                    </span>
+                  );
+                } else if (stats.openTickets > 0) {
+                  borderColor = "rgba(245, 158, 11, 0.5)";
+                  glowShadow = "0 0 15px rgba(245, 158, 11, 0.15)";
+                  statusHeaderBadge = (
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(245, 158, 11, 0.2)", border: "1px solid #f59e0b", color: "#fbbf24", fontSize: 10, fontWeight: 800 }}>
+                      ⚠️ {stats.openTickets} OPEN
+                    </span>
+                  );
+                } else if (stats.totalTickets > 0) {
+                  borderColor = "rgba(56, 189, 248, 0.3)";
+                  statusHeaderBadge = (
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 10, fontWeight: 700 }}>
+                      ✅ ALL RESOLVED
+                    </span>
+                  );
+                } else {
+                  statusHeaderBadge = (
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(74, 222, 128, 0.1)", border: "1px solid rgba(74, 222, 128, 0.2)", color: "#4ade80", fontSize: 10, fontWeight: 700 }}>
+                      ✨ CLEAN RECORD
+                    </span>
+                  );
+                }
+
+                return (
+                  <div
+                    key={room.id}
+                    style={{
+                      background: "rgba(15, 23, 42, 0.8)",
+                      border: `1.5px solid ${borderColor}`,
+                      borderRadius: 16,
+                      padding: "1.25rem",
+                      boxShadow: glowShadow,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: 14,
+                      transition: "transform 0.2s ease, border-color 0.2s ease",
+                    }}
+                  >
+                    <div>
+                      {/* CARD HEADER */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <h4 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#ffffff" }}>
+                              Room {room.room_number}
+                            </h4>
+                            {statusHeaderBadge}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
+                            Floor {room.floor} • {room.block === "BLOCK_A" ? "Block A" : "Block B"}
+                          </div>
+                        </div>
+
+                        {/* Occupancy & Cleaning Pills */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: room.is_occupied ? "rgba(251, 191, 36, 0.2)" : "rgba(74, 222, 128, 0.15)",
+                              color: room.is_occupied ? "#fbbf24" : "#4ade80",
+                              border: `1px solid ${room.is_occupied ? "rgba(251, 191, 36, 0.4)" : "rgba(74, 222, 128, 0.3)"}`,
+                            }}
+                          >
+                            {room.is_occupied ? "🔴 Occupied" : "🟢 Vacant"}
+                          </span>
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background:
+                                room.cleaning_status === "CLEAN"
+                                  ? "rgba(74, 222, 128, 0.15)"
+                                  : room.cleaning_status === "DIRTY"
+                                  ? "rgba(239, 68, 68, 0.15)"
+                                  : "rgba(56, 189, 248, 0.15)",
+                              color:
+                                room.cleaning_status === "CLEAN"
+                                  ? "#4ade80"
+                                  : room.cleaning_status === "DIRTY"
+                                  ? "#f87171"
+                                  : "#38bdf8",
+                            }}
+                          >
+                            🧹 {room.cleaning_status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* RUSH HOUR PANEL */}
+                      <div
+                        style={{
+                          background: stats.rushHour ? "rgba(245, 158, 11, 0.08)" : "rgba(30, 41, 59, 0.4)",
+                          border: `1px solid ${stats.rushHour ? "rgba(245, 158, 11, 0.25)" : "rgba(255, 255, 255, 0.05)"}`,
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: stats.rushHour ? "#fbbf24" : "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                            <span>⏰ RUSH HOUR & PEAK TIME</span>
+                          </span>
+                          {stats.rushHour && (
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "#f59e0b", color: "#000" }}>
+                              {stats.rushHour.count} in 1 hr
+                            </span>
+                          )}
+                        </div>
+
+                        {stats.rushHour ? (
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
+                                {stats.rushHour.hourRange}
+                              </span>
+                              <span style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>
+                                Date: {stats.rushHour.date}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                              Spike of {stats.rushHour.count} reclamation(s) on {stats.rushHour.date} ({stats.rushHour.totalForHourOfDay} total occurrences during this hour slot across all history).
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>
+                            No rush hour pattern recorded yet (0 historical incidents).
+                          </div>
+                        )}
+                      </div>
+
+                      {/* MOST REPEATED PROBLEMS PANEL */}
+                      <div
+                        style={{
+                          background: "rgba(30, 41, 59, 0.4)",
+                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#e879f9", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span>🔁 MOST REPEATED PROBLEMS</span>
+                        </div>
+
+                        {stats.topProblems.length > 0 ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {stats.topProblems.map((prob, idx) => (
+                              <div key={prob.category}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                                  <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                                    <span style={{ color: "#94a3b8", marginRight: 4 }}>#{idx + 1}</span>
+                                    {prob.category}
+                                  </span>
+                                  <span style={{ color: "#e879f9", fontWeight: 800 }}>
+                                    {prob.count}× <span style={{ color: "#94a3b8", fontSize: 11 }}>({prob.percentage}%)</span>
+                                  </span>
+                                </div>
+                                {/* Bar indicator */}
+                                <div style={{ height: 5, borderRadius: 999, background: "rgba(255, 255, 255, 0.08)", overflow: "hidden" }}>
+                                  <div
+                                    style={{
+                                      height: "100%",
+                                      width: `${prob.percentage}%`,
+                                      borderRadius: 999,
+                                      background:
+                                        idx === 0
+                                          ? "linear-gradient(90deg, #f59e0b, #ef4444)"
+                                          : idx === 1
+                                          ? "linear-gradient(90deg, #38bdf8, #818cf8)"
+                                          : "#94a3b8",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>
+                            No complaints reported for this room.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* STATS SUMMARY ROW */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, 1fr)",
+                          gap: 6,
+                          padding: "8px 10px",
+                          borderRadius: 10,
+                          background: "rgba(15, 23, 42, 0.6)",
+                          border: "1px solid rgba(255, 255, 255, 0.04)",
+                          fontSize: 11,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div>
+                          <div style={{ color: "#94a3b8" }}>Total</div>
+                          <div style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>{stats.totalTickets}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: "#94a3b8" }}>Resolved</div>
+                          <div style={{ fontWeight: 800, color: "#4ade80", fontSize: 13 }}>{stats.resolvedTickets}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: "#94a3b8" }}>Open</div>
+                          <div style={{ fontWeight: 800, color: stats.openTickets > 0 ? "#f87171" : "#94a3b8", fontSize: 13 }}>{stats.openTickets}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: "#94a3b8" }}>Avg Fix</div>
+                          <div style={{ fontWeight: 800, color: "#38bdf8", fontSize: 13 }}>
+                            {stats.avgResolutionMinutes !== null ? `${stats.avgResolutionMinutes}m` : "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CARD ACTION BUTTON */}
+                    <button
+                      onClick={() => {
+                        setSelectedRoomModal(room);
+                        setModalTab("ROOM_STAT");
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "9px",
+                        borderRadius: 10,
+                        background: "rgba(245, 158, 11, 0.15)",
+                        border: "1px solid rgba(245, 158, 11, 0.4)",
+                        color: "#fbbf24",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <span>🔍 Inspect Room History & Actions &rarr;</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ROOM POP-UP MODAL */}
@@ -524,6 +1037,43 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                     <button onClick={() => handleCleaningCycle(selectedRoomModal)} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "rgba(251, 191, 36, 0.2)", border: "1px solid #fbbf24", color: "#fff", fontWeight: 800, cursor: "pointer" }}>
                       🧹 Cycle Cleaning Status &rarr;
                     </button>
+
+                    {/* Rush Hour & Analytics Highlights in Modal */}
+                    {(() => {
+                      const stats = roomAnalyticsMap.get(selectedRoomModal.id);
+                      if (!stats) return null;
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                          <div style={{ background: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.3)", borderRadius: 10, padding: "10px" }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#fbbf24" }}>⏰ RUSH HOUR & PEAK INCIDENT TIME</div>
+                            {stats.rushHour ? (
+                              <div style={{ marginTop: 4 }}>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: "#fff" }}>{stats.rushHour.hourRange}</div>
+                                <div style={{ fontSize: 11, color: "#94a3b8" }}>Busiest Date: {stats.rushHour.date} ({stats.rushHour.count} complaints in that hour)</div>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4 }}>No incidents recorded</div>
+                            )}
+                          </div>
+
+                          <div style={{ background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px" }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#e879f9" }}>🔁 TOP REPEATED PROBLEMS</div>
+                            {stats.topProblems.length > 0 ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                                {stats.topProblems.map((prob, idx) => (
+                                  <div key={prob.category} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                                    <span style={{ color: "#cbd5e1" }}>#{idx + 1} {prob.category}</span>
+                                    <strong style={{ color: "#e879f9" }}>{prob.count}× ({prob.percentage}%)</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4 }}>No problems recorded</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
