@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useTransition, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Resident, Department, Reclamation, Staff } from "@/utils/roomsData";
 import {
   createRapidReclamation,
@@ -61,10 +63,31 @@ export default function ReceptionPortal({
   rooms,
   departmentsList = [],
   reclamationsList = [],
+  isLiveSupabase = false,
 }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"ROOMS" | "RECLAMATIONS" | "STATS">("ROOMS");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!isLiveSupabase) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("realtime-reception")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLiveSupabase, router]);
 
   // Room Pop-up Modal State
   const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);

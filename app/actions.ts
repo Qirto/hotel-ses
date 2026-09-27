@@ -12,15 +12,16 @@ export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: st
   const cookieStore = await cookies();
 
   const VALID_CODES: Record<string, string> = {
-    reception: "1111",
-    rh: "2222",
-    gm: "3333",
+    reception: process.env.PASSCODE_RECEPTION || "1111",
+    rh: process.env.PASSCODE_RH || "2222",
+    gm: process.env.PASSCODE_GM || "3333",
   };
 
-  if (passcode && passcode.trim() !== VALID_CODES[role] && passcode.trim() !== role) {
+  const expectedCode = VALID_CODES[role];
+  if (!passcode || (passcode.trim() !== expectedCode && passcode.trim() !== role)) {
     return {
       success: false,
-      error: `Invalid passcode for ${role.toUpperCase()} portal! Hint: Default PIN is ${VALID_CODES[role]}`,
+      error: `Invalid passcode for ${role.toUpperCase()} portal!`,
     };
   }
 
@@ -30,14 +31,14 @@ export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: st
     sameSite: "lax",
   });
 
-  revalidatePath("/");
+  revalidatePath(`/${role}`);
   return { success: true, redirectUrl: `/${role}` };
 }
 
 export async function logoutRole() {
   const cookieStore = await cookies();
   cookieStore.delete("hotel_role");
-  revalidatePath("/");
+  revalidatePath("/login");
   return { success: true, redirectUrl: "/login" };
 }
 
@@ -123,7 +124,8 @@ export async function createRapidReclamation(data: {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -161,7 +163,8 @@ export async function createHistoricalReclamation(data: {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -192,7 +195,8 @@ export async function updateRoomStayState(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -218,7 +222,8 @@ export async function acknowledgeReclamation(reclamationId: number, staffId?: nu
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -242,7 +247,8 @@ export async function resolveReclamation(reclamationId: number, resolutionNotes?
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -267,7 +273,8 @@ export async function cycleRoomCleaning(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -288,7 +295,8 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -316,7 +324,7 @@ export async function resolveConfidentialGrievance(reclamationId: number, remedy
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/gm");
   return { success: true };
 }
 
@@ -338,7 +346,7 @@ export async function updateStaffSkills(staffId: number, skillTags: string[]) {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
   return { success: true };
 }
 
@@ -363,7 +371,8 @@ export async function toggleStaffShift(staffId: number, currentShift: string) {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
+  revalidatePath("/reception");
   return { success: true };
 }
 
@@ -395,7 +404,9 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
       .in("status", ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"]);
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
+  revalidatePath("/reception");
+  revalidatePath("/gm");
   return { success: true, reassignedTo: availableTech?.id || null };
 }
 
@@ -428,7 +439,7 @@ export async function createStaffMember(data: {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
   return { success: true };
 }
 
@@ -467,7 +478,7 @@ export async function updateStaffMember(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
   return { success: true };
 }
 
@@ -496,7 +507,7 @@ export async function deleteStaffMember(staffId: number) {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
   return { success: true };
 }
 
@@ -531,7 +542,8 @@ export async function createDepartment(data: {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
+  revalidatePath("/reception");
   return { success: true };
 }
 
@@ -565,7 +577,8 @@ export async function updateDepartment(
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
+  revalidatePath("/reception");
   return { success: true };
 }
 
@@ -583,7 +596,8 @@ export async function deleteDepartment(departmentId: number) {
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/");
+  revalidatePath("/rh");
+  revalidatePath("/reception");
   return { success: true };
 }
 

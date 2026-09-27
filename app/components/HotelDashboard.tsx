@@ -146,6 +146,7 @@ export default function HotelDashboard({
             departmentsList={departmentsList}
             reclamationsList={reclamationsList}
             staffList={staffList}
+            isLiveSupabase={isLiveSupabase}
           />
         )}
 
@@ -155,6 +156,7 @@ export default function HotelDashboard({
             departmentsList={departmentsList}
             reclamationsList={reclamationsList}
             rooms={initialRooms}
+            isLiveSupabase={isLiveSupabase}
           />
         )}
 
@@ -163,6 +165,7 @@ export default function HotelDashboard({
             rooms={initialRooms}
             reclamations={reclamationsList}
             staff={staffList}
+            isLiveSupabase={isLiveSupabase}
           />
         )}
 
@@ -171,6 +174,7 @@ export default function HotelDashboard({
             rooms={initialRooms}
             reclamations={reclamationsList}
             staff={staffList}
+            isLiveSupabase={isLiveSupabase}
           />
         )}
 
@@ -178,6 +182,7 @@ export default function HotelDashboard({
           <MaintenancePortal
             reclamations={reclamationsList}
             technicians={staffList.filter((s) => s.role === "maintenance")}
+            isLiveSupabase={isLiveSupabase}
           />
         )}
 

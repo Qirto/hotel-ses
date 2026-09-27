@@ -1,15 +1,19 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Reclamation, Staff, isMaintenanceFixTicket } from "@/utils/roomsData";
 import { acknowledgeReclamation, resolveReclamation } from "@/app/actions";
 
 interface Props {
   reclamations: Reclamation[];
   technicians: Staff[];
+  isLiveSupabase?: boolean;
 }
 
-export default function MaintenancePortal({ reclamations, technicians }: Props) {
+export default function MaintenancePortal({ reclamations, technicians, isLiveSupabase = false }: Props) {
+  const router = useRouter();
   const [selectedTechId, setSelectedTechId] = useState<number | "ALL">("ALL");
   const [filterFloor, setFilterFloor] = useState<number | "ALL">("ALL");
   const [selectedSkill, setSelectedSkill] = useState<string>("ALL");
@@ -17,6 +21,22 @@ export default function MaintenancePortal({ reclamations, technicians }: Props) 
   const [resolutionNote, setResolutionNote] = useState("");
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [isPending, startTransition] = useTransition();
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!isLiveSupabase) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("realtime-maintenance")
+      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLiveSupabase, router]);
 
   // 1-second interval to update acknowledgment countdowns
   useEffect(() => {

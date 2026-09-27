@@ -144,7 +144,7 @@ export default function LoginPage() {
 
               <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, color: "#cbd5e1", marginBottom: 16 }}>
                 🔑 <strong>Scope:</strong> Manage Rooms & Manage Reclamations<br />
-                🔒 <strong>PIN Code:</strong> <code>1111</code>
+                🔒 <strong>Security:</strong> Authorized PIN required
               </div>
             </div>
 
@@ -153,7 +153,7 @@ export default function LoginPage() {
                 <div style={{ marginBottom: 12 }}>
                   <input
                     type="password"
-                    placeholder="Enter Reception PIN (1111)..."
+                    placeholder="Enter Reception PIN..."
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin("reception", passcode)}
@@ -176,7 +176,7 @@ export default function LoginPage() {
                 disabled={isPending}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("reception", selectedRole === "reception" && passcode ? passcode : "1111");
+                  handleLogin("reception", selectedRole === "reception" ? passcode : undefined);
                 }}
                 style={{
                   width: "100%",
@@ -241,7 +241,7 @@ export default function LoginPage() {
 
               <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(6, 32, 22, 0.8)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, color: "#cbd5e1", marginBottom: 16 }}>
                 🔑 <strong>Scope:</strong> Employees, Shifts, Reclamations & Rooms<br />
-                🔒 <strong>PIN Code:</strong> <code>2222</code>
+                🔒 <strong>Security:</strong> Authorized PIN required
               </div>
             </div>
 
@@ -250,7 +250,7 @@ export default function LoginPage() {
                 <div style={{ marginBottom: 12 }}>
                   <input
                     type="password"
-                    placeholder="Enter RH Manager PIN (2222)..."
+                    placeholder="Enter RH Manager PIN..."
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin("rh", passcode)}
@@ -273,7 +273,7 @@ export default function LoginPage() {
                 disabled={isPending}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("rh", selectedRole === "rh" && passcode ? passcode : "2222");
+                  handleLogin("rh", selectedRole === "rh" ? passcode : undefined);
                 }}
                 style={{
                   width: "100%",
@@ -338,7 +338,7 @@ export default function LoginPage() {
 
               <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(20, 16, 41, 0.8)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, color: "#cbd5e1", marginBottom: 16 }}>
                 🔑 <strong>Scope:</strong> Statistics, Reclamations & Room State<br />
-                🔒 <strong>PIN Code:</strong> <code>3333</code>
+                🔒 <strong>Security:</strong> Authorized PIN required
               </div>
             </div>
 
@@ -347,7 +347,7 @@ export default function LoginPage() {
                 <div style={{ marginBottom: 12 }}>
                   <input
                     type="password"
-                    placeholder="Enter General Manager PIN (3333)..."
+                    placeholder="Enter General Manager PIN..."
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin("gm", passcode)}
@@ -370,7 +370,7 @@ export default function LoginPage() {
                 disabled={isPending}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleLogin("gm", selectedRole === "gm" && passcode ? passcode : "3333");
+                  handleLogin("gm", selectedRole === "gm" ? passcode : undefined);
                 }}
                 style={{
                   width: "100%",

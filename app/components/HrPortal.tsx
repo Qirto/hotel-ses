@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useTransition, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { Staff, Department, Reclamation, HotelRoom } from "@/utils/roomsData";
 import {
   createStaffMember,
@@ -73,7 +75,9 @@ export default function HrPortal({
   departmentsList = [],
   reclamationsList = [],
   rooms = [],
+  isLiveSupabase = false,
 }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"ROOMS" | "RECLAMATIONS" | "STATS" | "EMPLOYEES">("EMPLOYEES");
   const [empSubTab, setEmpSubTab] = useState<"DIRECTORY" | "SHIFTS">("DIRECTORY");
   const [rosterDeptFilter, setRosterDeptFilter] = useState<string>("ALL");
@@ -81,6 +85,28 @@ export default function HrPortal({
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!isLiveSupabase) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("realtime-hr")
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "departments" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLiveSupabase, router]);
 
   // Room Pop-up Modal State
   const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);

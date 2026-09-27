@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useTransition, useMemo } from "react";
+import React, { useState, useTransition, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import {
   resolveConfidentialGrievance,
@@ -18,13 +20,33 @@ interface Props {
   isLiveSupabase?: boolean;
 }
 
-export default function ManagerPortal({ rooms, reclamations, staff }: Props) {
+export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupabase = false }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"STATS" | "ROOMS" | "RECLAMATIONS">("STATS");
   const [ticketFilter, setTicketFilter] = useState<string>("ALL");
   const [ticketStatusFilter, setTicketStatusFilter] = useState<string>("ALL");
   const [remedyNote, setRemedyNote] = useState("");
   const [selectedRecId, setSelectedRecId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!isLiveSupabase) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("realtime-manager")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLiveSupabase, router]);
 
   // Matrix Filter & Room Details Modal State
   const [matrixSearch, setMatrixSearch] = useState("");

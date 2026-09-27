@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import {
   HotelRoom,
   Reclamation,
@@ -20,9 +22,11 @@ interface Props {
   rooms: HotelRoom[];
   reclamations?: Reclamation[];
   staff?: Staff[];
+  isLiveSupabase?: boolean;
 }
 
-export default function GouvernantePortal({ rooms, reclamations = [], staff = [] }: Props) {
+export default function GouvernantePortal({ rooms, reclamations = [], staff = [], isLiveSupabase = false }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"rooms" | "hk_tickets" | "maint_notifications">("rooms");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterFloor, setFilterFloor] = useState<number | "ALL">("ALL");
@@ -37,6 +41,25 @@ export default function GouvernantePortal({ rooms, reclamations = [], staff = []
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [resolutionNote, setResolutionNote] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!isLiveSupabase) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("realtime-gouvernante")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, () => {
+        router.refresh();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
+        router.refresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isLiveSupabase, router]);
 
   const filteredRooms = rooms.filter((r) => {
     if (filterStatus !== "ALL" && r.cleaning_status !== filterStatus) return false;
