@@ -35,6 +35,45 @@ export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: st
   return { success: true, redirectUrl: `/${role}` };
 }
 
+export async function loginWithPasscode(passcode: string) {
+  const cookieStore = await cookies();
+  const trimmed = (passcode || "").trim();
+
+  if (!trimmed) {
+    return {
+      success: false,
+      error: "Please enter your access passcode.",
+    };
+  }
+
+  const VALID_CODES: Record<"reception" | "rh" | "gm", string> = {
+    reception: process.env.PASSCODE_RECEPTION || "1111",
+    rh: process.env.PASSCODE_RH || "2222",
+    gm: process.env.PASSCODE_GM || "3333",
+  };
+
+  const ROLES: Array<"reception" | "rh" | "gm"> = ["reception", "rh", "gm"];
+  const matchedRole = ROLES.find(
+    (role) => trimmed === VALID_CODES[role] || trimmed.toLowerCase() === role
+  );
+
+  if (!matchedRole) {
+    return {
+      success: false,
+      error: "Invalid access passcode. Please check your credentials.",
+    };
+  }
+
+  cookieStore.set("hotel_role", matchedRole, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: "lax",
+  });
+
+  revalidatePath(`/${matchedRole}`);
+  return { success: true, redirectUrl: `/${matchedRole}`, role: matchedRole };
+}
+
 export async function logoutRole() {
   const cookieStore = await cookies();
   cookieStore.delete("hotel_role");

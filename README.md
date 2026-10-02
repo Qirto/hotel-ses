@@ -45,13 +45,14 @@ The system delivers a tailored UI across phones, tablets, foldables, and ultra-w
 
 ## ✨ Role-Based Portals & Core Modules
 
-### 🔐 Multi-Role Access Control & Security
+### 🔐 Unified Access Control & Intelligent Role Routing
+* **Single Passcode Login**: A single, streamlined access portal (`/login`) with automatic role detection. Staff enter their assigned department code (`1111` for Reception, `2222` for HR, `3333` for General Manager); the system verifies credentials, sets the secure session cookie, and routes staff immediately to their dedicated operational workspace.
 * **Isolated Portals**:
   * **Reception** (`/reception`) — Front desk operations and rapid dispatch.
   * **General Manager** (`/gm`) — Executive oversight, analytics, and confidential grievance desk.
   * **Human Resources** (`/rh`) — Staff master directory, shift schedules, and absenteeism redistribution.
 * **Route Guards (`proxy.ts`)**: Automated middleware protecting all internal routes, redirecting unauthenticated traffic to `/login` while bypassing static assets, manifest, and service worker endpoints.
-* **Configurable Passcode Auth**: PIN codes managed securely via server environment variables (`PASSCODE_RECEPTION`, `PASSCODE_RH`, `PASSCODE_GM`) with masked inputs.
+* **Configurable Passcode Auth**: PIN codes managed securely via server environment variables (`PASSCODE_RECEPTION`, `PASSCODE_RH`, `PASSCODE_GM`) with masked inputs and instant keyboard submission.
 
 ### 📈 Room Rush Hour & Incident Intelligence
 * **⏰ Room Rush Hour Detection**: Calculates peak clock-hour intervals (e.g., `20:00 – 21:00`) for each room, pinpointing historical incident volume and highest incident spikes.
