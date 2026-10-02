@@ -4,6 +4,7 @@ import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Resident, Department, Reclamation, Staff } from "@/utils/roomsData";
+import PortalLayout from "@/app/components/PortalLayout";
 import {
   createRapidReclamation,
   createHistoricalReclamation,
@@ -329,170 +330,155 @@ export default function ReceptionPortal({
   });
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", gap: "1.5rem", padding: "1.25rem" }}>
-      {/* ========================================================================= */}
-      {/* LEFT SIDEBAR NAVIGATION */}
-      {/* ========================================================================= */}
-      <aside
-        style={{
-          width: 270,
-          flexShrink: 0,
-          background: "#111827",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          padding: "1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
-        }}
-      >
-        <div>
-          {/* Header */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h2
+    <PortalLayout
+      departmentName="Reception Desk"
+      departmentColor="#38bdf8"
+      departmentCode="Reception"
+      sidebar={
+        <>
+          <div>
+            {/* Header */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 800,
+                  margin: 0,
+                  color: "#ffffff",
+                  letterSpacing: "-0.02em",
+                  borderLeft: "3px solid #38bdf8",
+                  paddingLeft: 10,
+                }}
+              >
+                Front Desk
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
+                Reception Operations
+              </p>
+            </div>
+
+            {/* VERTICAL SIDEBAR TABS */}
+            <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
+              {[
+                { id: "ROOMS", label: "Rooms Grid", count: totalRooms, color: "#38bdf8" },
+                { id: "RECLAMATIONS", label: "Reclamations", count: reclamationsList.length, color: "#e879f9" },
+                { id: "STATS", label: "Analytics & Stats", count: null, color: "#fbbf24" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid",
+                      borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
+                      background: isActive ? `rgba(56, 189, 248, 0.15)` : "rgba(30, 41, 59, 0.4)",
+                      color: isActive ? "#ffffff" : "#c1cad8",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.count !== null && (
+                      <span
+                        className="font-mono"
+                        style={{
+                          padding: "2px 7px",
+                          borderRadius: 4,
+                          background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
+                          color: isActive ? "#000" : "#cbd5e1",
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* STACKED QUICK METRICS CARDS */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupied Rooms</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{occupiedCount} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)</strong>
+              </div>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Vacant Clean</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{vacantCleanCount}</strong>
+              </div>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Dirty Rooms</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: dirtyCount > 0 ? "#f87171" : "#4ade80" }}>{dirtyCount}</strong>
+              </div>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Open Reclamations</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: openReclamationsCount > 0 ? "#e879f9" : "#4ade80" }}>{openReclamationsCount}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* SIDEBAR FOOTER & LOG OUT */}
+          <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              className="btn-primary"
+              onClick={() => setShowHistoryModal(true)}
               style={{
-                fontSize: "1.25rem",
-                fontWeight: 800,
-                margin: 0,
-                color: "#ffffff",
-                letterSpacing: "-0.02em",
-                borderLeft: "3px solid #38bdf8",
-                paddingLeft: 10,
+                width: "100%",
+                padding: "9px",
+                borderRadius: 8,
+                border: "1px solid rgba(251, 191, 36, 0.4)",
+                background: "rgba(251, 191, 36, 0.15)",
+                color: "#fbbf24",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
-              Front Desk
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-              Reception Operations
-            </p>
-          </div>
+              Backfill Past Ticket
+            </button>
 
-          {/* VERTICAL SIDEBAR TABS */}
-          <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
-            {[
-              { id: "ROOMS", label: "Rooms Grid", count: totalRooms, color: "#38bdf8" },
-              { id: "RECLAMATIONS", label: "Reclamations", count: reclamationsList.length, color: "#e879f9" },
-              { id: "STATS", label: "Analytics & Stats", count: null, color: "#fbbf24" },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid",
-                    borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                    background: isActive ? `rgba(56, 189, 248, 0.15)` : "rgba(30, 41, 59, 0.4)",
-                    color: isActive ? "#ffffff" : "#c1cad8",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <span>{tab.label}</span>
-                  {tab.count !== null && (
-                    <span
-                      className="font-mono"
-                      style={{
-                        padding: "2px 7px",
-                        borderRadius: 4,
-                        background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
-                        color: isActive ? "#000" : "#cbd5e1",
-                        fontSize: 11,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* STACKED QUICK METRICS CARDS */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupied Rooms</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{occupiedCount} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Vacant Clean</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{vacantCleanCount}</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Dirty Rooms</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: dirtyCount > 0 ? "#f87171" : "#4ade80" }}>{dirtyCount}</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Open Reclamations</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: openReclamationsCount > 0 ? "#e879f9" : "#4ade80" }}>{openReclamationsCount}</strong>
+            <button
+              className="btn-primary"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await logoutRole();
+                  window.location.href = "/login";
+                });
+              }}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: 8,
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Sign Out
+            </button>
+            <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
+              {" • "}
+              <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
             </div>
           </div>
-        </div>
-
-        {/* SIDEBAR FOOTER & LOG OUT */}
-        <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button
-            className="btn-primary"
-            onClick={() => setShowHistoryModal(true)}
-            style={{
-              width: "100%",
-              padding: "9px",
-              borderRadius: 8,
-              border: "1px solid rgba(251, 191, 36, 0.4)",
-              background: "rgba(251, 191, 36, 0.15)",
-              color: "#fbbf24",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Backfill Past Ticket
-          </button>
-
-          <button
-            className="btn-primary"
-            disabled={isPending}
-            onClick={() => {
-              startTransition(async () => {
-                await logoutRole();
-                window.location.href = "/login";
-              });
-            }}
-            style={{
-              width: "100%",
-              padding: "10px",
-              borderRadius: 8,
-              border: "1px solid rgba(239, 68, 68, 0.4)",
-              background: "rgba(239, 68, 68, 0.15)",
-              color: "#f87171",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Sign Out
-          </button>
-          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
-            {" • "}
-            <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE CONTENT */}
-      {/* ========================================================================= */}
-      <main style={{ flex: 1, minWidth: 0 }}>
+        </>
+      }
+    >
         {message && (
           <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 14, fontWeight: 600 }}>
             {message}
@@ -549,7 +535,7 @@ export default function ReceptionPortal({
             </div>
 
             {/* Room Cards Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10, maxHeight: 620, overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
               {filteredRooms.map((room) => {
                 const isDirty = room.cleaning_status === "DIRTY";
                 const isClean = room.cleaning_status === "CLEAN";
@@ -762,14 +748,13 @@ export default function ReceptionPortal({
             </div>
           </div>
         )}
-      </main>
 
       {/* ========================================================================= */}
       {/* INTERACTIVE ROOM POP-UP MODAL (WITH INTERNAL SIDEBAR: RECLAMATION & ROOM STAT) */}
       {/* ========================================================================= */}
       {selectedRoomModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1.5px solid rgba(56, 189, 248, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+          <div className="portal-modal-content" style={{ background: "#0f172a", border: "1.5px solid rgba(56, 189, 248, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
             {/* Modal Top Bar */}
             <div style={{ background: "rgba(30, 41, 59, 0.9)", padding: "1rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1163,10 +1148,10 @@ export default function ReceptionPortal({
 
       {/* HISTORICAL RECLAMATION MODAL */}
       {showHistoryModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, maxWidth: 500, width: "100%", padding: "1.5rem" }}>
+        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
+          <div className="portal-modal-content" style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, maxWidth: 500, width: "100%", padding: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 18, color: "#fbbf24" }}>📜 Add Historical Reclamation</h3>
+              <h3 style={{ margin: 0, fontSize: 18, color: "#fbbf24" }}>Add Historical Ticket</h3>
               <button onClick={() => setShowHistoryModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
             <form onSubmit={handleHistoricalSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1177,6 +1162,6 @@ export default function ReceptionPortal({
           </div>
         </div>
       )}
-    </div>
+    </PortalLayout>
   );
 }

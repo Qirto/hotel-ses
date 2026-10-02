@@ -18,6 +18,7 @@ import {
   createRapidReclamation,
   logoutRole,
 } from "@/app/actions";
+import PortalLayout from "@/app/components/PortalLayout";
 
 interface Props {
   staffList: Staff[];
@@ -381,44 +382,32 @@ export default function HrPortal({
   });
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", gap: "1.5rem", padding: "1.25rem" }}>
-      {/* ========================================================================= */}
-      {/* LEFT SIDEBAR NAVIGATION */}
-      {/* ========================================================================= */}
-      <aside
-        style={{
-          width: 270,
-          flexShrink: 0,
-          background: "#111827",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          padding: "1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
-        }}
-      >
-        <div>
-          {/* Header */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h2
-              style={{
-                fontSize: "1.25rem",
-                fontWeight: 800,
-                margin: 0,
-                color: "#ffffff",
-                letterSpacing: "-0.02em",
-                borderLeft: "3px solid #34d399",
-                paddingLeft: 10,
-              }}
-            >
-              HR & Shifts
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-              Staff Operations
-            </p>
-          </div>
+    <PortalLayout
+      departmentName="HR & Shifts"
+      departmentColor="#34d399"
+      departmentCode="HR"
+      sidebar={
+        <>
+          <div>
+            {/* Header */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 800,
+                  margin: 0,
+                  color: "#ffffff",
+                  letterSpacing: "-0.02em",
+                  borderLeft: "3px solid #34d399",
+                  paddingLeft: 10,
+                }}
+              >
+                HR & Shifts
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
+                Staff Operations
+              </p>
+            </div>
 
           {/* VERTICAL NAV TABS */}
           <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
@@ -511,12 +500,9 @@ export default function HrPortal({
             <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
           </div>
         </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE CONTENT */}
-      {/* ========================================================================= */}
-      <main style={{ flex: 1, minWidth: 0 }}>
+      </>
+    }
+  >
         {message && (
           <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(52, 211, 153, 0.15)", border: "1px solid rgba(52, 211, 153, 0.3)", color: "#34d399", fontSize: 14, fontWeight: 600 }}>
             {message}
@@ -872,7 +858,7 @@ export default function HrPortal({
             <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#4ade80" }}>
               🏨 Property Rooms Directory ({filteredRooms.length} rooms)
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10, maxHeight: 600, overflowY: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto" }}>
               {filteredRooms.map((room) => (
                 <div
                   key={room.id}
@@ -960,12 +946,11 @@ export default function HrPortal({
             </div>
           </div>
         )}
-      </main>
 
       {/* ROOM POP-UP MODAL */}
       {selectedRoomModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="portal-modal-overlay">
+          <div className="portal-modal-content" style={{ maxWidth: 840, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ background: "rgba(30, 41, 59, 0.9)", padding: "1rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff" }}>
                 Room {selectedRoomModal.room_number} Inspection & Operations
@@ -1215,8 +1200,8 @@ export default function HrPortal({
       )}
       {/* ADD EMPLOYEE MODAL */}
       {showCreateModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1.5px solid rgba(52, 211, 153, 0.4)", borderRadius: 20, maxWidth: 500, width: "100%", padding: "1.5rem", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
+        <div className="portal-modal-overlay">
+          <div className="portal-modal-content" style={{ maxWidth: 500, width: "100%", padding: "1.5rem", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#34d399" }}>
                 ➕ Add New Employee
@@ -1298,6 +1283,6 @@ export default function HrPortal({
           </div>
         </div>
       )}
-    </div>
+    </PortalLayout>
   );
 }

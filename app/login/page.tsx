@@ -140,7 +140,7 @@ export default function LoginPage() {
         </section>
 
         {/* 3 DISTINCT DEPARTMENT LOGIN CARDS */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 24, marginBottom: "3rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(310px, 100%), 1fr))", gap: 24, marginBottom: "3rem" }}>
           {/* 1. RECEPTION LOGIN PORTAL (CYAN THEME) */}
           <div
             role="button"
@@ -553,7 +553,7 @@ export default function LoginPage() {
             borderTop: "1px solid rgba(255, 255, 255, 0.1)",
             paddingTop: "2rem",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))",
             gap: 20,
             fontSize: 13,
             color: "#c1cad8",

@@ -4,6 +4,7 @@ import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
+import PortalLayout from "@/app/components/PortalLayout";
 import { computeAllRoomsAnalytics, RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 import {
   resolveConfidentialGrievance,
@@ -303,139 +304,124 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
   });
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", gap: "1.5rem", padding: "1.25rem" }}>
-      {/* ========================================================================= */}
-      {/* LEFT SIDEBAR NAVIGATION */}
-      {/* ========================================================================= */}
-      <aside
-        style={{
-          width: 270,
-          flexShrink: 0,
-          background: "#111827",
-          border: "1px solid rgba(255, 255, 255, 0.08)",
-          borderRadius: 16,
-          padding: "1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
-        }}
-      >
-        <div>
-          {/* Header */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h2
-              style={{
-                fontSize: "1.25rem",
-                fontWeight: 800,
-                margin: 0,
-                color: "#ffffff",
-                letterSpacing: "-0.02em",
-                borderLeft: "3px solid #fbbf24",
-                paddingLeft: 10,
+    <PortalLayout
+      departmentName="General Manager"
+      departmentColor="#fbbf24"
+      departmentCode="GM"
+      sidebar={
+        <>
+          <div>
+            {/* Header */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 800,
+                  margin: 0,
+                  color: "#ffffff",
+                  letterSpacing: "-0.02em",
+                  borderLeft: "3px solid #fbbf24",
+                  paddingLeft: 10,
+                }}
+              >
+                General Manager
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
+                Executive Operations
+              </p>
+            </div>
+
+            {/* VERTICAL NAV TABS */}
+            <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
+              {[
+                { id: "STATS", label: "Executive Analytics", count: null, color: "#fbbf24" },
+                { id: "ROOMS", label: "Rooms Matrix", count: totalRooms, color: "#38bdf8" },
+                { id: "RECLAMATIONS", label: "Reclamations", count: reclamations.length, color: "#e879f9" },
+                { id: "ANALYTICS", label: "Room Analytics", count: totalRooms, color: "#f59e0b" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "1px solid",
+                      borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
+                      background: isActive ? `rgba(251, 191, 36, 0.15)` : "rgba(15, 23, 42, 0.5)",
+                      color: isActive ? "#ffffff" : "#c1cad8",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.count !== null && (
+                      <span
+                        className="font-mono"
+                        style={{
+                          padding: "2px 7px",
+                          borderRadius: 4,
+                          background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
+                          color: isActive ? "#000" : "#cbd5e1",
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* STACKED EXECUTIVE KPIS */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupancy Rate</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%</strong>
+              </div>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>SLA Compliance</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{slaCompliance}%</strong>
+              </div>
+              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "#c1cad8" }}>Average MTTR</span>
+                <strong className="font-mono" style={{ fontSize: 13, color: "#38bdf8" }}>{mttrMinutes} min</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* SIDEBAR FOOTER */}
+          <div style={{ marginTop: "1.5rem" }}>
+            <button
+              className="btn-primary"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  await logoutRole();
+                  window.location.href = "/login";
+                });
               }}
+              style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
             >
-              General Manager
-            </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-              Executive Operations
-            </p>
-          </div>
-
-          {/* VERTICAL NAV TABS */}
-          <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
-            {[
-              { id: "STATS", label: "Executive Analytics", count: null, color: "#fbbf24" },
-              { id: "ROOMS", label: "Rooms Matrix", count: totalRooms, color: "#38bdf8" },
-              { id: "RECLAMATIONS", label: "Reclamations", count: reclamations.length, color: "#e879f9" },
-              { id: "ANALYTICS", label: "Room Analytics", count: totalRooms, color: "#f59e0b" },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid",
-                    borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                    background: isActive ? `rgba(251, 191, 36, 0.15)` : "rgba(15, 23, 42, 0.5)",
-                    color: isActive ? "#ffffff" : "#c1cad8",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <span>{tab.label}</span>
-                  {tab.count !== null && (
-                    <span
-                      className="font-mono"
-                      style={{
-                        padding: "2px 7px",
-                        borderRadius: 4,
-                        background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
-                        color: isActive ? "#000" : "#cbd5e1",
-                        fontSize: 11,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* STACKED EXECUTIVE KPIS */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupancy Rate</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>SLA Compliance</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{slaCompliance}%</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Average MTTR</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#38bdf8" }}>{mttrMinutes} min</strong>
+              Sign Out
+            </button>
+            <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
+              {" • "}
+              <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
             </div>
           </div>
-        </div>
-
-        {/* SIDEBAR FOOTER */}
-        <div style={{ marginTop: "1.5rem" }}>
-          <button
-            className="btn-primary"
-            disabled={isPending}
-            onClick={() => {
-              startTransition(async () => {
-                await logoutRole();
-                window.location.href = "/login";
-              });
-            }}
-            style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-          >
-            Sign Out
-          </button>
-          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
-            {" • "}
-            <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE CONTENT */}
-      {/* ========================================================================= */}
-      <main style={{ flex: 1, minWidth: 0 }}>
+        </>
+      }
+    >
         {message && (
           <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(251, 191, 36, 0.15)", border: "1px solid rgba(251, 191, 36, 0.3)", color: "#fbbf24", fontSize: 14, fontWeight: 600 }}>
             {message}
@@ -1021,12 +1007,11 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
             </div>
           </div>
         )}
-      </main>
 
       {/* ROOM POP-UP MODAL */}
       {selectedRoomModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div style={{ background: "#0f172a", border: "1.5px solid rgba(251, 191, 36, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+          <div className="portal-modal-content" style={{ background: "#0f172a", border: "1.5px solid rgba(251, 191, 36, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ background: "rgba(30, 41, 59, 0.9)", padding: "1rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff" }}>
                 Room {selectedRoomModal.room_number} Executive Inspection
@@ -1313,6 +1298,6 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
           </div>
         </div>
       )}
-    </div>
+    </PortalLayout>
   );
 }
