@@ -18,7 +18,8 @@ import {
   createRapidReclamation,
   logoutRole,
 } from "@/app/actions";
-import PortalLayout from "@/app/components/PortalLayout";
+import AppShell from "@/app/components/AppShell";
+import { NavTabItem } from "@/app/components/BottomNav";
 
 interface Props {
   staffList: Staff[];
@@ -381,133 +382,105 @@ export default function HrPortal({
     deptStaffCounts[dept] = (deptStaffCounts[dept] || 0) + 1;
   });
 
+  const navItems: NavTabItem[] = [
+    {
+      id: "EMPLOYEES",
+      label: "Staff & Shifts",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      badge: totalStaff,
+      isActive: activeTab === "EMPLOYEES",
+      onClick: () => setActiveTab("EMPLOYEES"),
+    },
+    {
+      id: "ROOMS",
+      label: "Rooms",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z" />
+          <path d="M8 7h.01" />
+          <path d="M16 7h.01" />
+          <path d="M12 7h.01" />
+          <path d="M12 11h.01" />
+        </svg>
+      ),
+      badge: rooms.length,
+      isActive: activeTab === "ROOMS",
+      onClick: () => setActiveTab("ROOMS"),
+    },
+    {
+      id: "RECLAMATIONS",
+      label: "Tickets",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        </svg>
+      ),
+      badge: reclamationsList.length > 0 ? reclamationsList.length : undefined,
+      isActive: activeTab === "RECLAMATIONS",
+      onClick: () => setActiveTab("RECLAMATIONS"),
+    },
+    {
+      id: "STATS",
+      label: "Analytics",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
+      isActive: activeTab === "STATS",
+      onClick: () => setActiveTab("STATS"),
+    },
+  ];
+
   return (
-    <PortalLayout
-      departmentName="HR & Shifts"
-      departmentColor="#34d399"
+    <AppShell
+      items={navItems}
+      departmentName="Human Resources & Roster"
       departmentCode="HR"
-      sidebar={
-        <>
-          <div>
-            {/* Header */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <h2
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: 800,
-                  margin: 0,
-                  color: "#ffffff",
-                  letterSpacing: "-0.02em",
-                  borderLeft: "3px solid #34d399",
-                  paddingLeft: 10,
-                }}
-              >
-                HR & Shifts
-              </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-                Staff Operations
-              </p>
-            </div>
-
-          {/* VERTICAL NAV TABS */}
-          <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
-            {[
-              { id: "EMPLOYEES", label: "Staff & Shifts", count: totalStaff, color: "#34d399" },
-              { id: "ROOMS", label: "Rooms Matrix", count: rooms.length, color: "#4ade80" },
-              { id: "RECLAMATIONS", label: "Reclamations", count: reclamationsList.length, color: "#fbbf24" },
-              { id: "STATS", label: "Analytics & Stats", count: null, color: "#38bdf8" },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "1px solid",
-                    borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                    background: isActive ? `rgba(52, 211, 153, 0.15)` : "rgba(15, 23, 42, 0.5)",
-                    color: isActive ? "#ffffff" : "#c1cad8",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  <span>{tab.label}</span>
-                  {tab.count !== null && (
-                    <span
-                      className="font-mono"
-                      style={{
-                        padding: "2px 7px",
-                        borderRadius: 4,
-                        background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
-                        color: isActive ? "#000" : "#cbd5e1",
-                        fontSize: 11,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* STACKED METRICS */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>Total Employees</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#34d399" }}>{totalStaff}</strong>
-            </div>
-            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 11, color: "#c1cad8" }}>On Shift Today</span>
-              <strong className="font-mono" style={{ fontSize: 13, color: "#38bdf8" }}>{onShiftCount}</strong>
-            </div>
-          </div>
+      departmentColor="var(--status-emerald)"
+      onSignOut={() => {
+        startTransition(async () => {
+          await logoutRole();
+          window.location.href = "/login";
+        });
+      }}
+      headerActions={
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          style={{
+            background: "var(--status-emerald)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "var(--radius-md)",
+            padding: "6px 12px",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>+ Add Staff</span>
+        </button>
+      }
+    >
+      {message && (
+        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--status-emerald-bg)", border: "1px solid var(--status-emerald)", color: "var(--status-emerald)", fontSize: 14, fontWeight: 600 }}>
+          {message}
         </div>
-
-        {/* SIDEBAR FOOTER */}
-        <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button
-            className="btn-primary"
-            onClick={() => setShowCreateModal(true)}
-            style={{ width: "100%", padding: "9px", borderRadius: 8, border: "none", background: "#059669", color: "#ffffff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-          >
-            Add Employee
-          </button>
-          <button
-            className="btn-primary"
-            disabled={isPending}
-            onClick={() => {
-              startTransition(async () => {
-                await logoutRole();
-                window.location.href = "/login";
-              });
-            }}
-            style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-          >
-            Sign Out
-          </button>
-          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
-            {" • "}
-            <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
-          </div>
-        </div>
-      </>
-    }
-  >
-        {message && (
-          <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(52, 211, 153, 0.15)", border: "1px solid rgba(52, 211, 153, 0.3)", color: "#34d399", fontSize: 14, fontWeight: 600 }}>
-            {message}
-          </div>
-        )}
+      )}
 
         {/* TAB: EMPLOYEES & SHIFTS WITH SUB-CATEGORIES */}
         {activeTab === "EMPLOYEES" && (
@@ -518,11 +491,11 @@ export default function HrPortal({
                 display: "flex",
                 gap: 10,
                 padding: "6px 8px",
-                background: "rgba(15, 23, 42, 0.85)",
-                borderRadius: 14,
-                border: "1px solid rgba(52, 211, 153, 0.25)",
+                background: "var(--surface-card)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--border-subtle)",
                 width: "fit-content",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                boxShadow: "var(--shadow-card)",
               }}
             >
               <button
@@ -854,47 +827,101 @@ export default function HrPortal({
 
         {/* TAB: ROOMS MAP */}
         {activeTab === "ROOMS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#4ade80" }}>
+          <div className="ses-card">
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--status-emerald)" }}>
               🏨 Property Rooms Directory ({filteredRooms.length} rooms)
             </h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto" }}>
-              {filteredRooms.map((room) => (
-                <div
-                  key={room.id}
-                  onClick={() => {
-                    setSelectedRoomModal(room);
-                    setModalTab("ROOM_STAT");
-                  }}
-                  style={{
-                    background: "rgba(30, 41, 59, 0.6)",
-                    border: "1px solid rgba(52, 211, 153, 0.3)",
-                    borderRadius: 10,
-                    padding: "10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#fff" }}>
-                    <span>Room {room.room_number}</span>
-                    <span style={{ fontSize: 10, color: room.is_occupied ? "#fbbf24" : "#4ade80" }}>{room.is_occupied ? "Occupied" : "Vacant"}</span>
+              {filteredRooms.map((room) => {
+                const isClean = room.cleaning_status === "CLEAN";
+                const isDirty = room.cleaning_status === "DIRTY";
+
+                return (
+                  <div
+                    key={room.id}
+                    onClick={() => {
+                      setSelectedRoomModal(room);
+                      setModalTab("ROOM_STAT");
+                    }}
+                    className="room-matrix-card"
+                    style={{
+                      border: "1.5px solid",
+                      borderColor: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--border-default)",
+                      background: "var(--surface-card)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 7px",
+                          borderRadius: "var(--radius-sm)",
+                          background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
+                          color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
+                          border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {room.is_occupied ? "Occupied" : "Vacant"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Floor {room.floor}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--status-amber)" }}>
+                        {room.cleaning_status}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Floor {room.floor}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* TAB: RECLAMATIONS */}
         {activeTab === "RECLAMATIONS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#fbbf24" }}>
-              🛎️ Reclamations Oversight ({filteredReclamations.length})
-            </h3>
-            <div style={{ overflowX: "auto" }}>
+          <div className="ses-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-amber)" }}>
+                  🛎️ Reclamations Oversight ({filteredReclamations.length})
+                </h3>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                  Operational tickets and department dispatches.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <select
+                  value={recStatusFilter}
+                  onChange={(e) => setRecStatusFilter(e.target.value)}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="OPEN">Open Only</option>
+                  <option value="IN_PROGRESS">In Progress Only</option>
+                  <option value="RESOLVED">Resolved Only</option>
+                </select>
+
+                <select
+                  value={recDeptFilter}
+                  onChange={(e) => setRecDeptFilter(e.target.value)}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                >
+                  <option value="ALL">All Departments</option>
+                  {activeDepartments.map((d) => (
+                    <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Desktop Table View (>= 768px) */}
+            <div className="responsive-table-view">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
                 <thead>
-                  <tr style={{ background: "rgba(30, 41, 59, 0.8)", color: "#94a3b8" }}>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "10px" }}>ID / Room</th>
                     <th style={{ padding: "10px" }}>Department</th>
                     <th style={{ padding: "10px" }}>Category / Description</th>
@@ -903,15 +930,15 @@ export default function HrPortal({
                 </thead>
                 <tbody>
                   {filteredReclamations.map((rec) => (
-                    <tr key={rec.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      <td style={{ padding: "10px", fontWeight: 700, color: "#38bdf8" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
-                      <td style={{ padding: "10px", color: "#cbd5e1" }}>{rec.department}</td>
+                    <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
+                      <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
                       <td style={{ padding: "10px" }}>
-                        <div style={{ fontWeight: 700, color: "#fff" }}>{rec.category}</div>
-                        <div style={{ fontSize: 12, color: "#94a3b8" }}>{rec.description}</div>
+                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
                       </td>
                       <td style={{ padding: "10px" }}>
-                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171" }}>
+                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)" }}>
                           {rec.status}
                         </span>
                       </td>
@@ -919,6 +946,67 @@ export default function HrPortal({
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
+            <div className="responsive-cards-view">
+              {filteredReclamations.length === 0 ? (
+                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                  No incident tickets match the selected filters.
+                </div>
+              ) : (
+                filteredReclamations.map((rec) => {
+                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
+                  const isResolved = rec.status === "RESOLVED";
+
+                  return (
+                    <div key={rec.id} className="mobile-ticket-card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
+                            #{rec.id} • {roomNum}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: "var(--radius-sm)",
+                              background: "var(--surface-2)",
+                              border: "1px solid var(--border-subtle)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {rec.department}
+                          </span>
+                        </div>
+
+                        <span
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)",
+                            color: isResolved ? "var(--status-emerald)" : "var(--status-rose)",
+                          }}
+                        >
+                          {rec.status}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+                          {rec.category}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                          {rec.description}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
@@ -1283,6 +1371,6 @@ export default function HrPortal({
           </div>
         </div>
       )}
-    </PortalLayout>
+    </AppShell>
   );
 }

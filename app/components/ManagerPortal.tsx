@@ -4,7 +4,8 @@ import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
-import PortalLayout from "@/app/components/PortalLayout";
+import AppShell from "@/app/components/AppShell";
+import { NavTabItem } from "@/app/components/BottomNav";
 import { computeAllRoomsAnalytics, RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 import {
   resolveConfidentialGrievance,
@@ -303,130 +304,87 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
     deptCounts[r.department] = (deptCounts[r.department] || 0) + 1;
   });
 
+  const openTicketsCount = reclamations.filter(
+    (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
+  ).length;
+
+  const navItems: NavTabItem[] = [
+    {
+      id: "STATS",
+      label: "Dashboard",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="9" />
+          <rect x="14" y="3" width="7" height="5" />
+          <rect x="14" y="12" width="7" height="9" />
+          <rect x="3" y="16" width="7" height="5" />
+        </svg>
+      ),
+      isActive: activeTab === "STATS",
+      onClick: () => setActiveTab("STATS"),
+    },
+    {
+      id: "ROOMS",
+      label: "Rooms",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z" />
+          <path d="M8 7h.01" />
+          <path d="M16 7h.01" />
+          <path d="M12 7h.01" />
+          <path d="M12 11h.01" />
+        </svg>
+      ),
+      badge: totalRooms,
+      isActive: activeTab === "ROOMS",
+      onClick: () => setActiveTab("ROOMS"),
+    },
+    {
+      id: "RECLAMATIONS",
+      label: "Tickets",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        </svg>
+      ),
+      badge: openTicketsCount > 0 ? openTicketsCount : undefined,
+      isActive: activeTab === "RECLAMATIONS",
+      onClick: () => setActiveTab("RECLAMATIONS"),
+    },
+    {
+      id: "ANALYTICS",
+      label: "Analytics",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
+      isActive: activeTab === "ANALYTICS",
+      onClick: () => setActiveTab("ANALYTICS"),
+    },
+  ];
+
   return (
-    <PortalLayout
-      departmentName="General Manager"
-      departmentColor="#fbbf24"
+    <AppShell
+      items={navItems}
+      departmentName="Executive Management"
       departmentCode="GM"
-      sidebar={
-        <>
-          <div>
-            {/* Header */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <h2
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: 800,
-                  margin: 0,
-                  color: "#ffffff",
-                  letterSpacing: "-0.02em",
-                  borderLeft: "3px solid #fbbf24",
-                  paddingLeft: 10,
-                }}
-              >
-                General Manager
-              </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-                Executive Operations
-              </p>
-            </div>
-
-            {/* VERTICAL NAV TABS */}
-            <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
-              {[
-                { id: "STATS", label: "Executive Analytics", count: null, color: "#fbbf24" },
-                { id: "ROOMS", label: "Rooms Matrix", count: totalRooms, color: "#38bdf8" },
-                { id: "RECLAMATIONS", label: "Reclamations", count: reclamations.length, color: "#e879f9" },
-                { id: "ANALYTICS", label: "Room Analytics", count: totalRooms, color: "#f59e0b" },
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 10,
-                      border: "1px solid",
-                      borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                      background: isActive ? `rgba(251, 191, 36, 0.15)` : "rgba(15, 23, 42, 0.5)",
-                      color: isActive ? "#ffffff" : "#c1cad8",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count !== null && (
-                      <span
-                        className="font-mono"
-                        style={{
-                          padding: "2px 7px",
-                          borderRadius: 4,
-                          background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
-                          color: isActive ? "#000" : "#cbd5e1",
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* STACKED EXECUTIVE KPIS */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupancy Rate</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%</strong>
-              </div>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>SLA Compliance</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{slaCompliance}%</strong>
-              </div>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Average MTTR</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: "#38bdf8" }}>{mttrMinutes} min</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* SIDEBAR FOOTER */}
-          <div style={{ marginTop: "1.5rem" }}>
-            <button
-              className="btn-primary"
-              disabled={isPending}
-              onClick={() => {
-                startTransition(async () => {
-                  await logoutRole();
-                  window.location.href = "/login";
-                });
-              }}
-              style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-            >
-              Sign Out
-            </button>
-            <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
-              {" • "}
-              <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
-            </div>
-          </div>
-        </>
-      }
+      departmentColor="var(--accent-amber)"
+      onSignOut={() => {
+        startTransition(async () => {
+          await logoutRole();
+          window.location.href = "/login";
+        });
+      }}
     >
-        {message && (
-          <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(251, 191, 36, 0.15)", border: "1px solid rgba(251, 191, 36, 0.3)", color: "#fbbf24", fontSize: 14, fontWeight: 600 }}>
-            {message}
-          </div>
-        )}
+      {message && (
+        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--accent-amber-bg)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontSize: 14, fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
 
         {/* TAB 1: STATS & GRAPHS */}
         {activeTab === "STATS" && (
@@ -488,9 +446,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
 
         {/* TAB 2: ROOMS MAP */}
         {activeTab === "ROOMS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
-              🔑 Executive Rooms Matrix ({filteredMatrixRooms.length} rooms)
+          <div className="ses-card">
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
+              Executive Rooms Matrix ({filteredMatrixRooms.length} rooms)
             </h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10, maxHeight: 600, overflowY: "auto" }}>
               {filteredMatrixRooms.map((room) => (
@@ -500,19 +458,25 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                     setSelectedRoomModal(room);
                     setModalTab("ROOM_STAT");
                   }}
-                  style={{
-                    background: "rgba(30, 41, 59, 0.6)",
-                    border: "1px solid rgba(56, 189, 248, 0.3)",
-                    borderRadius: 10,
-                    padding: "10px",
-                    cursor: "pointer",
-                  }}
+                  className="room-matrix-card"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 800, color: "var(--text-primary)" }}>
                     <span>Room {room.room_number}</span>
-                    <span style={{ fontSize: 10, color: room.is_occupied ? "#fbbf24" : "#4ade80" }}>{room.is_occupied ? "Occupied" : "Vacant"}</span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 7px",
+                        borderRadius: "var(--radius-sm)",
+                        background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
+                        color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
+                        border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {room.is_occupied ? "Occupied" : "Vacant"}
+                    </span>
                   </div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>Floor {room.floor}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Floor {room.floor}</div>
                 </div>
               ))}
             </div>
@@ -521,14 +485,16 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
 
         {/* TAB 3: RECLAMATIONS */}
         {activeTab === "RECLAMATIONS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "#e879f9" }}>
-              🛎️ All Reclamations Log ({filteredReclamations.length})
+          <div className="ses-card">
+            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
+              Executive Incident Log ({filteredReclamations.length} tickets)
             </h3>
-            <div style={{ overflowX: "auto" }}>
+
+            {/* Desktop Table View (>= 768px) */}
+            <div className="responsive-table-view">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
                 <thead>
-                  <tr style={{ background: "rgba(30, 41, 59, 0.8)", color: "#94a3b8" }}>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "10px" }}>ID / Room</th>
                     <th style={{ padding: "10px" }}>Department</th>
                     <th style={{ padding: "10px" }}>Category / Description</th>
@@ -538,21 +504,21 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                 </thead>
                 <tbody>
                   {filteredReclamations.map((rec) => (
-                    <tr key={rec.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      <td style={{ padding: "10px", fontWeight: 700, color: "#38bdf8" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
-                      <td style={{ padding: "10px", color: "#cbd5e1" }}>{rec.department}</td>
+                    <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
+                      <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
                       <td style={{ padding: "10px" }}>
-                        <div style={{ fontWeight: 700, color: "#fff" }}>{rec.category}</div>
-                        <div style={{ fontSize: 12, color: "#94a3b8" }}>{rec.description}</div>
+                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
                       </td>
                       <td style={{ padding: "10px" }}>
-                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171" }}>
+                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)" }}>
                           {rec.status}
                         </span>
                       </td>
                       <td style={{ padding: "10px", textAlign: "right" }}>
                         {rec.status !== "RESOLVED" && (
-                          <button onClick={() => handleResolveNormalTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "#10b981", border: "none", color: "#000", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          <button onClick={() => handleResolveNormalTicket(rec.id)} style={{ padding: "6px 12px", borderRadius: "var(--radius-sm)", background: "var(--status-emerald)", border: "none", color: "#ffffff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                             Resolve
                           </button>
                         )}
@@ -561,6 +527,82 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Stacked Card View (< 768px) - NO horizontal scroll */}
+            <div className="responsive-cards-view">
+              {filteredReclamations.length === 0 ? (
+                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                  No executive incidents found.
+                </div>
+              ) : (
+                filteredReclamations.map((rec) => {
+                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
+                  const isResolved = rec.status === "RESOLVED";
+
+                  return (
+                    <div key={rec.id} className="mobile-ticket-card">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
+                            #{rec.id} • {roomNum}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: "var(--radius-sm)",
+                              background: "var(--surface-2)",
+                              border: "1px solid var(--border-subtle)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {rec.department}
+                          </span>
+                        </div>
+
+                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
+                          {rec.status}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+                          {rec.category}
+                        </div>
+                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.4 }}>
+                          {rec.description}
+                        </div>
+                      </div>
+
+                      {!isResolved && (
+                        <div style={{ marginTop: 4, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => handleResolveNormalTicket(rec.id)}
+                            style={{
+                              width: "100%",
+                              minHeight: 44,
+                              padding: "8px 12px",
+                              borderRadius: "var(--radius-md)",
+                              background: "var(--status-emerald)",
+                              border: "none",
+                              color: "#ffffff",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Resolve Incident
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
@@ -1298,6 +1340,6 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
           </div>
         </div>
       )}
-    </PortalLayout>
+    </AppShell>
   );
 }

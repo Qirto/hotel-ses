@@ -3,6 +3,7 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/app/components/ServiceWorkerRegistrar";
 import InstallBannerAndroid from "@/app/components/InstallBannerAndroid";
 import InstallBannerIOS from "@/app/components/InstallBannerIOS";
+import { ThemeProvider } from "@/app/components/ThemeProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -10,7 +11,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0b0f17",
+  themeColor: "#070a0f",
 };
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
     "apple-mobile-web-app-title": "Hotel SES",
-    "msapplication-TileColor": "#0b0f17",
+    "msapplication-TileColor": "#070a0f",
     "msapplication-TileImage": "/icons/icon-144x144.png",
   },
 };
@@ -53,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -61,23 +62,21 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem("ses-theme");var t=s||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`,
+          }}
+        />
       </head>
-      <body
-        style={{
-          fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
-          margin: 0,
-          padding: 0,
-          background: "#0b0f17",
-          color: "#f8fafc",
-          minHeight: "100vh",
-        }}
-      >
+      <body>
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <div id="main-content">
-          {children}
-        </div>
+        <ThemeProvider>
+          <div id="main-content">
+            {children}
+          </div>
+        </ThemeProvider>
 
         {/* PWA Components */}
         <ServiceWorkerRegistrar />

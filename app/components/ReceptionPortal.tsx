@@ -4,7 +4,10 @@ import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { HotelRoom, Resident, Department, Reclamation, Staff } from "@/utils/roomsData";
-import PortalLayout from "@/app/components/PortalLayout";
+import AppShell from "@/app/components/AppShell";
+import { NavTabItem } from "@/app/components/BottomNav";
+import FAB from "@/app/components/FAB";
+import BottomSheet from "@/app/components/BottomSheet";
 import {
   createRapidReclamation,
   createHistoricalReclamation,
@@ -67,9 +70,45 @@ export default function ReceptionPortal({
   isLiveSupabase = false,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"ROOMS" | "RECLAMATIONS" | "STATS">("ROOMS");
+  const [activeTab, setActiveTab] = useState<"OVERVIEW" | "ROOMS" | "RECLAMATIONS" | "STATS">("OVERVIEW");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Rapid Incident Dispatch Modal (Bottom Sheet / FAB)
+  const [showNewTicketSheet, setShowNewTicketSheet] = useState(false);
+  const [quickRoom, setQuickRoom] = useState<string>("");
+  const [quickDept, setQuickDept] = useState<string>("TECHNICAL");
+  const [quickCategory, setQuickCategory] = useState<string>("A/C");
+  const [quickPriority, setQuickPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
+  const [quickDesc, setQuickDesc] = useState<string>("");
+
+  const handleQuickTicketSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetRoom = rooms.find((r) => r.room_number.toString() === quickRoom.toString().trim());
+    if (!targetRoom) {
+      alert("Please select or enter a valid room number!");
+      return;
+    }
+    startTransition(async () => {
+      const res = await createRapidReclamation({
+        roomId: targetRoom.id,
+        department: quickDept,
+        category: quickCategory,
+        description: quickDesc.trim() || `${quickCategory} incident reported via Quick Dispatch`,
+        priority: quickPriority,
+        isConfidential: false,
+      });
+      if (res.success) {
+        setMessage(`Incident dispatched for Room ${targetRoom.room_number}!`);
+        setShowNewTicketSheet(false);
+        setQuickDesc("");
+        setQuickRoom("");
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        alert(`Error: ${res.error}`);
+      }
+    });
+  };
 
   // Real-time synchronization
   useEffect(() => {
@@ -329,173 +368,323 @@ export default function ReceptionPortal({
     deptCounts[rec.department] = (deptCounts[rec.department] || 0) + 1;
   });
 
+  const urgentReclamations = reclamationsList.filter(
+    (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && (r.priority === "HIGH" || r.priority === "EMERGENCY")
+  );
+
+  const navItems: NavTabItem[] = [
+    {
+      id: "OVERVIEW",
+      label: "Overview",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      ),
+      isActive: activeTab === "OVERVIEW",
+      onClick: () => setActiveTab("OVERVIEW"),
+    },
+    {
+      id: "ROOMS",
+      label: "Rooms",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z" />
+          <path d="M8 7h.01" />
+          <path d="M16 7h.01" />
+          <path d="M12 7h.01" />
+          <path d="M12 11h.01" />
+        </svg>
+      ),
+      badge: totalRooms,
+      isActive: activeTab === "ROOMS",
+      onClick: () => setActiveTab("ROOMS"),
+    },
+    {
+      id: "RECLAMATIONS",
+      label: "Tickets",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        </svg>
+      ),
+      badge: openReclamationsCount > 0 ? openReclamationsCount : undefined,
+      isActive: activeTab === "RECLAMATIONS",
+      onClick: () => setActiveTab("RECLAMATIONS"),
+    },
+    {
+      id: "STATS",
+      label: "Stats",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
+      isActive: activeTab === "STATS",
+      onClick: () => setActiveTab("STATS"),
+    },
+  ];
+
   return (
-    <PortalLayout
-      departmentName="Reception Desk"
-      departmentColor="#38bdf8"
+    <AppShell
+      items={navItems}
+      departmentName="Reception Operations"
       departmentCode="Reception"
-      sidebar={
-        <>
-          <div>
-            {/* Header */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <h2
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: 800,
-                  margin: 0,
-                  color: "#ffffff",
-                  letterSpacing: "-0.02em",
-                  borderLeft: "3px solid #38bdf8",
-                  paddingLeft: 10,
-                }}
-              >
-                Front Desk
-              </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
-                Reception Operations
-              </p>
-            </div>
-
-            {/* VERTICAL SIDEBAR TABS */}
-            <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
-              {[
-                { id: "ROOMS", label: "Rooms Grid", count: totalRooms, color: "#38bdf8" },
-                { id: "RECLAMATIONS", label: "Reclamations", count: reclamationsList.length, color: "#e879f9" },
-                { id: "STATS", label: "Analytics & Stats", count: null, color: "#fbbf24" },
-              ].map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 10,
-                      border: "1px solid",
-                      borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                      background: isActive ? `rgba(56, 189, 248, 0.15)` : "rgba(30, 41, 59, 0.4)",
-                      color: isActive ? "#ffffff" : "#c1cad8",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count !== null && (
-                      <span
-                        className="font-mono"
-                        style={{
-                          padding: "2px 7px",
-                          borderRadius: 4,
-                          background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
-                          color: isActive ? "#000" : "#cbd5e1",
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* STACKED QUICK METRICS CARDS */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupied Rooms</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{occupiedCount} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)</strong>
-              </div>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Vacant Clean</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{vacantCleanCount}</strong>
-              </div>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Dirty Rooms</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: dirtyCount > 0 ? "#f87171" : "#4ade80" }}>{dirtyCount}</strong>
-              </div>
-              <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "#c1cad8" }}>Open Reclamations</span>
-                <strong className="font-mono" style={{ fontSize: 13, color: openReclamationsCount > 0 ? "#e879f9" : "#4ade80" }}>{openReclamationsCount}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* SIDEBAR FOOTER & LOG OUT */}
-          <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              className="btn-primary"
-              onClick={() => setShowHistoryModal(true)}
-              style={{
-                width: "100%",
-                padding: "9px",
-                borderRadius: 8,
-                border: "1px solid rgba(251, 191, 36, 0.4)",
-                background: "rgba(251, 191, 36, 0.15)",
-                color: "#fbbf24",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Backfill Past Ticket
-            </button>
-
-            <button
-              className="btn-primary"
-              disabled={isPending}
-              onClick={() => {
-                startTransition(async () => {
-                  await logoutRole();
-                  window.location.href = "/login";
-                });
-              }}
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 8,
-                border: "1px solid rgba(239, 68, 68, 0.4)",
-                background: "rgba(239, 68, 68, 0.15)",
-                color: "#f87171",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Sign Out
-            </button>
-            <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
-              {" • "}
-              <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
-            </div>
-          </div>
-        </>
+      departmentColor="var(--accent-amber)"
+      onSignOut={() => {
+        startTransition(async () => {
+          await logoutRole();
+          window.location.href = "/login";
+        });
+      }}
+      headerActions={
+        <button
+          type="button"
+          onClick={() => setShowHistoryModal(true)}
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            padding: "6px 10px",
+            color: "var(--accent-amber)",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span>+ Backfill</span>
+        </button>
       }
     >
-        {message && (
-          <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: 10, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 14, fontWeight: 600 }}>
-            {message}
-          </div>
-        )}
+      {message && (
+        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--accent-amber-bg)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontSize: 14, fontWeight: 600 }}>
+          {message}
+        </div>
+      )}
 
-        {/* ========================================================================= */}
-        {/* TAB 1: ROOMS GRID */}
-        {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* TAB 0: OVERVIEW / DASHBOARD SUMMARY */}
+      {/* ========================================================================= */}
+      {activeTab === "OVERVIEW" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Top Hero Banner */}
+          <div
+            className="ses-card"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 16,
+              background: "linear-gradient(135deg, var(--surface-card), var(--surface-2))",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+                Front Desk Overview
+              </h2>
+              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                Live property matrix, guest requests, and room dispatch status.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowNewTicketSheet(true)}
+                className="btn-primary"
+                style={{
+                  background: "var(--accent-amber)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: "9px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span>+ Dispatch Ticket</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                style={{
+                  background: "var(--surface-2)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "9px 14px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Past Logbook
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Metrics Matrix */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Occupied Rooms</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
+                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: "var(--accent-amber)" }}>
+                  {occupiedCount}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  / {totalRooms} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)
+                </span>
+              </div>
+            </div>
+
+            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Vacant Clean</div>
+              <div style={{ marginTop: 6 }}>
+                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: "var(--status-emerald)" }}>
+                  {vacantCleanCount}
+                </span>
+              </div>
+            </div>
+
+            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Dirty Rooms</div>
+              <div style={{ marginTop: 6 }}>
+                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: dirtyCount > 0 ? "var(--status-rose)" : "var(--status-emerald)" }}>
+                  {dirtyCount}
+                </span>
+              </div>
+            </div>
+
+            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("RECLAMATIONS")}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Open Reclamations</div>
+              <div style={{ marginTop: 6 }}>
+                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: openReclamationsCount > 0 ? "var(--status-amber)" : "var(--status-emerald)" }}>
+                  {openReclamationsCount}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Urgent Incident Queue */}
+          <div className="ses-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 9999, background: urgentReclamations.length > 0 ? "var(--status-rose)" : "var(--status-emerald)" }} />
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                  High-Priority Incidents ({urgentReclamations.length})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("RECLAMATIONS")}
+                style={{ background: "transparent", border: "none", color: "var(--accent-amber)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                View All Tickets →
+              </button>
+            </div>
+
+            {urgentReclamations.length === 0 ? (
+              <div style={{ padding: "1.5rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                All high-priority queues are clear. No pending escalations.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {urgentReclamations.map((rec) => (
+                  <div
+                    key={rec.id}
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: "var(--radius-md)",
+                      padding: "10px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 10,
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "var(--status-rose)", background: "var(--status-rose-bg)", padding: "2px 6px", borderRadius: "var(--radius-sm)" }}>
+                          {rec.priority}
+                        </span>
+                        <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>
+                          Room {rec.room?.room_number || rec.room_id} • {rec.category}
+                        </strong>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({rec.department})</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
+                        {rec.description}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {rec.status === "OPEN" && (
+                        <button
+                          type="button"
+                          onClick={() => handleAcknowledgeTicket(rec.id)}
+                          style={{
+                            background: "var(--surface-3)",
+                            border: "1px solid var(--border-subtle)",
+                            borderRadius: "var(--radius-sm)",
+                            padding: "6px 10px",
+                            color: "var(--text-primary)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Acknowledge
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleResolveTicket(rec.id)}
+                        style={{
+                          background: "var(--status-emerald)",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Resolve
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 1: ROOMS GRID */}
+      {/* ========================================================================= */}
         {activeTab === "ROOMS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="ses-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
                   Rooms Matrix ({filteredRooms.length} rooms)
                 </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#8b97a8" }}>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
                   Select any room card to inspect stay details, service requests, and history.
                 </p>
               </div>
@@ -507,13 +696,13 @@ export default function ReceptionPortal({
                   placeholder="Search room #..."
                   value={roomSearch}
                   onChange={(e) => setRoomSearch(e.target.value)}
-                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
                 />
 
                 <select
                   value={floorFilter}
                   onChange={(e) => setFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
                 >
                   <option value="ALL">All Floors</option>
                   <option value={1}>Floor 1</option>
@@ -524,7 +713,7 @@ export default function ReceptionPortal({
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="OCCUPIED">Occupied Only</option>
@@ -548,37 +737,41 @@ export default function ReceptionPortal({
                       setSelectedRoomModal(room);
                       setModalTab("ROOM_STAT");
                     }}
+                    className="room-matrix-card"
                     style={{
-                      background: "rgba(30, 41, 59, 0.6)",
                       border: "1.5px solid",
-                      borderColor: isDirty ? "rgba(239, 68, 68, 0.4)" : isClean ? "rgba(34, 197, 94, 0.3)" : "rgba(56, 189, 248, 0.3)",
-                      borderRadius: 12,
-                      padding: "12px",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                      transition: "transform 0.15s ease, border-color 0.15s ease",
+                      borderColor: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--border-default)",
+                      background: "var(--surface-card)",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>Room {room.room_number}</span>
-                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: room.is_occupied ? "#f59e0b" : "#10b981", color: "#000", fontWeight: 800 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 7px",
+                          borderRadius: "var(--radius-sm)",
+                          background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
+                          color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
+                          border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
+                          fontWeight: 800,
+                        }}
+                      >
                         {room.is_occupied ? "Occupied" : "Vacant"}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
                       Floor {room.floor} • {room.block?.replace("_", " ") || "Main"}
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                      <span style={{ fontSize: 10, color: isDirty ? "#f87171" : isClean ? "#4ade80" : "#fbbf24", fontWeight: 700 }}>
-                        {isDirty ? "🧹 DIRTY" : isClean ? "✨ CLEAN" : `🧼 ${room.cleaning_status}`}
+                      <span style={{ fontSize: 11, color: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--status-amber)", fontWeight: 700 }}>
+                        {isDirty ? "DIRTY" : isClean ? "CLEAN" : room.cleaning_status}
                       </span>
                       {roomTicketCount > 0 && (
-                        <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 4, background: "rgba(232, 121, 249, 0.2)", color: "#e879f9", fontWeight: 800 }}>
-                          🛎️ {roomTicketCount}
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: "var(--radius-sm)", background: "var(--status-purple-bg)", color: "var(--status-purple)", border: "1px solid var(--status-purple)", fontWeight: 800 }}>
+                          {roomTicketCount} {roomTicketCount === 1 ? "ticket" : "tickets"}
                         </span>
                       )}
                     </div>
@@ -593,17 +786,22 @@ export default function ReceptionPortal({
         {/* TAB 2: RECLAMATIONS */}
         {/* ========================================================================= */}
         {activeTab === "RECLAMATIONS" && (
-          <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="ses-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#e879f9" }}>
-                🛎️ Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
-              </h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                  Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
+                </h3>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                  Live operational tickets across all departments with status resolution.
+                </p>
+              </div>
 
               <div style={{ display: "flex", gap: 8 }}>
                 <select
                   value={recStatusFilter}
                   onChange={(e) => setRecStatusFilter(e.target.value as any)}
-                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="OPEN">Open Only</option>
@@ -614,7 +812,7 @@ export default function ReceptionPortal({
                 <select
                   value={recDeptFilter}
                   onChange={(e) => setRecDeptFilter(e.target.value)}
-                  style={{ padding: "6px 10px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
                 >
                   <option value="ALL">All Departments</option>
                   {allDepartments.map((d) => (
@@ -624,10 +822,11 @@ export default function ReceptionPortal({
               </div>
             </div>
 
-            <div style={{ overflowX: "auto" }}>
+            {/* Desktop Table View (>= 768px) */}
+            <div className="responsive-table-view">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
                 <thead>
-                  <tr style={{ background: "rgba(30, 41, 59, 0.8)", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}>
+                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
                     <th style={{ padding: "10px" }}>ID / Room</th>
                     <th style={{ padding: "10px" }}>Department</th>
                     <th style={{ padding: "10px" }}>Category / Description</th>
@@ -643,20 +842,20 @@ export default function ReceptionPortal({
                     const isOpen = rec.status === "OPEN";
 
                     return (
-                      <tr key={rec.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        <td style={{ padding: "10px", fontWeight: 700, color: "#38bdf8" }}>#{rec.id} • {roomNum}</td>
-                        <td style={{ padding: "10px", color: "#cbd5e1" }}>{rec.department}</td>
+                      <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • {roomNum}</td>
+                        <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
                         <td style={{ padding: "10px" }}>
-                          <div style={{ fontWeight: 700, color: "#f8fafc" }}>{rec.category}</div>
-                          <div style={{ fontSize: 12, color: "#94a3b8" }}>{rec.description}</div>
+                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
                         </td>
                         <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "#ef4444" : rec.priority === "HIGH" ? "#f59e0b" : "rgba(59,130,246,0.3)", color: "#fff" }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--status-rose)" : rec.priority === "HIGH" ? "var(--status-amber)" : "var(--accent-amber-bg)", color: rec.priority === "EMERGENCY" || rec.priority === "HIGH" ? "#fff" : "var(--text-primary)" }}>
                             {rec.priority || "STANDARD"}
                           </span>
                         </td>
                         <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: isResolved ? "#4ade80" : "#f87171" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
                             {rec.status}
                           </span>
                         </td>
@@ -664,11 +863,11 @@ export default function ReceptionPortal({
                           {!isResolved && (
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               {isOpen && (
-                                <button disabled={isPending} onClick={() => handleAcknowledgeTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "#3b82f6", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                <button disabled={isPending} onClick={() => handleAcknowledgeTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--surface-3)", border: "none", color: "var(--text-primary)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                   In Progress
                                 </button>
                               )}
-                              <button disabled={isPending} onClick={() => handleResolveTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "#10b981", border: "none", color: "#000", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                              <button disabled={isPending} onClick={() => handleResolveTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--status-emerald)", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                 Resolve
                               </button>
                             </div>
@@ -680,6 +879,112 @@ export default function ReceptionPortal({
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Stacked Card View (< 768px) - NO horizontal scroll */}
+            <div className="responsive-cards-view">
+              {filteredReclamations.length === 0 ? (
+                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                  No incident tickets match the selected filters.
+                </div>
+              ) : (
+                filteredReclamations.map((rec) => {
+                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
+                  const isResolved = rec.status === "RESOLVED";
+                  const isOpen = rec.status === "OPEN";
+
+                  return (
+                    <div key={rec.id} className="mobile-ticket-card">
+                      {/* Top Header Row */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
+                            #{rec.id} • {roomNum}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: "var(--radius-sm)",
+                              background: "var(--surface-2)",
+                              border: "1px solid var(--border-subtle)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {rec.department}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--status-rose)" : rec.priority === "HIGH" ? "var(--status-amber)" : "var(--accent-amber-bg)", color: rec.priority === "EMERGENCY" || rec.priority === "HIGH" ? "#fff" : "var(--text-primary)" }}>
+                            {rec.priority || "STANDARD"}
+                          </span>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
+                            {rec.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content Body */}
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+                          {rec.category}
+                        </div>
+                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
+                          {rec.description}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons for Mobile (Touch-friendly 44px) */}
+                      {!isResolved && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 4, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
+                          {isOpen && (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() => handleAcknowledgeTicket(rec.id)}
+                              style={{
+                                flex: 1,
+                                minHeight: 44,
+                                padding: "8px 12px",
+                                borderRadius: "var(--radius-md)",
+                                background: "var(--surface-2)",
+                                border: "1px solid var(--border-default)",
+                                color: "var(--text-primary)",
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              In Progress
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isPending}
+                            onClick={() => handleResolveTicket(rec.id)}
+                            style={{
+                              flex: 1,
+                              minHeight: 44,
+                              padding: "8px 12px",
+                              borderRadius: "var(--radius-md)",
+                              background: "var(--status-emerald)",
+                              border: "none",
+                              color: "#ffffff",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         )}
 
@@ -688,7 +993,7 @@ export default function ReceptionPortal({
         {/* ========================================================================= */}
         {activeTab === "STATS" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="ses-card">
               <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#38bdf8" }}>
                 📊 Room State Distribution Graph
               </h4>
@@ -1162,6 +1467,137 @@ export default function ReceptionPortal({
           </div>
         </div>
       )}
-    </PortalLayout>
+      {/* FLOATING ACTION BUTTON FOR RAPID DISPATCH */}
+      <FAB
+        onClick={() => setShowNewTicketSheet(true)}
+        label="Quick Incident Dispatch"
+      />
+
+      {/* RAPID INCIDENT DISPATCH BOTTOM SHEET */}
+      <BottomSheet
+        isOpen={showNewTicketSheet}
+        onClose={() => setShowNewTicketSheet(false)}
+        title="Quick Incident Dispatch"
+        subtitle="Log and route guest service requests immediately"
+      >
+        <form onSubmit={handleQuickTicketSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Room Number
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. 101, 204..."
+              value={quickRoom}
+              onChange={(e) => setQuickRoom(e.target.value)}
+              className="ses-input"
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+                Department
+              </label>
+              <select
+                value={quickDept}
+                onChange={(e) => {
+                  setQuickDept(e.target.value);
+                  const presets = PRESET_ISSUES[e.target.value];
+                  if (presets && presets.length > 0) {
+                    setQuickCategory(presets[0].category);
+                  }
+                }}
+                className="ses-select"
+              >
+                <option value="TECHNICAL">Technical / Maintenance</option>
+                <option value="HOUSEKEEPING">Housekeeping</option>
+                <option value="FOOD_AND_BEVERAGE">Food & Beverage</option>
+                <option value="CONCIERGE">Concierge & Front Desk</option>
+                <option value="SECURITY">Security & Safety</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+                Category
+              </label>
+              <select
+                value={quickCategory}
+                onChange={(e) => setQuickCategory(e.target.value)}
+                className="ses-select"
+              >
+                {(PRESET_ISSUES[quickDept] || DEFAULT_PRESETS).map((p) => (
+                  <option key={p.category} value={p.category}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Priority Level
+            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {(["STANDARD", "HIGH", "EMERGENCY"] as const).map((pr) => (
+                <button
+                  key={pr}
+                  type="button"
+                  onClick={() => setQuickPriority(pr)}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid",
+                    borderColor: quickPriority === pr ? "var(--accent-amber)" : "var(--border-subtle)",
+                    background: quickPriority === pr ? "var(--accent-amber-bg)" : "var(--surface-2)",
+                    color: quickPriority === pr ? "var(--accent-amber)" : "var(--text-muted)",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {pr}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Incident Details
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Describe guest request or observation..."
+              value={quickDesc}
+              onChange={(e) => setQuickDesc(e.target.value)}
+              className="ses-textarea"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="btn-primary"
+            style={{
+              padding: "11px",
+              borderRadius: "var(--radius-md)",
+              background: "var(--accent-amber)",
+              color: "#ffffff",
+              border: "none",
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: "pointer",
+              marginTop: 6,
+            }}
+          >
+            {isPending ? "Dispatching..." : "Dispatch Incident Now"}
+          </button>
+        </form>
+      </BottomSheet>
+    </AppShell>
   );
 }

@@ -12,7 +12,7 @@ export default async function RhPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#041c14", color: "#f8fafc", padding: "1rem 0" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface-0)", color: "var(--text-primary)" }}>
       <HrPortal
         staffList={staffList}
         departmentsList={departmentsList}

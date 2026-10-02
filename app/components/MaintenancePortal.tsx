@@ -75,16 +75,16 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Top Banner */}
-      <div style={{ background: "rgba(15, 23, 42, 0.7)", padding: "1rem 1.25rem", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "#38bdf8" }}>
+      <div className="ses-card" style={{ padding: "1rem 1.25rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: 0, color: "var(--accent-amber)" }}>
             🔧 Technical Maintenance Task Queue
           </h2>
-          <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", fontWeight: 700, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+          <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 999, background: "var(--accent-amber-bg)", color: "var(--accent-amber)", fontWeight: 700, border: "1px solid var(--accent-amber)" }}>
             Room Repair Fixes Only
           </span>
         </div>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
           Room fix and repair dispatches. <em>(Note: Housekeeping & missing item tickets are excluded here and routed directly to Housekeeping & GM).</em>
         </p>
       </div>
@@ -92,11 +92,11 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
       {/* Control / Filter Bar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Technician</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Technician</label>
           <select
             value={selectedTechId}
             onChange={(e) => setSelectedTechId(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
           >
             <option value="ALL">All Technicians</option>
             {technicians.map((t) => (
@@ -108,11 +108,11 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Filter by Skill / Category</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Filter by Skill / Category</label>
           <select
             value={selectedSkill}
             onChange={(e) => setSelectedSkill(e.target.value)}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
           >
             <option value="ALL">All Categories</option>
             <option value="A/C">A/C / HVAC</option>
@@ -126,7 +126,7 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
       {/* Task Cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {filteredTasks.length === 0 ? (
-          <div style={{ padding: "2rem", textAlign: "center", background: "rgba(30, 41, 59, 0.4)", borderRadius: 12, color: "#94a3b8" }}>
+          <div className="ses-card" style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
             🎉 No maintenance tasks pending right now!
           </div>
         ) : (
@@ -140,24 +140,18 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
             return (
               <div
                 key={task.id}
+                className="mobile-ticket-card"
                 style={{
-                  padding: "16px",
-                  borderRadius: 14,
-                  background: isUrgent ? "rgba(239, 68, 68, 0.1)" : "rgba(30, 41, 59, 0.6)",
-                  border: isUrgent ? "1px solid rgba(239, 68, 68, 0.4)" : "1px solid rgba(255,255,255,0.08)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 12,
+                  background: isUrgent ? "var(--status-rose-bg)" : "var(--surface-card)",
+                  border: isUrgent ? "1.5px solid var(--status-rose)" : "1px solid var(--border-default)",
                 }}
               >
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: "var(--accent-amber)" }}>
                       Room #{task.room?.room_number || task.room_id}
                     </span>
-                    <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 4, background: "rgba(255,255,255,0.1)", color: "#cbd5e1", fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 4, background: "var(--surface-2)", color: "var(--text-secondary)", fontWeight: 700 }}>
                       {task.category}
                     </span>
                     <span
@@ -166,8 +160,9 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
                         padding: "2px 8px",
                         borderRadius: 4,
                         fontWeight: 700,
-                        background: task.priority === "HIGH" || task.priority === "EMERGENCY" ? "rgba(239, 68, 68, 0.2)" : "rgba(56, 189, 248, 0.2)",
-                        color: task.priority === "HIGH" || task.priority === "EMERGENCY" ? "#f87171" : "#38bdf8",
+                        background: task.priority === "HIGH" || task.priority === "EMERGENCY" ? "var(--status-rose-bg)" : "var(--status-amber-bg)",
+                        color: task.priority === "HIGH" || task.priority === "EMERGENCY" ? "var(--status-rose)" : "var(--status-amber)",
+                        border: `1px solid ${task.priority === "HIGH" || task.priority === "EMERGENCY" ? "var(--status-rose)" : "var(--status-amber)"}`,
                       }}
                     >
                       {task.priority}
@@ -180,27 +175,27 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
                         padding: "2px 8px",
                         borderRadius: 4,
                         fontWeight: 700,
-                        background: task.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : task.status === "IN_PROGRESS" ? "rgba(56, 189, 248, 0.2)" : "rgba(245, 158, 11, 0.2)",
-                        color: task.status === "RESOLVED" ? "#4ade80" : task.status === "IN_PROGRESS" ? "#38bdf8" : "#fbbf24",
+                        background: task.status === "RESOLVED" ? "var(--status-emerald-bg)" : task.status === "IN_PROGRESS" ? "var(--accent-amber-bg)" : "var(--status-amber-bg)",
+                        color: task.status === "RESOLVED" ? "var(--status-emerald)" : task.status === "IN_PROGRESS" ? "var(--accent-amber)" : "var(--status-amber)",
                       }}
                     >
                       {task.status}
                     </span>
                   </div>
 
-                  <p style={{ margin: "4px 0 8px", fontSize: 14, color: "#f8fafc" }}>
+                  <p style={{ margin: "4px 0 8px", fontSize: 14, color: "var(--text-primary)" }}>
                     {task.description}
                   </p>
 
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                    Assigned: <strong style={{ color: "#cbd5e1" }}>{task.assigned_to?.full_name || "Auto-routed"}</strong>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    Assigned: <strong style={{ color: "var(--text-secondary)" }}>{task.assigned_to?.full_name || "Auto-routed"}</strong>
                   </div>
                 </div>
 
                 {/* Right Action & Countdown */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, marginTop: 8 }}>
                   {task.status === "OPEN" && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: isUrgent ? "#f87171" : "#fbbf24", fontWeight: 700 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: isUrgent ? "var(--status-rose)" : "var(--status-amber)", fontWeight: 700 }}>
                       <span>⏱️ 3-min Acknowledge:</span>
                       <span>
                         {remainingSeconds > 0
@@ -215,7 +210,7 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
                       <button
                         disabled={isPending}
                         onClick={() => handleAcknowledge(task.id)}
-                        style={{ padding: "8px 14px", borderRadius: 8, background: "#0284c7", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                        style={{ padding: "8px 14px", borderRadius: 8, background: "var(--accent-amber)", border: "none", color: "#000", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
                       >
                         ✋ Acknowledge Task
                       </button>
@@ -224,7 +219,7 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
                     {task.status === "IN_PROGRESS" && resolvingId !== task.id && (
                       <button
                         onClick={() => setResolvingId(task.id)}
-                        style={{ padding: "8px 14px", borderRadius: 8, background: "#16a34a", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                        style={{ padding: "8px 14px", borderRadius: 8, background: "var(--status-emerald)", border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
                       >
                         ✔️ Mark Resolved
                       </button>
@@ -232,25 +227,25 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
                   </div>
 
                   {resolvingId === task.id && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "#0f172a", padding: 10, borderRadius: 8, border: "1px solid #334155" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--surface-2)", padding: 10, borderRadius: 8, border: "1px solid var(--border-default)" }}>
                       <input
                         type="text"
                         placeholder="Resolution note (e.g. Replaced fuse)..."
                         value={resolutionNote}
                         onChange={(e) => setResolutionNote(e.target.value)}
-                        style={{ padding: 6, borderRadius: 4, background: "#1e293b", border: "1px solid #475569", color: "#fff", fontSize: 12 }}
+                        style={{ padding: 6, borderRadius: 4, background: "var(--surface-card)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12 }}
                       />
                       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                         <button
                           onClick={() => setResolvingId(null)}
-                          style={{ padding: "4px 8px", borderRadius: 4, background: "transparent", border: "1px solid #64748b", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}
+                          style={{ padding: "4px 8px", borderRadius: 4, background: "transparent", border: "1px solid var(--border-default)", color: "var(--text-muted)", fontSize: 11, cursor: "pointer" }}
                         >
                           Cancel
                         </button>
                         <button
                           disabled={isPending}
                           onClick={() => handleResolve(task.id)}
-                          style={{ padding: "4px 10px", borderRadius: 4, background: "#16a34a", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                          style={{ padding: "4px 10px", borderRadius: 4, background: "var(--status-emerald)", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                         >
                           Confirm Resolved
                         </button>

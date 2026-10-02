@@ -12,7 +12,7 @@ export default async function GmPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0d0b1e", color: "#f8fafc", padding: "1rem 0" }}>
+    <main style={{ minHeight: "100vh", background: "var(--surface-0)", color: "var(--text-primary)" }}>
       <ManagerPortal
         rooms={rooms}
         reclamations={reclamationsList}
