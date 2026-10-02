@@ -1,4 +1,4 @@
-const CACHE_NAME = "hotel-ses-v1";
+const CACHE_NAME = "hotel-ses-v2";
 const PRECACHE_URLS = [
   "/login",
   "/offline",
