@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hotel Room Management System",
-  description: "Hotel room management database & floor plan powered by Supabase and Next.js",
+  title: "Hotel SES - Luxury Property & Incident Management System",
+  description: "Hotel SES operational dashboard, room state matrix, and incident dispatch platform powered by Next.js and Supabase.",
 };
 
 export default function RootLayout({
@@ -29,7 +30,12 @@ export default function RootLayout({
           color: "#f8fafc",
         }}
       >
-        {children}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <div id="main-content">
+          {children}
+        </div>
       </body>
     </html>
   );

@@ -55,8 +55,10 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
           boxShadow: "0 20px 40px rgba(239, 68, 68, 0.2)",
         }}
       >
-        <div style={{ fontSize: 48, marginBottom: 12 }}>⛔</div>
-        <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 999, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#f87171", fontSize: 12, fontWeight: 800, marginBottom: 14 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>
+          <span aria-hidden="true">⛔</span>
+        </div>
+        <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 999, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#fca5a5", fontSize: 12, fontWeight: 800, marginBottom: 14 }}>
           HTTP 403 FORBIDDEN • ROLE MISMATCH
         </div>
 
@@ -68,14 +70,15 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
           This portal is strictly restricted to <strong>{requiredRoleName}</strong> users only.
         </p>
 
-        <div style={{ padding: "12px", borderRadius: 10, background: "rgba(30, 41, 59, 0.6)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 13, color: "#94a3b8", marginBottom: 20 }}>
-          Your current session: <strong style={{ color: "#f87171" }}>{currentRoleName}</strong>
+        <div style={{ padding: "12px", borderRadius: 10, background: "rgba(30, 41, 59, 0.7)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, color: "#cbd5e1", marginBottom: 20 }}>
+          Your current session: <strong style={{ color: "#fca5a5" }}>{currentRoleName}</strong>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {currentRole && currentRole !== requiredRole && (
             <button
               onClick={() => router.push(`/${currentRole}`)}
+              aria-label={`Return to your authorized portal: ${ROLE_NAMES[currentRole] || currentRole}`}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -95,6 +98,7 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
           <button
             disabled={isPending}
             onClick={handleLogout}
+            aria-label="Log Out and return to Portal Gateway Login"
             style={{
               width: "100%",
               padding: "12px",

@@ -601,3 +601,85 @@ export async function deleteDepartment(departmentId: number) {
   return { success: true };
 }
 
+// =====================================================================
+// DATA PRIVACY & COMPLIANCE ACTIONS (GDPR / RIGHT TO BE FORGOTTEN)
+// =====================================================================
+
+export async function anonymizeStaffRecord(staffId: number) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("staff")
+    .update({
+      full_name: "Former Staff Member",
+      phone_number: null,
+      skill_tags: [],
+      shift_status: "OFF_SHIFT",
+      is_present: false,
+    })
+    .eq("id", staffId);
+
+  if (error) {
+    console.error("Failed to anonymize staff record:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/rh");
+  return { success: true };
+}
+
+export async function exportStaffData(staffId: number) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: staff, error: staffError } = await supabase
+    .from("staff")
+    .select("*")
+    .eq("id", staffId)
+    .single();
+
+  if (staffError || !staff) {
+    return { success: false, error: staffError?.message || "Staff member not found" };
+  }
+
+  const { data: tickets } = await supabase
+    .from("reclamations")
+    .select("id, room_id, department, category, status, priority, created_at, resolved_at")
+    .eq("assigned_staff_id", staffId);
+
+  return {
+    success: true,
+    data: {
+      profile: staff,
+      assignedTickets: tickets || [],
+      exportedAt: new Date().toISOString(),
+      entity: "Grand Palace Hotel Management S.A.S.",
+    },
+  };
+}
+
+export async function purgeCheckedOutResidentData(residentId: number) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("residents")
+    .update({
+      first_name: "Archived",
+      last_name: "Guest",
+      phone_number: null,
+    })
+    .eq("id", residentId)
+    .eq("status", "CHECKED_OUT");
+
+  if (error) {
+    console.error("Failed to purge checked-out resident data:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/reception");
+  return { success: true };
+}
+
+

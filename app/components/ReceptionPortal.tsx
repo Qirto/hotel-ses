@@ -469,8 +469,13 @@ export default function ReceptionPortal({
               cursor: "pointer",
             }}
           >
-            🔒 Log Out & Exit
+            <span aria-hidden="true">🔒 </span>Log Out & Exit
           </button>
+          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#cbd5e1" }}>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
+            {" • "}
+            <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
+          </div>
         </div>
       </aside>
 
