@@ -154,7 +154,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="Enter 4-digit code (e.g. 1111)"
+                  placeholder="Enter your access passcode"
                   disabled={isPending || Boolean(successRole)}
                   style={{
                     width: "100%",
@@ -172,6 +172,7 @@ export default function LoginPage() {
                     boxSizing: "border-box",
                     outline: "none",
                     transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                    /* Override global focus ring with amber */
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = "#d97706";
@@ -284,7 +285,10 @@ export default function LoginPage() {
                 width: "100%",
                 height: 48,
                 borderRadius: 10,
-                background: "#d97706",
+                background:
+                  passcode.trim() && !isPending && !successRole
+                    ? "#d97706"
+                    : "#92400e",
                 border: "none",
                 color: "#ffffff",
                 fontSize: "0.9375rem",
@@ -294,8 +298,12 @@ export default function LoginPage() {
                 justifyContent: "center",
                 gap: 8,
                 cursor: isPending || !passcode.trim() ? "not-allowed" : "pointer",
-                opacity: isPending || !passcode.trim() ? 0.6 : 1,
-                boxShadow: "0 4px 14px rgba(217, 119, 6, 0.35)",
+                opacity: isPending || !passcode.trim() ? 0.7 : 1,
+                transition: "background 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease",
+                boxShadow:
+                  passcode.trim() && !isPending && !successRole
+                    ? "0 4px 20px rgba(217, 119, 6, 0.45)"
+                    : "none",
               }}
             >
               {isPending ? (

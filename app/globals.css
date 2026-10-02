@@ -246,3 +246,13 @@
   }
 }
 
+/* =====================================================================
+   LOGIN PAGE — Amber Focus Ring Override (brand-consistent)
+   Scoped to #passcode-input to preserve WCAG blue focus elsewhere
+   ===================================================================== */
+#passcode-input:focus-visible {
+  outline: 2px solid #d97706 !important;
+  outline-offset: 0px !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2) !important;
+  border-color: #d97706 !important;
+}
