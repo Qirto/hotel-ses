@@ -12,7 +12,7 @@ export default function TermsOfServicePage() {
     <main
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0b0f17 0%, #0f172a 100%)",
+        background: "#0b0f17",
         color: "#f8fafc",
         padding: "3rem 1.5rem",
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
@@ -50,17 +50,19 @@ export default function TermsOfServicePage() {
           <div
             style={{
               display: "inline-block",
-              padding: "4px 12px",
-              borderRadius: 999,
+              padding: "3px 8px",
+              borderRadius: 4,
               background: "rgba(251, 191, 36, 0.15)",
               border: "1px solid rgba(251, 191, 36, 0.3)",
               color: "#fbbf24",
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
               marginBottom: 12,
             }}
           >
-            GOVERNANCE & SYSTEM SECURITY
+            Governance & System Security
           </div>
           <h1 style={{ fontSize: "2.4rem", fontWeight: 800, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
             Acceptable Use Policy & Staff Terms

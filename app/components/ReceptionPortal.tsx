@@ -337,36 +337,43 @@ export default function ReceptionPortal({
         style={{
           width: 270,
           flexShrink: 0,
-          background: "rgba(15, 23, 42, 0.85)",
-          border: "1px solid rgba(56, 189, 248, 0.25)",
-          borderRadius: 20,
+          background: "#111827",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: 16,
           padding: "1.25rem",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          boxShadow: "0 10px 30px rgba(2, 132, 199, 0.15)",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
         }}
       >
         <div>
           {/* Header */}
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
-              <span>🛎️ RECEPTION PORTAL</span>
-            </div>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "-0.02em" }}>
-              Front Desk Workspace
+            <h2
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 800,
+                margin: 0,
+                color: "#ffffff",
+                letterSpacing: "-0.02em",
+                borderLeft: "3px solid #38bdf8",
+                paddingLeft: 10,
+              }}
+            >
+              Front Desk
             </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
-              Cyan Luxury Reception Theme
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8b97a8", paddingLeft: 10 }}>
+              Reception Operations
             </p>
           </div>
 
           {/* VERTICAL SIDEBAR TABS */}
           <nav style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "1.5rem" }}>
             {[
-              { id: "ROOMS", label: "🏨 1. Rooms Grid", count: totalRooms, color: "#38bdf8" },
-              { id: "RECLAMATIONS", label: "🛎️ 2. Reclamations", count: reclamationsList.length, color: "#e879f9" },
-              { id: "STATS", label: "📊 3. Stats & Graphs", count: null, color: "#fbbf24" },
+              { id: "ROOMS", label: "Rooms Grid", count: totalRooms, color: "#38bdf8" },
+              { id: "RECLAMATIONS", label: "Reclamations", count: reclamationsList.length, color: "#e879f9" },
+              { id: "STATS", label: "Analytics & Stats", count: null, color: "#fbbf24" },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -375,11 +382,11 @@ export default function ReceptionPortal({
                   onClick={() => setActiveTab(tab.id as any)}
                   style={{
                     padding: "12px 14px",
-                    borderRadius: 12,
+                    borderRadius: 10,
                     border: "1px solid",
                     borderColor: isActive ? tab.color : "rgba(255, 255, 255, 0.06)",
-                    background: isActive ? `rgba(56, 189, 248, 0.2)` : "rgba(30, 41, 59, 0.5)",
-                    color: isActive ? "#ffffff" : "#94a3b8",
+                    background: isActive ? `rgba(56, 189, 248, 0.15)` : "rgba(30, 41, 59, 0.4)",
+                    color: isActive ? "#ffffff" : "#c1cad8",
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -392,9 +399,10 @@ export default function ReceptionPortal({
                   <span>{tab.label}</span>
                   {tab.count !== null && (
                     <span
+                      className="font-mono"
                       style={{
-                        padding: "2px 8px",
-                        borderRadius: 999,
+                        padding: "2px 7px",
+                        borderRadius: 4,
                         background: isActive ? tab.color : "rgba(255, 255, 255, 0.1)",
                         color: isActive ? "#000" : "#cbd5e1",
                         fontSize: 11,
@@ -411,21 +419,21 @@ export default function ReceptionPortal({
 
           {/* STACKED QUICK METRICS CARDS */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Occupied Rooms</span>
-              <strong style={{ fontSize: 14, color: "#fbbf24" }}>{occupiedCount} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)</strong>
+            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#c1cad8" }}>Occupied Rooms</span>
+              <strong className="font-mono" style={{ fontSize: 13, color: "#fbbf24" }}>{occupiedCount} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)</strong>
             </div>
-            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Vacant Clean</span>
-              <strong style={{ fontSize: 14, color: "#4ade80" }}>{vacantCleanCount}</strong>
+            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#c1cad8" }}>Vacant Clean</span>
+              <strong className="font-mono" style={{ fontSize: 13, color: "#4ade80" }}>{vacantCleanCount}</strong>
             </div>
-            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Dirty Rooms</span>
-              <strong style={{ fontSize: 14, color: dirtyCount > 0 ? "#f87171" : "#4ade80" }}>{dirtyCount}</strong>
+            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#c1cad8" }}>Dirty Rooms</span>
+              <strong className="font-mono" style={{ fontSize: 13, color: dirtyCount > 0 ? "#f87171" : "#4ade80" }}>{dirtyCount}</strong>
             </div>
-            <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Open Reclamations</span>
-              <strong style={{ fontSize: 14, color: openReclamationsCount > 0 ? "#e879f9" : "#4ade80" }}>{openReclamationsCount}</strong>
+            <div style={{ background: "#1a2234", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#c1cad8" }}>Open Reclamations</span>
+              <strong className="font-mono" style={{ fontSize: 13, color: openReclamationsCount > 0 ? "#e879f9" : "#4ade80" }}>{openReclamationsCount}</strong>
             </div>
           </div>
         </div>
@@ -433,11 +441,12 @@ export default function ReceptionPortal({
         {/* SIDEBAR FOOTER & LOG OUT */}
         <div style={{ marginTop: "1.5rem", display: "flex", flexDirection: "column", gap: 8 }}>
           <button
+            className="btn-primary"
             onClick={() => setShowHistoryModal(true)}
             style={{
               width: "100%",
               padding: "9px",
-              borderRadius: 10,
+              borderRadius: 8,
               border: "1px solid rgba(251, 191, 36, 0.4)",
               background: "rgba(251, 191, 36, 0.15)",
               color: "#fbbf24",
@@ -446,10 +455,11 @@ export default function ReceptionPortal({
               cursor: "pointer",
             }}
           >
-            📜 Backfill Past Ticket
+            Backfill Past Ticket
           </button>
 
           <button
+            className="btn-primary"
             disabled={isPending}
             onClick={() => {
               startTransition(async () => {
@@ -460,18 +470,18 @@ export default function ReceptionPortal({
             style={{
               width: "100%",
               padding: "10px",
-              borderRadius: 10,
+              borderRadius: 8,
               border: "1px solid rgba(239, 68, 68, 0.4)",
               background: "rgba(239, 68, 68, 0.15)",
               color: "#f87171",
               fontSize: 12,
-              fontWeight: 800,
+              fontWeight: 700,
               cursor: "pointer",
             }}
           >
-            <span aria-hidden="true">🔒 </span>Log Out & Exit
+            Sign Out
           </button>
-          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#cbd5e1" }}>
+          <div style={{ marginTop: 8, textAlign: "center", fontSize: 11, color: "#8b97a8" }}>
             <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>Privacy Notice</a>
             {" • "}
             <a href="/tos" target="_blank" rel="noopener noreferrer" style={{ color: "#38bdf8", textDecoration: "underline" }}>AUP</a>
@@ -497,10 +507,10 @@ export default function ReceptionPortal({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
-                  🏨 Hotel Rooms Map ({filteredRooms.length} rooms)
+                  Rooms Matrix ({filteredRooms.length} rooms)
                 </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                  💡 Click any room card to open the <strong>Interactive Room Pop-Up Modal</strong> with Reclamations & Room Stats!
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#8b97a8" }}>
+                  Select any room card to inspect stay details, service requests, and history.
                 </p>
               </div>
 
@@ -729,8 +739,8 @@ export default function ReceptionPortal({
             </div>
 
             <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#e879f9" }}>
-                🏢 Department Ticket Demand Graph
+              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#38bdf8" }}>
+                Department Ticket Demand Graph
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {Object.entries(deptCounts).map(([dept, count]) => {
@@ -740,10 +750,10 @@ export default function ReceptionPortal({
                     <div key={dept}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#cbd5e1" }}>
                         <span>{dept}</span>
-                        <strong style={{ color: "#e879f9" }}>{count} tickets</strong>
+                        <strong className="font-mono" style={{ color: "#38bdf8" }}>{count} tickets</strong>
                       </div>
                       <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #a855f7, #e879f9)", borderRadius: 999 }} />
+                        <div style={{ width: `${pct}%`, height: "100%", background: "#38bdf8", borderRadius: 999 }} />
                       </div>
                     </div>
                   );

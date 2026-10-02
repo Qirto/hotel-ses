@@ -3,6 +3,62 @@
    Hotel SES - Compliance & WCAG Standards
    ===================================================================== */
 
+:root {
+  /* Surface hierarchy — solid, high-contrast surfaces */
+  --surface-0: #0b0f17;    /* Deep background */
+  --surface-1: #111827;    /* Base cards, sidebars */
+  --surface-2: #1a2234;    /* Nested cards, metric panels */
+  --surface-3: #1e2d3d;    /* Active tabs, hover states */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.14);
+
+  /* Accessible text contrast tokens (WCAG AA Compliant) */
+  --text-primary: #f1f5f9;    /* Headings, titles */
+  --text-secondary: #c1cad8;  /* Body text, descriptions */
+  --text-muted: #8b97a8;      /* Captions, labels */
+  --text-disabled: #566172;   /* Inactive elements */
+
+  /* 4-point spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Border-radius scale */
+  --radius-sm: 6px;     /* Badges, tags, chips */
+  --radius-md: 10px;    /* Inputs, standard buttons */
+  --radius-lg: 14px;    /* Cards, containers */
+  --radius-xl: 18px;    /* Prominent hero cards */
+  --radius-pill: 999px; /* Status indicator dots */
+}
+
+/* Typography Utility for Monospace Data contexts */
+.font-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+/* Interactive Button Hover Micro-interactions */
+.btn-primary {
+  transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Global Focus Rings (WCAG 2.4.7 Focus Visible) */
 :focus-visible {
   outline: 2px solid #38bdf8 !important;

@@ -29,7 +29,8 @@ export default function LoginPage() {
     <main
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 60%, #020617 100%)",
+        background: "#0b0f17",
+        borderTop: "2px solid rgba(217, 119, 6, 0.4)",
         color: "#f8fafc",
         display: "flex",
         alignItems: "center",
@@ -41,39 +42,29 @@ export default function LoginPage() {
       <div style={{ maxWidth: 1100, width: "100%", margin: "0 auto" }}>
         {/* Header */}
         <header style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 16px",
-              borderRadius: 999,
-              background: "rgba(255, 255, 255, 0.08)",
-              border: "1px solid rgba(255, 255, 255, 0.18)",
-              color: "#e2e8f0",
-              fontSize: 13,
-              fontWeight: 600,
-              marginBottom: 12,
-            }}
-          >
-            <span aria-hidden="true">🏨</span>
-            <span>Grand Palace Hotel Management • SES Portal Gateway</span>
-          </div>
           <h1
             style={{
-              fontSize: "2.5rem",
+              fontSize: "2.4rem",
               fontWeight: 800,
               margin: 0,
               letterSpacing: "-0.03em",
-              background: "linear-gradient(135deg, #ffffff 30%, #cbd5e1)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              color: "#ffffff",
+              lineHeight: 1.15,
             }}
           >
-            Department Access Control & Portal Authentication
+            Sign in to your workspace
           </h1>
-          <p style={{ color: "#cbd5e1", fontSize: 15, marginTop: 10, maxWidth: 680, marginInline: "auto", lineHeight: 1.6 }}>
-            Select your assigned hotel department to authenticate. Each portal features an isolated workspace with strict role-based access control, realtime event synchronization, and dedicated operational queues.
+          <p
+            style={{
+              color: "#c1cad8",
+              fontSize: 15,
+              marginTop: 10,
+              maxWidth: 620,
+              marginInline: "auto",
+              lineHeight: 1.6,
+            }}
+          >
+            Select your department. Your workspace opens immediately.
           </p>
         </header>
 
@@ -85,7 +76,7 @@ export default function LoginPage() {
               maxWidth: 600,
               margin: "0 auto 2rem",
               padding: "12px 18px",
-              borderRadius: 12,
+              borderRadius: 8,
               background: "rgba(239, 68, 68, 0.15)",
               border: "1px solid rgba(239, 68, 68, 0.4)",
               color: "#fca5a5",
@@ -94,7 +85,6 @@ export default function LoginPage() {
               textAlign: "center",
             }}
           >
-            <span aria-hidden="true">⚠️ </span>
             <span>{errorMessage}</span>
           </div>
         )}
@@ -103,32 +93,46 @@ export default function LoginPage() {
         <section
           aria-label="Security and Cookie Disclosure"
           style={{
-            maxWidth: 820,
+            maxWidth: 860,
             margin: "0 auto 2rem",
             padding: "12px 20px",
-            borderRadius: 12,
-            background: "rgba(15, 23, 42, 0.75)",
-            border: "1px solid rgba(56, 189, 248, 0.25)",
+            borderRadius: 10,
+            background: "#111827",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: 12,
             fontSize: 13,
-            color: "#cbd5e1",
+            color: "#c1cad8",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span aria-hidden="true" style={{ fontSize: 18 }}>🔒</span>
+            <span
+              style={{
+                padding: "2px 8px",
+                borderRadius: 4,
+                background: "rgba(56, 189, 248, 0.15)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                color: "#38bdf8",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              Security
+            </span>
             <span>
-              <strong>Operational Security Notice:</strong> Authentication sets a strictly necessary session cookie (<code>hotel_role</code>). Staff activity is logged for safety and audit integrity.
+              Authentication sets a strictly necessary session cookie (<code>hotel_role</code>). Staff activity is logged for safety and audit integrity.
             </span>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
             <Link href="/privacy" style={{ color: "#38bdf8", textDecoration: "underline", fontWeight: 600 }}>
               Privacy & Cookies
             </Link>
-            <span aria-hidden="true" style={{ color: "#64748b" }}>•</span>
+            <span aria-hidden="true" style={{ color: "rgba(255, 255, 255, 0.2)" }}>•</span>
             <Link href="/tos" style={{ color: "#38bdf8", textDecoration: "underline", fontWeight: 600 }}>
               Staff Terms (AUP)
             </Link>
@@ -151,14 +155,14 @@ export default function LoginPage() {
               }
             }}
             style={{
-              background: selectedRole === "reception" ? "linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(2, 132, 199, 0.3))" : "rgba(15, 23, 42, 0.7)",
+              background: selectedRole === "reception" ? "linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(2, 132, 199, 0.2))" : "#111827",
               border: "2px solid",
-              borderColor: selectedRole === "reception" ? "#38bdf8" : "rgba(255, 255, 255, 0.12)",
-              borderRadius: 20,
+              borderColor: selectedRole === "reception" ? "#38bdf8" : "rgba(255, 255, 255, 0.1)",
+              borderRadius: 16,
               padding: "1.75rem",
-              boxShadow: selectedRole === "reception" ? "0 15px 35px rgba(56, 189, 248, 0.25)" : "0 10px 25px rgba(0,0,0,0.3)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
               cursor: "pointer",
-              transition: "all 0.2s ease",
+              transition: "border-color 0.2s ease, background 0.2s ease",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
@@ -166,32 +170,54 @@ export default function LoginPage() {
           >
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <span style={{ fontSize: 32 }} aria-hidden="true">🛎️</span>
-                <span
+                <div
                   style={{
-                    padding: "3px 10px",
-                    borderRadius: 999,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
                     background: "rgba(56, 189, 248, 0.15)",
                     border: "1px solid rgba(56, 189, 248, 0.3)",
-                    color: "#38bdf8",
-                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
                     fontWeight: 800,
+                    color: "#38bdf8",
                   }}
                 >
-                  CYAN LUXURY THEME
+                  RD
+                </div>
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    background: "rgba(56, 189, 248, 0.12)",
+                    border: "1px solid rgba(56, 189, 248, 0.25)",
+                    color: "#38bdf8",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Level 1 — Reception
                 </span>
               </div>
 
               <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 6px", color: "#ffffff" }}>
                 Reception Desk
               </h2>
-              <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "#c1cad8", lineHeight: 1.5, marginBottom: 16 }}>
                 Front desk operations: room check-ins, guest stay states, cleanliness status, and rapid ticket dispatches.
               </p>
 
-              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
-                <span aria-hidden="true">🔑 </span><strong>Scope:</strong> Manage Rooms & Reclamations<br />
-                <span aria-hidden="true">🔒 </span><strong>Security:</strong> PIN required (Default: 1111)
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "#1a2234", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Scope:</span> Manage Rooms & Reclamations
+                </div>
+                <div>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Security:</span> PIN required (Default: 1111)
+                </div>
               </div>
             </div>
 
@@ -211,21 +237,23 @@ export default function LoginPage() {
                     style={{
                       width: "100%",
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: 8,
                       background: "rgba(15, 23, 42, 0.9)",
                       border: "1px solid #38bdf8",
                       color: "#fff",
                       fontSize: 13,
                       boxSizing: "border-box",
                       marginBottom: 8,
+                      fontFamily: "'IBM Plex Mono', monospace",
                     }}
                   />
                 </div>
               )}
 
               <button
+                className="btn-primary"
                 disabled={isPending}
-                aria-label="Login to Reception Portal"
+                aria-label="Sign in to Reception"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("reception", selectedRole === "reception" ? passcode : undefined);
@@ -233,18 +261,17 @@ export default function LoginPage() {
                 style={{
                   width: "100%",
                   padding: "12px",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   border: "none",
-                  background: "linear-gradient(135deg, #0284c7, #38bdf8)",
-                  color: "#000",
+                  background: "#0284c7",
+                  color: "#ffffff",
                   fontSize: 14,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 4px 15px rgba(56, 189, 248, 0.4)",
-                  transition: "transform 0.1s ease",
+                  boxShadow: "0 2px 8px rgba(2, 132, 199, 0.3)",
                 }}
               >
-                {isPending && selectedRole === "reception" ? "Authenticating..." : "Login to Reception Portal 🛎️"}
+                {isPending && selectedRole === "reception" ? "Authenticating..." : "Sign in to Reception"}
               </button>
             </div>
           </div>
@@ -263,14 +290,14 @@ export default function LoginPage() {
               }
             }}
             style={{
-              background: selectedRole === "rh" ? "linear-gradient(145deg, rgba(6, 32, 22, 0.95), rgba(5, 150, 105, 0.3))" : "rgba(15, 23, 42, 0.7)",
+              background: selectedRole === "rh" ? "linear-gradient(145deg, rgba(6, 32, 22, 0.98), rgba(5, 150, 105, 0.2))" : "#111827",
               border: "2px solid",
-              borderColor: selectedRole === "rh" ? "#34d399" : "rgba(255, 255, 255, 0.12)",
-              borderRadius: 20,
+              borderColor: selectedRole === "rh" ? "#34d399" : "rgba(255, 255, 255, 0.1)",
+              borderRadius: 16,
               padding: "1.75rem",
-              boxShadow: selectedRole === "rh" ? "0 15px 35px rgba(52, 211, 153, 0.25)" : "0 10px 25px rgba(0,0,0,0.3)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
               cursor: "pointer",
-              transition: "all 0.2s ease",
+              transition: "border-color 0.2s ease, background 0.2s ease",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
@@ -278,32 +305,54 @@ export default function LoginPage() {
           >
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <span style={{ fontSize: 32 }} aria-hidden="true">👥</span>
-                <span
+                <div
                   style={{
-                    padding: "3px 10px",
-                    borderRadius: 999,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
                     background: "rgba(52, 211, 153, 0.15)",
                     border: "1px solid rgba(52, 211, 153, 0.3)",
-                    color: "#34d399",
-                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
                     fontWeight: 800,
+                    color: "#34d399",
                   }}
                 >
-                  EMERALD MINT THEME
+                  HR
+                </div>
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    background: "rgba(52, 211, 153, 0.12)",
+                    border: "1px solid rgba(52, 211, 153, 0.25)",
+                    color: "#34d399",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Level 2 — Human Resources
                 </span>
               </div>
 
               <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 6px", color: "#ffffff" }}>
                 RH / HR Manager
               </h2>
-              <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "#c1cad8", lineHeight: 1.5, marginBottom: 16 }}>
                 Human resources management: staff directory, weekly shift scheduling roster, department CRUD & attendance.
               </p>
 
-              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(6, 32, 22, 0.8)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
-                <span aria-hidden="true">🔑 </span><strong>Scope:</strong> Staff, Shifts, Departments & Redirection<br />
-                <span aria-hidden="true">🔒 </span><strong>Security:</strong> PIN required (Default: 2222)
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "#1a2234", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <span style={{ color: "#34d399", fontWeight: 700 }}>Scope:</span> Staff, Shifts, Departments & Redirection
+                </div>
+                <div>
+                  <span style={{ color: "#34d399", fontWeight: 700 }}>Security:</span> PIN required (Default: 2222)
+                </div>
               </div>
             </div>
 
@@ -323,21 +372,23 @@ export default function LoginPage() {
                     style={{
                       width: "100%",
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: 8,
                       background: "rgba(6, 32, 22, 0.9)",
                       border: "1px solid #34d399",
                       color: "#fff",
                       fontSize: 13,
                       boxSizing: "border-box",
                       marginBottom: 8,
+                      fontFamily: "'IBM Plex Mono', monospace",
                     }}
                   />
                 </div>
               )}
 
               <button
+                className="btn-primary"
                 disabled={isPending}
-                aria-label="Login to RH Manager Portal"
+                aria-label="Sign in to HR Management"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("rh", selectedRole === "rh" ? passcode : undefined);
@@ -345,18 +396,17 @@ export default function LoginPage() {
                 style={{
                   width: "100%",
                   padding: "12px",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   border: "none",
-                  background: "linear-gradient(135deg, #059669, #34d399)",
-                  color: "#000",
+                  background: "#059669",
+                  color: "#ffffff",
                   fontSize: 14,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 4px 15px rgba(52, 211, 153, 0.4)",
-                  transition: "transform 0.1s ease",
+                  boxShadow: "0 2px 8px rgba(5, 150, 105, 0.3)",
                 }}
               >
-                {isPending && selectedRole === "rh" ? "Authenticating..." : "Login to RH Manager Portal 👥"}
+                {isPending && selectedRole === "rh" ? "Authenticating..." : "Sign in to HR Management"}
               </button>
             </div>
           </div>
@@ -375,14 +425,14 @@ export default function LoginPage() {
               }
             }}
             style={{
-              background: selectedRole === "gm" ? "linear-gradient(145deg, rgba(20, 16, 41, 0.95), rgba(217, 119, 6, 0.3))" : "rgba(15, 23, 42, 0.7)",
+              background: selectedRole === "gm" ? "linear-gradient(145deg, rgba(20, 16, 41, 0.98), rgba(217, 119, 6, 0.2))" : "#111827",
               border: "2px solid",
-              borderColor: selectedRole === "gm" ? "#fbbf24" : "rgba(255, 255, 255, 0.12)",
-              borderRadius: 20,
+              borderColor: selectedRole === "gm" ? "#fbbf24" : "rgba(255, 255, 255, 0.1)",
+              borderRadius: 16,
               padding: "1.75rem",
-              boxShadow: selectedRole === "gm" ? "0 15px 35px rgba(251, 191, 36, 0.25)" : "0 10px 25px rgba(0,0,0,0.3)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
               cursor: "pointer",
-              transition: "all 0.2s ease",
+              transition: "border-color 0.2s ease, background 0.2s ease",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
@@ -390,32 +440,54 @@ export default function LoginPage() {
           >
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <span style={{ fontSize: 32 }} aria-hidden="true">👔</span>
-                <span
+                <div
                   style={{
-                    padding: "3px 10px",
-                    borderRadius: 999,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
                     background: "rgba(251, 191, 36, 0.15)",
                     border: "1px solid rgba(251, 191, 36, 0.3)",
-                    color: "#fbbf24",
-                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
                     fontWeight: 800,
+                    color: "#fbbf24",
                   }}
                 >
-                  IMPERIAL GOLD THEME
+                  GM
+                </div>
+                <span
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    background: "rgba(251, 191, 36, 0.12)",
+                    border: "1px solid rgba(251, 191, 36, 0.25)",
+                    color: "#fbbf24",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Level 3 — General Manager
                 </span>
               </div>
 
               <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 6px", color: "#ffffff" }}>
                 General Manager (GM)
               </h2>
-              <p style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: "#c1cad8", lineHeight: 1.5, marginBottom: 16 }}>
                 Executive lounge: hotel KPIs, analytics, confidential grievance desk, and 341-room state matrix.
               </p>
 
-              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(20, 16, 41, 0.8)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
-                <span aria-hidden="true">🔑 </span><strong>Scope:</strong> Executive KPIs, Audits & Grievance Desk<br />
-                <span aria-hidden="true">🔒 </span><strong>Security:</strong> PIN required (Default: 3333)
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "#1a2234", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: "#e2e8f0", marginBottom: 16 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <span style={{ color: "#fbbf24", fontWeight: 700 }}>Scope:</span> Executive KPIs, Audits & Grievance Desk
+                </div>
+                <div>
+                  <span style={{ color: "#fbbf24", fontWeight: 700 }}>Security:</span> PIN required (Default: 3333)
+                </div>
               </div>
             </div>
 
@@ -435,21 +507,23 @@ export default function LoginPage() {
                     style={{
                       width: "100%",
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: 8,
                       background: "rgba(20, 16, 41, 0.9)",
                       border: "1px solid #fbbf24",
                       color: "#fff",
                       fontSize: 13,
                       boxSizing: "border-box",
                       marginBottom: 8,
+                      fontFamily: "'IBM Plex Mono', monospace",
                     }}
                   />
                 </div>
               )}
 
               <button
+                className="btn-primary"
                 disabled={isPending}
-                aria-label="Login to GM Executive Portal"
+                aria-label="Sign in to GM Executive"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleLogin("gm", selectedRole === "gm" ? passcode : undefined);
@@ -457,33 +531,32 @@ export default function LoginPage() {
                 style={{
                   width: "100%",
                   padding: "12px",
-                  borderRadius: 12,
+                  borderRadius: 10,
                   border: "none",
-                  background: "linear-gradient(135deg, #d97706, #fbbf24)",
-                  color: "#000",
+                  background: "#d97706",
+                  color: "#ffffff",
                   fontSize: 14,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  boxShadow: "0 4px 15px rgba(251, 191, 36, 0.4)",
-                  transition: "transform 0.1s ease",
+                  boxShadow: "0 2px 8px rgba(217, 119, 6, 0.3)",
                 }}
               >
-                {isPending && selectedRole === "gm" ? "Authenticating..." : "Login to GM Executive Portal 👔"}
+                {isPending && selectedRole === "gm" ? "Authenticating..." : "Sign in to GM Executive"}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Global Business Details & Compliance Footer (Checkpoint 1, 2, 4, 16) */}
+        {/* Global Business Details & Compliance Footer */}
         <footer
           style={{
-            borderTop: "1px solid rgba(255, 255, 255, 0.12)",
+            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
             paddingTop: "2rem",
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: 20,
             fontSize: 13,
-            color: "#cbd5e1",
+            color: "#c1cad8",
             lineHeight: 1.6,
           }}
         >
@@ -491,8 +564,8 @@ export default function LoginPage() {
             <div style={{ fontWeight: 800, color: "#ffffff", marginBottom: 6, fontSize: 14 }}>
               Grand Palace Hotel SES Operations
             </div>
-            <p style={{ margin: 0, color: "#94a3b8" }}>
-              Enterprise Property & Incident Management Platform<br />
+            <p style={{ margin: 0, color: "#8b97a8" }}>
+              Hotel SES — Internal Staff Portal<br />
               12 Avenue des Palaces, 75008 Paris, France<br />
               SIRET: 849 203 118 00024 • Hospitality Code NAF: 5510Z
             </p>
@@ -502,7 +575,7 @@ export default function LoginPage() {
             <div style={{ fontWeight: 800, color: "#ffffff", marginBottom: 6, fontSize: 14 }}>
               Support & Internal Contacts
             </div>
-            <p style={{ margin: 0, color: "#94a3b8" }}>
+            <p style={{ margin: 0, color: "#8b97a8" }}>
               IT Helpdesk: Ext. 4004 (<a href="mailto:it-support@grandpalacehotel.com" style={{ color: "#38bdf8" }}>it-support@grandpalacehotel.com</a>)<br />
               Data Protection (DPO): <a href="mailto:dpo@grandpalacehotel.com" style={{ color: "#38bdf8" }}>dpo@grandpalacehotel.com</a><br />
               Emergency Facilities: Radio Ch. 3 (Maintenance)
@@ -524,7 +597,7 @@ export default function LoginPage() {
                   Acceptable Use Policy & System Terms
                 </Link>
               </li>
-              <li style={{ color: "#94a3b8", fontSize: 12, marginTop: 4 }}>
+              <li style={{ color: "#8b97a8", fontSize: 12, marginTop: 4 }}>
                 Hotel SES v1.4.0 • Built with Next.js 16 & Supabase
               </li>
             </ul>

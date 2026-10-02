@@ -49,50 +49,51 @@ export default function HotelDashboard({
       <header
         style={{
           marginBottom: "1.75rem",
-          background: "linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85))",
+          background: "rgba(15, 23, 42, 1)",
           borderRadius: 16,
           padding: "1.25rem 1.5rem",
           border: "1px solid rgba(255, 255, 255, 0.08)",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "3px 10px", borderRadius: 999, background: "rgba(56, 189, 248, 0.12)", border: "1px solid rgba(56, 189, 248, 0.25)", color: "#38bdf8", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-              <span>🏨 Hotel Operations & Role Dashboards</span>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "3px 8px", borderRadius: 4, background: "rgba(56, 189, 248, 0.12)", border: "1px solid rgba(56, 189, 248, 0.25)", color: "#38bdf8", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>
+              <span>Hotel Operations</span>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: isLiveSupabase ? "#22c55e" : "#f59e0b" }}></span>
-              <span style={{ fontSize: 11 }}>{isLiveSupabase ? "Supabase Live" : "Offline Mode"}</span>
+              <span style={{ fontSize: 11, textTransform: "none", color: "#cbd5e1" }}>{isLiveSupabase ? "Supabase Live" : "Offline Mode"}</span>
             </div>
-            <h1 style={{ fontSize: "1.9rem", fontWeight: 800, margin: 0, letterSpacing: "-0.02em", background: "linear-gradient(135deg, #ffffff 40%, #cbd5e1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Palace Multi-Role Executive Workspaces
+            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: 0, letterSpacing: "-0.025em", color: "#f1f5f9" }}>
+              Hotel SES Operations
             </h1>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ padding: "8px 14px", borderRadius: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Total Rooms</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc" }}>{initialRooms.length}</div>
-            </div>
-            <div style={{ padding: "8px 14px", borderRadius: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Open Tickets</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: openTicketsCount > 0 ? "#f87171" : "#4ade80" }}>{openTicketsCount}</div>
-            </div>
-            <div style={{ padding: "8px 14px", borderRadius: 10, background: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>Dirty Rooms</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: dirtyRoomsCount > 0 ? "#f59e0b" : "#4ade80" }}>{dirtyRoomsCount}</div>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, background: "rgba(15, 23, 42, 0.8)", padding: "10px 18px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, color: "#c1cad8" }}>
+            <span><strong className="font-mono" style={{ color: "#f1f5f9", fontSize: 15 }}>{initialRooms.length}</strong> rooms</span>
+            <span style={{ color: "rgba(255,255,255,0.18)" }}>|</span>
+            <span>
+              <strong className="font-mono" style={{ color: openTicketsCount > 0 ? "#f87171" : "#4ade80", fontSize: 15 }}>
+                {openTicketsCount}
+              </strong> open tickets
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.18)" }}>|</span>
+            <span>
+              <strong className="font-mono" style={{ color: dirtyRoomsCount > 0 ? "#f59e0b" : "#4ade80", fontSize: 15 }}>
+                {dirtyRoomsCount}
+              </strong> dirty rooms
+            </span>
           </div>
         </div>
 
         {/* ROLE DASHBOARDS NAVIGATION BAR */}
         <nav style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
           {[
-            { id: "reception", label: "🛎️ Reception Dashboard", badge: null, color: "#38bdf8", subtitle: "Rooms & Reclamations" },
-            { id: "hr", label: "👥 HR Manager Dashboard", badge: staffList.length, color: "#34d399", subtitle: "Employees, Shifts, Reclamations & Rooms" },
-            { id: "manager", label: "📊 General Manager Dashboard", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#fbbf24", subtitle: "Reclamations, Rooms & Statistics" },
-            { id: "gouvernante", label: "🧹 Housekeeping (Gouvernante)", badge: (dirtyRoomsCount + openHkTicketsCount) > 0 ? (dirtyRoomsCount + openHkTicketsCount) : null, color: "#a855f7" },
-            { id: "maintenance", label: "🔧 Maintenance (Technical)", badge: openMaintTicketsCount > 0 ? openMaintTicketsCount : null, color: "#38bdf8" },
-            { id: "erd", label: "🗄️ Relational Schema", badge: null, color: "#94a3b8" },
+            { id: "reception", label: "Reception", badge: null, color: "#38bdf8", subtitle: "Rooms & Reclamations" },
+            { id: "hr", label: "HR Manager", badge: staffList.length, color: "#34d399", subtitle: "Employees, Shifts, Reclamations & Rooms" },
+            { id: "manager", label: "General Manager", badge: openTicketsCount > 0 ? openTicketsCount : null, color: "#fbbf24", subtitle: "Reclamations, Rooms & Statistics" },
+            { id: "gouvernante", label: "Housekeeping", badge: (dirtyRoomsCount + openHkTicketsCount) > 0 ? (dirtyRoomsCount + openHkTicketsCount) : null, color: "#a855f7" },
+            { id: "maintenance", label: "Maintenance", badge: openMaintTicketsCount > 0 ? openMaintTicketsCount : null, color: "#38bdf8" },
+            { id: "erd", label: "Relational Schema", badge: null, color: "#94a3b8" },
           ].map((role) => {
             const isActive = activeRole === role.id;
             return (
@@ -105,7 +106,7 @@ export default function HotelDashboard({
                   border: "1px solid",
                   borderColor: isActive ? role.color : "rgba(255, 255, 255, 0.08)",
                   background: isActive ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.5)",
-                  color: isActive ? "#ffffff" : "#94a3b8",
+                  color: isActive ? "#ffffff" : "#c1cad8",
                   cursor: "pointer",
                   fontWeight: 700,
                   fontSize: 13,
@@ -119,10 +120,11 @@ export default function HotelDashboard({
                 <span>{role.label}</span>
                 {role.badge !== null && (
                   <span
+                    className="font-mono"
                     style={{
                       fontSize: 10,
-                      padding: "1px 6px",
-                      borderRadius: 999,
+                      padding: "2px 6px",
+                      borderRadius: 4,
                       background: isActive ? role.color : "rgba(255, 255, 255, 0.15)",
                       color: isActive ? "#000" : "#fff",
                       fontWeight: 800,

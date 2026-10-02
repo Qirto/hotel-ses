@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
     <main
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0b0f17 0%, #0f172a 100%)",
+        background: "#0b0f17",
         color: "#f8fafc",
         padding: "3rem 1.5rem",
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
@@ -50,17 +50,19 @@ export default function PrivacyPolicyPage() {
           <div
             style={{
               display: "inline-block",
-              padding: "4px 12px",
-              borderRadius: 999,
+              padding: "3px 8px",
+              borderRadius: 4,
               background: "rgba(56, 189, 248, 0.15)",
               border: "1px solid rgba(56, 189, 248, 0.3)",
               color: "#38bdf8",
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
               marginBottom: 12,
             }}
           >
-            LEGAL COMPLIANCE & DATA PROTECTION (GDPR / DPDP)
+            Legal Compliance & Data Protection (GDPR / DPDP)
           </div>
           <h1 style={{ fontSize: "2.4rem", fontWeight: 800, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
             Staff & Operations Privacy Policy
