@@ -377,7 +377,7 @@ export default function LoginPage() {
             gap: "0.5rem",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "center", gap: 14 }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <Link
               href="/offline"
               style={{ color: "#94a3b8", textDecoration: "none" }}
@@ -386,6 +386,40 @@ export default function LoginPage() {
             >
               System Offline Mode
             </Link>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of regs) {
+                      await reg.unregister();
+                    }
+                  }
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                } catch (e) {
+                  window.location.reload();
+                }
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#d97706",
+                cursor: "pointer",
+                fontSize: "0.75rem",
+                padding: 0,
+                textDecoration: "underline",
+              }}
+            >
+              Clear Mobile Cache & Reload
+            </button>
             <span>•</span>
             <span style={{ color: "#64748b" }}>Authorized Personnel Only</span>
           </div>

@@ -68,6 +68,46 @@ export default function AppShell({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Quick Mobile Cache Purge & Hard Reload */}
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                  if ("serviceWorker" in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of registrations) {
+                      await reg.unregister();
+                    }
+                  }
+                  localStorage.removeItem("ses_app_cache_version");
+                  window.location.reload();
+                } catch (e) {
+                  window.location.reload();
+                }
+              }}
+              aria-label="Clear Cache and Reload"
+              title="Clear Cache and Reload"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                padding: "6px 8px",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+              </svg>
+            </button>
+
             {headerActions}
 
             {/* Mobile Sign Out Action */}
