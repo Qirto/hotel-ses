@@ -1,7 +1,7 @@
 {
-  "name": "Hotel SES — Property & Incident Management",
+  "name": "Hotel SES",
   "short_name": "Hotel SES",
-  "description": "Internal hotel operations portal: room state matrix, incident dispatch, and staff roster management.",
+  "description": "Hotel SES operational hotel management system.",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",

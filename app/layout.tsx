@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Hotel SES - Luxury Property & Incident Management System",
+  title: "Hotel SES",
   description: "Hotel SES operational dashboard, room state matrix, and incident dispatch platform powered by Next.js and Supabase.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

@@ -29,9 +29,9 @@ export default function PortalLayout({
         <header className="mobile-top-bar">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img
-              src="/icons/icon-96x96.png"
-              alt="Hotel SES"
-              style={{ width: 28, height: 28, borderRadius: 6 }}
+              src="/hotel-logo.png"
+              alt="Hôtel Méditerranée Thalasso Golf Hammamet"
+              style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover" }}
             />
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>

@@ -320,7 +320,7 @@ body {
     right: 0;
     height: calc(56px + var(--safe-area-top));
     padding: var(--safe-area-top) 1rem 0;
-    background: var(--surface-header);
+    background: var(--surface-0);
     border-bottom: 1px solid var(--border-subtle);
     z-index: 50;
     box-sizing: border-box;
@@ -330,6 +330,19 @@ body {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     will-change: transform;
+  }
+
+  /* Solid opaque ceiling blocker to prevent any scrolled content bleed-through under iOS status bar */
+  .mobile-top-bar::before {
+    content: "";
+    position: fixed;
+    top: -100px;
+    left: 0;
+    right: 0;
+    height: calc(100px + var(--safe-area-top));
+    background: var(--surface-0);
+    z-index: -1;
+    pointer-events: none;
   }
 
   .app-main-content {

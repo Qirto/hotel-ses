@@ -49,49 +49,34 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Brand & Monogram Header */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "rgba(217, 119, 6, 0.12)",
-              border: "1px solid rgba(217, 119, 6, 0.35)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "1rem",
-              boxShadow: "0 0 24px rgba(217, 119, 6, 0.15)",
-            }}
-          >
-            {/* Elegant Hotel Shield / Key Monogram */}
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" />
-              <path d="M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
-              <path d="M12 12v4" />
-            </svg>
+          <div style={{ display: "inline-block", position: "relative", marginBottom: "1rem" }}>
+            <img
+              src="/hotel-logo.png"
+              alt="Hôtel Méditerranée Thalasso Golf Hammamet"
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 16,
+                objectFit: "cover",
+                border: "2px solid rgba(217, 119, 6, 0.4)",
+                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+                display: "block",
+              }}
+            />
           </div>
 
           <p
             style={{
-              fontSize: "0.6875rem",
-              letterSpacing: "0.2em",
+              fontSize: "0.75rem",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: "#d97706",
-              fontWeight: 700,
+              fontWeight: 800,
               margin: "0 0 0.375rem 0",
+              lineHeight: 1.3,
             }}
           >
-            Grand Palace Hotel
+            Hôtel Méditerranée Thalasso Golf Hammamet
           </p>
           <h1
             style={{
@@ -103,7 +88,7 @@ export default function LoginPage() {
               lineHeight: 1.2,
             }}
           >
-            Staff Access
+            Hotel SES
           </h1>
           <p
             style={{
@@ -113,7 +98,7 @@ export default function LoginPage() {
               lineHeight: 1.5,
             }}
           >
-            Enter your department passcode to access your workspace.
+            Internal Hotel Operations & Staff Access
           </p>
         </div>
 
@@ -424,7 +409,7 @@ export default function LoginPage() {
             <span style={{ color: "#64748b" }}>Authorized Personnel Only</span>
           </div>
           <p style={{ margin: 0, fontSize: "0.6875rem" }}>
-            Grand Palace Hotel & Residences • SES Operations Core
+            Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
           </p>
         </footer>
       </div>

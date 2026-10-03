@@ -142,7 +142,7 @@ export async function createRapidReclamation(data: {
     if (gov) assignedStaffId = gov.id;
   }
 
-  const { error } = await supabase.from("reclamations").insert([
+  const { data: inserted, error } = await supabase.from("reclamations").insert([
     {
       room_id: data.roomId,
       resident_id: data.residentId || null,
@@ -156,7 +156,7 @@ export async function createRapidReclamation(data: {
       is_confidential: Boolean(data.isConfidential),
       sla_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     },
-  ]);
+  ]).select().single();
 
   if (error) {
     console.error("Failed to create rapid reclamation:", error);
@@ -165,7 +165,10 @@ export async function createRapidReclamation(data: {
 
   revalidatePath("/reception");
   revalidatePath("/gm");
-  return { success: true };
+  revalidatePath("/rh");
+  revalidatePath("/governance");
+  revalidatePath("/maintenance");
+  return { success: true, data: inserted };
 }
 
 /**
@@ -184,18 +187,18 @@ export async function createHistoricalReclamation(data: {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { error } = await supabase.from("reclamations").insert([
-    {
-      room_id: data.roomId,
-      department: data.department,
-      category: data.category,
-      description: data.description,
-      status: data.status,
-      created_at: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
-      resolved_at: data.resolvedAt ? new Date(data.resolvedAt).toISOString() : data.status === "RESOLVED" ? new Date().toISOString() : null,
-      is_confidential: Boolean(data.isConfidential),
-    },
-  ]);
+  const newRecord = {
+    room_id: data.roomId,
+    department: data.department,
+    category: data.category,
+    description: data.description,
+    status: data.status,
+    created_at: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
+    resolved_at: data.resolvedAt ? new Date(data.resolvedAt).toISOString() : data.status === "RESOLVED" ? (data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString()) : null,
+    is_confidential: Boolean(data.isConfidential),
+  };
+
+  const { data: inserted, error } = await supabase.from("reclamations").insert([newRecord]).select().single();
 
   if (error) {
     console.error("Failed to create historical reclamation:", error);
@@ -204,7 +207,10 @@ export async function createHistoricalReclamation(data: {
 
   revalidatePath("/reception");
   revalidatePath("/gm");
-  return { success: true };
+  revalidatePath("/rh");
+  revalidatePath("/governance");
+  revalidatePath("/maintenance");
+  return { success: true, data: inserted || newRecord };
 }
 
 export async function updateRoomStayState(
@@ -693,7 +699,7 @@ export async function exportStaffData(staffId: number) {
       profile: staff,
       assignedTickets: tickets || [],
       exportedAt: new Date().toISOString(),
-      entity: "Grand Palace Hotel Management S.A.S.",
+      entity: "Hôtel Méditerranée Thalasso Golf Hammamet",
     },
   };
 }

@@ -79,7 +79,7 @@ export default function TermsOfServicePage() {
               1. Authorized Access & Role-Based Scope
             </h2>
             <p>
-              Hotel SES is an internal management system strictly reserved for authenticated staff members of Grand Palace Hotel. Access is provisioned under three operational tiers:
+              Hotel SES is an internal management system strictly reserved for authenticated staff members of Hôtel Méditerranée Thalasso Golf Hammamet. Access is provisioned under three operational tiers:
             </p>
             <ul style={{ paddingLeft: "1.5rem" }}>
               <li style={{ marginBottom: 8 }}>
@@ -109,7 +109,7 @@ export default function TermsOfServicePage() {
                 <strong>Explicit Session Termination:</strong> Staff must utilize the &ldquo;Log Out&rdquo; function before leaving a shared terminal or front-desk workstation unattended.
               </li>
               <li style={{ marginBottom: 8 }}>
-                <strong>Incident Reporting:</strong> Any suspected unauthorized access or compromised credentials must be reported immediately to the IT Helpdesk (<a href="mailto:it-support@grandpalacehotel.com" style={{ color: "#38bdf8" }}>it-support@grandpalacehotel.com</a>).
+                <strong>Incident Reporting:</strong> Any suspected unauthorized access or compromised credentials must be reported immediately to the IT Helpdesk (<a href="mailto:contact@hotelmediterraneehammamet.com" style={{ color: "#38bdf8" }}>contact@hotelmediterraneehammamet.com</a>).
               </li>
             </ul>
           </section>
@@ -157,7 +157,7 @@ export default function TermsOfServicePage() {
           }}
         >
           <div>
-            &copy; {new Date().getFullYear()} Grand Palace Hotel Operations • SES System
+            &copy; {new Date().getFullYear()} Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
           </div>
           <div style={{ display: "flex", gap: 16 }}>
             <Link href="/privacy" style={{ color: "#38bdf8", textDecoration: "none" }}>

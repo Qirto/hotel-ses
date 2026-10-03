@@ -51,9 +51,6 @@ const PRESET_ISSUES: Record<string, { category: string; label: string }[]> = {
   CONCIERGE: [
     { category: "Luggage", label: "🧳 Luggage Collection" },
     { category: "Transport", label: "🚕 Airport Transfer" },
-  ],
-  SECURITY: [
-    { category: "Noise", label: "🔊 Late Night Noise" },
     { category: "Keycard", label: "💳 Keycard Reprogramming" },
   ],
 };
@@ -62,6 +59,30 @@ const DEFAULT_PRESETS = [
   { category: "General", label: "📋 General Guest Request" },
   { category: "Urgent", label: "⚡ High-Priority Attention" },
 ];
+
+export function formatIncidentDate(dateStr?: string | null) {
+  if (!dateStr) return { formatted: "Recent", time: "", relative: "Just now", full: "Recent" };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { formatted: "Recent", time: "", relative: "Just now", full: "Recent" };
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  let relative = "Today";
+  if (diffDays === 1) relative = "Yesterday";
+  else if (diffDays > 1 && diffDays < 30) relative = `${diffDays}d ago`;
+  else if (diffDays >= 30 && diffDays < 365) relative = `${Math.floor(diffDays / 30)}mo ago`;
+  else if (diffDays >= 365) relative = `${Math.floor(diffDays / 365)}y ago`;
+  else if (diffDays < 0) relative = "Scheduled";
+
+  const formatted = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
+  return { formatted, time, relative, full: `${formatted} • ${time}` };
+}
 
 export default function ReceptionPortal({
   rooms,
@@ -74,6 +95,14 @@ export default function ReceptionPortal({
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Synchronized Reactive Reclamations State
+  const [localReclamations, setLocalReclamations] = useState<Reclamation[]>(reclamationsList || []);
+  useEffect(() => {
+    if (reclamationsList) {
+      setLocalReclamations(reclamationsList);
+    }
+  }, [reclamationsList]);
+
   // Rapid Incident Dispatch Modal (Bottom Sheet / FAB)
   const [showNewTicketSheet, setShowNewTicketSheet] = useState(false);
   const [quickRoom, setQuickRoom] = useState<string>("");
@@ -81,6 +110,7 @@ export default function ReceptionPortal({
   const [quickCategory, setQuickCategory] = useState<string>("A/C");
   const [quickPriority, setQuickPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
   const [quickDesc, setQuickDesc] = useState<string>("");
+  const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
   const handleQuickTicketSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +119,21 @@ export default function ReceptionPortal({
       alert("Please select or enter a valid room number!");
       return;
     }
+
+    const optimisticRec: Reclamation = {
+      id: Date.now(),
+      room_id: targetRoom.id,
+      room: targetRoom,
+      department: quickDept,
+      category: quickCategory,
+      description: quickDesc.trim() || `${quickCategory} incident reported via Quick Dispatch`,
+      priority: quickPriority,
+      status: "OPEN",
+      created_at: quickDate ? new Date(quickDate).toISOString() : new Date().toISOString(),
+      is_confidential: false,
+    };
+    setLocalReclamations((prev) => [optimisticRec, ...prev]);
+
     startTransition(async () => {
       const res = await createRapidReclamation({
         roomId: targetRoom.id,
@@ -132,23 +177,40 @@ export default function ReceptionPortal({
   // Room Pop-up Modal State
   const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
   const [modalTab, setModalTab] = useState<"RECLAMATIONS" | "ROOM_STAT">("ROOM_STAT");
-  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY">("ACTIVE");
+  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY" | "TIMELINE">("ACTIVE");
 
-  // Specific Room Reclamations for Modal
+  // In-modal Past Incident Creation State
+  const [showInModalPastLog, setShowInModalPastLog] = useState(false);
+  const [inModalHistDate, setInModalHistDate] = useState(new Date().toISOString().slice(0, 16));
+  const [inModalHistDept, setInModalHistDept] = useState("TECHNICAL");
+  const [inModalHistCategory, setInModalHistCategory] = useState("A/C");
+  const [inModalHistStatus, setInModalHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
+  const [inModalHistDesc, setInModalHistDesc] = useState("");
+
+  // Specific Room Reclamations for Modal (using reactive local state)
   const roomModalReclamations = useMemo(() => {
     if (!selectedRoomModal) return [];
-    return reclamationsList.filter(
+    return localReclamations.filter(
       (r) =>
         r.room_id === selectedRoomModal.id ||
         r.room?.room_number === selectedRoomModal.room_number
     );
-  }, [reclamationsList, selectedRoomModal]);
+  }, [localReclamations, selectedRoomModal]);
 
   // Active Reclamations for Room Modal
   const roomActiveReclamations = useMemo(() => {
     return roomModalReclamations.filter(
       (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
     );
+  }, [roomModalReclamations]);
+
+  // Chronologically Sorted Reclamations for Date Timeline
+  const roomTimelineReclamations = useMemo(() => {
+    return [...roomModalReclamations].sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return timeB - timeA;
+    });
   }, [roomModalReclamations]);
 
   // Most Reported Problem Categories for Room Modal
@@ -180,6 +242,7 @@ export default function ReceptionPortal({
   const [modalDesc, setModalDesc] = useState<string>("");
   const [modalPriority, setModalPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
   const [modalConfidential, setModalConfidential] = useState<boolean>(false);
+  const [modalDate, setModalDate] = useState<string>(new Date().toISOString().slice(0, 16));
 
   // Filters for Room Grid
   const [roomSearch, setRoomSearch] = useState("");
@@ -189,6 +252,7 @@ export default function ReceptionPortal({
   // Filters for Reclamations Table
   const [recStatusFilter, setRecStatusFilter] = useState<"ALL" | "OPEN" | "IN_PROGRESS" | "RESOLVED">("ALL");
   const [recDeptFilter, setRecDeptFilter] = useState<string>("ALL");
+  const [recDateFilter, setRecDateFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE">("ALL");
 
   // Historical Ticket Modal State
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -197,7 +261,7 @@ export default function ReceptionPortal({
   const [histCategory, setHistCategory] = useState("A/C");
   const [histDesc, setHistDesc] = useState("");
   const [histDate, setHistDate] = useState(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   );
   const [histStatus, setHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
 
@@ -231,16 +295,26 @@ export default function ReceptionPortal({
     });
   }, [rooms, roomSearch, floorFilter, statusFilter]);
 
-  // Filtered Reclamations
+  // Filtered Reclamations (using reactive localReclamations + recDateFilter)
   const filteredReclamations = useMemo(() => {
-    return reclamationsList.filter((rec) => {
+    const now = new Date();
+    return localReclamations.filter((rec) => {
       if (recStatusFilter !== "ALL" && rec.status !== recStatusFilter) return false;
       if (recDeptFilter !== "ALL" && rec.department !== recDeptFilter) return false;
+
+      if (recDateFilter !== "ALL" && rec.created_at) {
+        const ticketDate = new Date(rec.created_at);
+        const diffMs = now.getTime() - ticketDate.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        if (recDateFilter === "TODAY" && diffDays > 1) return false;
+        if (recDateFilter === "WEEK" && diffDays > 7) return false;
+        if (recDateFilter === "MONTH" && diffDays > 30) return false;
+        if (recDateFilter === "ARCHIVE" && diffDays <= 30) return false;
+      }
       return true;
     });
-  }, [reclamationsList, recStatusFilter, recDeptFilter]);
-
-
+  }, [localReclamations, recStatusFilter, recDeptFilter, recDateFilter]);
 
   // Stay State Handler
   const handleStayState = (roomId: number, state: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED") => {
@@ -270,7 +344,7 @@ export default function ReceptionPortal({
     startTransition(async () => {
       const res = await cycleRoomCleaning(room.id, nextStatus);
       if (res.success) {
-        setMessage(`🧹 Room ${room.room_number} set to ${nextStatus}!`);
+        setMessage(`Room ${room.room_number} set to ${nextStatus}.`);
         if (selectedRoomModal && selectedRoomModal.id === room.id) {
           setSelectedRoomModal((prev) => (prev ? { ...prev, cleaning_status: nextStatus } : null));
         }
@@ -283,6 +357,20 @@ export default function ReceptionPortal({
   const handleModalCreateReclamation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoomModal) return;
+
+    const optimisticRec: Reclamation = {
+      id: Date.now(),
+      room_id: selectedRoomModal.id,
+      room: selectedRoomModal,
+      department: modalDept,
+      category: modalCategory,
+      description: modalDesc.trim() || `${modalCategory} issue logged via Room Modal`,
+      priority: modalPriority,
+      status: "OPEN",
+      created_at: modalDate ? new Date(modalDate).toISOString() : new Date().toISOString(),
+      is_confidential: modalConfidential,
+    };
+    setLocalReclamations((prev) => [optimisticRec, ...prev]);
 
     startTransition(async () => {
       const res = await createRapidReclamation({
@@ -304,8 +392,52 @@ export default function ReceptionPortal({
     });
   };
 
+  // Create Historical Reclamation directly inside Room Modal
+  const handleInModalHistoricalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRoomModal) return;
+
+    const optimisticHist: Reclamation = {
+      id: Date.now(),
+      room_id: selectedRoomModal.id,
+      room: selectedRoomModal,
+      department: inModalHistDept,
+      category: inModalHistCategory,
+      description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
+      priority: "STANDARD",
+      status: inModalHistStatus,
+      created_at: inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString(),
+      resolved_at: inModalHistStatus === "RESOLVED" ? (inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString()) : undefined,
+    };
+    setLocalReclamations((prev) => [optimisticHist, ...prev]);
+
+    startTransition(async () => {
+      const res = await createHistoricalReclamation({
+        roomId: selectedRoomModal.id,
+        department: inModalHistDept,
+        category: inModalHistCategory,
+        description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
+        status: inModalHistStatus,
+        createdAt: inModalHistDate,
+        isConfidential: false,
+      });
+
+      if (res.success) {
+        setShowInModalPastLog(false);
+        setInModalHistDesc("");
+        setMessage(`✅ Historical incident added for Room ${selectedRoomModal.room_number}!`);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        alert(`Error: ${res.error}`);
+      }
+    });
+  };
+
   // Acknowledge Ticket
   const handleAcknowledgeTicket = (id: number) => {
+    setLocalReclamations((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status: "IN_PROGRESS" } : r))
+    );
     startTransition(async () => {
       const res = await acknowledgeReclamation(id);
       if (res.success) {
@@ -317,6 +449,9 @@ export default function ReceptionPortal({
 
   // Resolve Ticket
   const handleResolveTicket = (id: number) => {
+    setLocalReclamations((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status: "RESOLVED", resolved_at: new Date().toISOString() } : r))
+    );
     startTransition(async () => {
       const res = await resolveReclamation(id, "Resolved by Reception");
       if (res.success) {
@@ -326,14 +461,28 @@ export default function ReceptionPortal({
     });
   };
 
-  // Submit Historical Ticket
+  // Submit Historical Ticket from Global Modal
   const handleHistoricalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const targetRoom = rooms.find((r) => r.room_number === histRoom);
+    const targetRoom = rooms.find((r) => r.room_number.toString() === histRoom.toString().trim());
     if (!targetRoom) {
       alert("Invalid room number!");
       return;
     }
+
+    const optimisticHist: Reclamation = {
+      id: Date.now(),
+      room_id: targetRoom.id,
+      room: targetRoom,
+      department: histDept,
+      category: histCategory,
+      description: histDesc || `Historical logbook entry for ${histCategory}`,
+      priority: "STANDARD",
+      status: histStatus,
+      created_at: histDate ? new Date(histDate).toISOString() : new Date().toISOString(),
+      resolved_at: histStatus === "RESOLVED" ? (histDate ? new Date(histDate).toISOString() : new Date().toISOString()) : undefined,
+    };
+    setLocalReclamations((prev) => [optimisticHist, ...prev]);
 
     startTransition(async () => {
       const res = await createHistoricalReclamation({
@@ -356,19 +505,19 @@ export default function ReceptionPortal({
     });
   };
 
-  // Summary Metrics
+  // Summary Metrics (instantaneously updated from reactive localReclamations)
   const totalRooms = rooms.length;
   const occupiedCount = rooms.filter((r) => r.is_occupied).length;
   const dirtyCount = rooms.filter((r) => r.cleaning_status === "DIRTY").length;
   const vacantCleanCount = rooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length;
-  const openReclamationsCount = reclamationsList.filter((r) => r.status === "OPEN" || r.status === "IN_PROGRESS").length;
+  const openReclamationsCount = localReclamations.filter((r) => r.status === "OPEN" || r.status === "IN_PROGRESS").length;
 
   const deptCounts: Record<string, number> = {};
-  reclamationsList.forEach((rec) => {
+  localReclamations.forEach((rec) => {
     deptCounts[rec.department] = (deptCounts[rec.department] || 0) + 1;
   });
 
-  const urgentReclamations = reclamationsList.filter(
+  const urgentReclamations = localReclamations.filter(
     (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && (r.priority === "HIGH" || r.priority === "EMERGENCY")
   );
 
@@ -728,7 +877,9 @@ export default function ReceptionPortal({
               {filteredRooms.map((room) => {
                 const isDirty = room.cleaning_status === "DIRTY";
                 const isClean = room.cleaning_status === "CLEAN";
-                const roomTicketCount = reclamationsList.filter((r) => r.room_id === room.id || r.room?.room_number === room.room_number).length;
+                const roomTickets = localReclamations.filter((r) => r.room_id === room.id || r.room?.room_number === room.room_number);
+                const roomTicketCount = roomTickets.length;
+                const hasActiveIncident = roomTickets.some((r) => r.status === "OPEN" || r.status === "IN_PROGRESS");
 
                 return (
                   <div
@@ -740,12 +891,23 @@ export default function ReceptionPortal({
                     className="room-matrix-card"
                     style={{
                       border: "1.5px solid",
-                      borderColor: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--border-default)",
+                      borderColor: hasActiveIncident
+                        ? "var(--status-amber)"
+                        : isDirty
+                        ? "var(--status-rose)"
+                        : isClean
+                        ? "var(--status-emerald)"
+                        : "var(--border-default)",
                       background: "var(--surface-card)",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
+                        {hasActiveIncident && (
+                          <span title="Active incident in progress" style={{ fontSize: 11 }}>⚠️</span>
+                        )}
+                      </div>
                       <span
                         style={{
                           fontSize: 10,
@@ -770,7 +932,7 @@ export default function ReceptionPortal({
                         {isDirty ? "DIRTY" : isClean ? "CLEAN" : room.cleaning_status}
                       </span>
                       {roomTicketCount > 0 && (
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: "var(--radius-sm)", background: "var(--status-purple-bg)", color: "var(--status-purple)", border: "1px solid var(--status-purple)", fontWeight: 800 }}>
+                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: "var(--radius-sm)", background: hasActiveIncident ? "var(--status-rose-bg)" : "var(--status-purple-bg)", color: hasActiveIncident ? "var(--status-rose)" : "var(--status-purple)", border: `1px solid ${hasActiveIncident ? "var(--status-rose)" : "var(--status-purple)"}`, fontWeight: 800 }}>
                           {roomTicketCount} {roomTicketCount === 1 ? "ticket" : "tickets"}
                         </span>
                       )}
@@ -795,11 +957,23 @@ export default function ReceptionPortal({
                     Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
                   </h3>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                    Live operational tickets across all departments with status resolution.
+                    Live operational tickets across all departments with occurrence timestamps.
                   </p>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <select
+                    value={recDateFilter}
+                    onChange={(e) => setRecDateFilter(e.target.value as any)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">📅 All Dates</option>
+                    <option value="TODAY">📅 Today Only</option>
+                    <option value="WEEK">📅 Past 7 Days</option>
+                    <option value="MONTH">📅 Past 30 Days</option>
+                    <option value="ARCHIVE">📅 Older History</option>
+                  </select>
+
                   <select
                     value={recStatusFilter}
                     onChange={(e) => setRecStatusFilter(e.target.value as any)}
@@ -831,10 +1005,10 @@ export default function ReceptionPortal({
                   onClick={() => setRecDeptFilter("ALL")}
                   className={`filter-pill-btn ${recDeptFilter === "ALL" ? "active" : ""}`}
                 >
-                  All Departments ({reclamationsList.length})
+                  All Departments ({localReclamations.length})
                 </button>
                 {allDepartments.map((d) => {
-                  const deptCount = reclamationsList.filter((r: Reclamation) => r.department === d.code).length;
+                  const deptCount = localReclamations.filter((r: Reclamation) => r.department === d.code).length;
                   const displayIcon = d.icon && !d.icon.includes("?") ? d.icon : "🏢";
                   return (
                     <button
@@ -858,6 +1032,7 @@ export default function ReceptionPortal({
                     <th style={{ padding: "10px" }}>ID / Room</th>
                     <th style={{ padding: "10px" }}>Department</th>
                     <th style={{ padding: "10px" }}>Category / Description</th>
+                    <th style={{ padding: "10px" }}>📅 Date & Time</th>
                     <th style={{ padding: "10px" }}>Priority</th>
                     <th style={{ padding: "10px" }}>Status</th>
                     <th style={{ padding: "10px", textAlign: "right" }}>Actions</th>
@@ -868,6 +1043,7 @@ export default function ReceptionPortal({
                     const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
                     const isResolved = rec.status === "RESOLVED";
                     const isOpen = rec.status === "OPEN";
+                    const dt = formatIncidentDate(rec.created_at);
 
                     return (
                       <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
@@ -876,6 +1052,10 @@ export default function ReceptionPortal({
                         <td style={{ padding: "10px" }}>
                           <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
                           <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
+                        </td>
+                        <td style={{ padding: "10px", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{dt.formatted}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{dt.time} ({dt.relative})</div>
                         </td>
                         <td style={{ padding: "10px" }}>
                           <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--status-rose)" : rec.priority === "HIGH" ? "var(--status-amber)" : "var(--accent-amber-bg)", color: rec.priority === "EMERGENCY" || rec.priority === "HIGH" ? "#fff" : "var(--text-primary)" }}>
@@ -919,6 +1099,7 @@ export default function ReceptionPortal({
                   const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
                   const isResolved = rec.status === "RESOLVED";
                   const isOpen = rec.status === "OPEN";
+                  const dt = formatIncidentDate(rec.created_at);
 
                   return (
                     <div key={rec.id} className="mobile-ticket-card">
@@ -951,6 +1132,14 @@ export default function ReceptionPortal({
                             {rec.status}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Date & Time Timestamp */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)" }}>
+                        <span>📅 {dt.formatted}</span>
+                        <span>•</span>
+                        <span>{dt.time}</span>
+                        <span>({dt.relative})</span>
                       </div>
 
                       {/* Content Body */}
@@ -1219,13 +1408,13 @@ export default function ReceptionPortal({
                 {/* MODAL TAB 2: RECLAMATIONS WITH SUB-CATEGORIES */}
                 {modalTab === "RECLAMATIONS" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS */}
-                    <div style={{ display: "flex", gap: 8, padding: "4px", background: "rgba(15, 23, 42, 0.8)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS (4 TABS) */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "4px", background: "rgba(15, 23, 42, 0.8)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
                       <button
+                        type="button"
                         onClick={() => setRoomModalSubTab("ACTIVE")}
                         style={{
-                          flex: 1,
-                          padding: "7px 10px",
+                          padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
                           background: roomModalSubTab === "ACTIVE" ? "#38bdf8" : "transparent",
@@ -1236,22 +1425,23 @@ export default function ReceptionPortal({
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 6,
+                          gap: 4,
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        <span>⚡ Active Issues</span>
+                        <span>⚡ Active</span>
                         {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 }}>
                             {roomActiveReclamations.length}
                           </span>
                         )}
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => setRoomModalSubTab("MOST_REPORTED")}
                         style={{
-                          flex: 1,
-                          padding: "7px 10px",
+                          padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
                           background: roomModalSubTab === "MOST_REPORTED" ? "#fbbf24" : "transparent",
@@ -1262,20 +1452,21 @@ export default function ReceptionPortal({
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 6,
+                          gap: 4,
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        <span>💥 Most Reported</span>
-                        <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "MOST_REPORTED" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                        <span>💥 Trends</span>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "MOST_REPORTED" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
                           {roomProblemStats.length}
                         </span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => setRoomModalSubTab("HISTORY")}
                         style={{
-                          flex: 1,
-                          padding: "7px 10px",
+                          padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
                           background: roomModalSubTab === "HISTORY" ? "#e879f9" : "transparent",
@@ -1286,13 +1477,36 @@ export default function ReceptionPortal({
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 6,
+                          gap: 4,
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        <span>📜 Full History</span>
-                        <span style={{ padding: "1px 6px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "HISTORY" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                        <span>📜 History</span>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "HISTORY" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
                           {roomModalReclamations.length}
                         </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRoomModalSubTab("TIMELINE")}
+                        style={{
+                          padding: "8px 6px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: roomModalSubTab === "TIMELINE" ? "#10b981" : "transparent",
+                          color: roomModalSubTab === "TIMELINE" ? "#000000" : "#94a3b8",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span>📅 Timeline</span>
                       </button>
                     </div>
 
@@ -1324,6 +1538,12 @@ export default function ReceptionPortal({
                                   </span>
                                 </div>
                                 <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>{rec.description}</div>
+                                {rec.created_at && (
+                                  <div style={{ fontSize: 11, color: "var(--text-muted, #94a3b8)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span>🕒 Logged: {formatIncidentDate(rec.created_at).full}</span>
+                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>{formatIncidentDate(rec.created_at).relative}</span>
+                                  </div>
+                                )}
                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
                                   <button
                                     onClick={() => handleAcknowledgeTicket(rec.id)}
@@ -1438,12 +1658,145 @@ export default function ReceptionPortal({
                       </div>
                     )}
 
-                    {/* SUB-CATEGORY 3: FULL HISTORY FOR EACH ROOM */}
+                    {/* SUB-CATEGORY 3: FULL HISTORY WITH INLINE PAST LOG BACKFILL */}
                     {roomModalSubTab === "HISTORY" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "#e879f9", fontWeight: 800 }}>
-                          📜 Complete Room {selectedRoomModal.room_number} Ticket History ({roomModalReclamations.length})
-                        </h4>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "#e879f9", fontWeight: 800 }}>
+                            📜 Room {selectedRoomModal.room_number} Ticket History ({roomModalReclamations.length})
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => setShowInModalPastLog(!showInModalPastLog)}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: 8,
+                              background: showInModalPastLog ? "rgba(239, 68, 68, 0.2)" : "rgba(232, 121, 249, 0.2)",
+                              border: `1px solid ${showInModalPastLog ? "#ef4444" : "#e879f9"}`,
+                              color: showInModalPastLog ? "#f87171" : "#e879f9",
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {showInModalPastLog ? "✕ Cancel Backfill" : "➕ Log Past Incident"}
+                          </button>
+                        </div>
+
+                        {/* INLINE HISTORICAL BACKFILL FORM */}
+                        {showInModalPastLog && (
+                          <form
+                            onSubmit={handleInModalHistoricalSubmit}
+                            style={{
+                              background: "rgba(232, 121, 249, 0.08)",
+                              padding: 12,
+                              borderRadius: 12,
+                              border: "1px dashed rgba(232, 121, 249, 0.4)",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 10,
+                            }}
+                          >
+                            <div style={{ fontSize: 12, fontWeight: 800, color: "#e879f9" }}>
+                              📝 Backfill Past Incident for Room {selectedRoomModal.room_number}
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                  Incident Date & Time
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  required
+                                  value={inModalHistDate}
+                                  onChange={(e) => setInModalHistDate(e.target.value)}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                  Status
+                                </label>
+                                <select
+                                  value={inModalHistStatus}
+                                  onChange={(e) => setInModalHistStatus(e.target.value as any)}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                >
+                                  <option value="RESOLVED">RESOLVED (Past Solved)</option>
+                                  <option value="OPEN">OPEN (Needs Attention)</option>
+                                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <div>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                  Department
+                                </label>
+                                <select
+                                  value={inModalHistDept}
+                                  onChange={(e) => {
+                                    setInModalHistDept(e.target.value);
+                                    const presets = PRESET_ISSUES[e.target.value];
+                                    if (presets && presets.length > 0) {
+                                      setInModalHistCategory(presets[0].category);
+                                    }
+                                  }}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                >
+                                  {allDepartments.map((d) => (
+                                    <option key={d.code} value={d.code}>{d.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                  Category
+                                </label>
+                                <select
+                                  value={inModalHistCategory}
+                                  onChange={(e) => setInModalHistCategory(e.target.value)}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                >
+                                  {(PRESET_ISSUES[inModalHistDept] || DEFAULT_PRESETS).map((p) => (
+                                    <option key={p.category} value={p.category}>{p.category}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                Description / Notes
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="What happened and how was it addressed..."
+                                value={inModalHistDesc}
+                                onChange={(e) => setInModalHistDesc(e.target.value)}
+                                style={{ width: "100%", padding: "7px 8px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                              />
+                            </div>
+
+                            <button
+                              type="submit"
+                              disabled={isPending}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: 8,
+                                background: "#e879f9",
+                                border: "none",
+                                color: "#000",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                fontSize: 11,
+                              }}
+                            >
+                              💾 Save Past Log to History &rarr;
+                            </button>
+                          </form>
+                        )}
 
                         {roomModalReclamations.length === 0 ? (
                           <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
@@ -1451,22 +1804,102 @@ export default function ReceptionPortal({
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                            {roomModalReclamations.map((rec) => (
-                              <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.5)", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div>
-                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
-                                    #{rec.id} • {rec.category} <span style={{ color: "#e879f9", fontWeight: 600 }}>({rec.department})</span>
+                            {roomModalReclamations.map((rec) => {
+                              const dateInfo = formatIncidentDate(rec.created_at);
+                              return (
+                                <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.5)", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+                                      <span>#{rec.id} • {rec.category}</span>
+                                      <span style={{ color: "#e879f9", fontWeight: 600, fontSize: 11 }}>({rec.department})</span>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>{rec.description}</div>
+                                    {rec.created_at && (
+                                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                                        <span>📅 {dateInfo.full}</span>
+                                        <span style={{ padding: "1px 5px", borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>{dateInfo.relative}</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>{rec.description}</div>
-                                  {rec.created_at && (
-                                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>Logged: {rec.created_at}</div>
-                                  )}
+                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 800, whiteSpace: "nowrap" }}>
+                                    {rec.status}
+                                  </span>
                                 </div>
-                                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 800 }}>
-                                  {rec.status}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* SUB-CATEGORY 4: CHRONOLOGICAL DATE TIMELINE */}
+                    {roomModalSubTab === "TIMELINE" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "#10b981", fontWeight: 800 }}>
+                            📅 Chronological Event Timeline (Room {selectedRoomModal.room_number})
+                          </h4>
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                            {roomModalReclamations.length} recorded events
+                          </span>
+                        </div>
+
+                        {roomModalReclamations.length === 0 ? (
+                          <div style={{ padding: "2rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                            No events in timeline for Room {selectedRoomModal.room_number}.
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative", paddingLeft: 20, maxHeight: 360, overflowY: "auto" }}>
+                            {/* Vertical connector guide line */}
+                            <div style={{ position: "absolute", left: 7, top: 10, bottom: 10, width: 2, background: "rgba(16, 185, 129, 0.25)" }} />
+
+                            {[...roomModalReclamations]
+                              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+                              .map((rec) => {
+                                const dateInfo = formatIncidentDate(rec.created_at);
+                                const isResolved = rec.status === "RESOLVED";
+                                return (
+                                  <div key={rec.id} style={{ position: "relative", paddingBottom: 16 }}>
+                                    {/* Timeline Node Icon */}
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        left: -20,
+                                        top: 3,
+                                        width: 16,
+                                        height: 16,
+                                        borderRadius: "50%",
+                                        background: isResolved ? "#10b981" : "#f59e0b",
+                                        border: "2px solid #0f172a",
+                                        boxShadow: isResolved ? "0 0 8px rgba(16, 185, 129, 0.5)" : "0 0 8px rgba(245, 158, 11, 0.5)",
+                                      }}
+                                    />
+
+                                    <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span style={{ fontWeight: 800, color: "#fff", fontSize: 12 }}>{rec.category}</span>
+                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(16, 185, 129, 0.2)", color: "#34d399", fontWeight: 700 }}>
+                                            {rec.department}
+                                          </span>
+                                        </div>
+                                        <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>
+                                          {dateInfo.relative}
+                                        </span>
+                                      </div>
+
+                                      <div style={{ fontSize: 11, color: "#cbd5e1" }}>{rec.description}</div>
+
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "#94a3b8" }}>
+                                        <span>📅 {dateInfo.full}</span>
+                                        <span style={{ fontWeight: 800, color: isResolved ? "#34d399" : "#fbbf24" }}>
+                                          {rec.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                           </div>
                         )}
                       </div>
@@ -1479,18 +1912,128 @@ export default function ReceptionPortal({
         </div>
       )}
 
-      {/* HISTORICAL RECLAMATION MODAL */}
+      {/* HISTORICAL RECLAMATION MODAL (GLOBAL) */}
       {showHistoryModal && (
         <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
-          <div className="portal-modal-content" style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, maxWidth: 500, width: "100%", padding: "1.5rem" }}>
+          <div className="portal-modal-content ses-card" style={{ maxWidth: 520, width: "100%", padding: "1.5rem", borderRadius: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 18, color: "#fbbf24" }}>Add Historical Ticket</h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, color: "#fbbf24", fontWeight: 800 }}>➕ Add Historical Incident Log</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted, #94a3b8)" }}>Backfill past room reclamations with exact dates</p>
+              </div>
               <button onClick={() => setShowHistoryModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
             <form onSubmit={handleHistoricalSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <input type="text" required placeholder="Room Number (e.g. 1001)" value={histRoom} onChange={(e) => setHistRoom(e.target.value)} style={{ padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff" }} />
-              <textarea rows={3} required placeholder="Description..." value={histDesc} onChange={(e) => setHistDesc(e.target.value)} style={{ padding: 8, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff" }} />
-              <button type="submit" disabled={isPending} style={{ padding: "8px 16px", borderRadius: 8, background: "#f59e0b", border: "none", color: "#000", fontWeight: 700, cursor: "pointer" }}>Save Historical Entry</button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                    Room Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 101, 204"
+                    value={histRoom}
+                    onChange={(e) => setHistRoom(e.target.value)}
+                    className="ses-input"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                    Incident Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={histDate}
+                    onChange={(e) => setHistDate(e.target.value)}
+                    className="ses-input"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                    Department
+                  </label>
+                  <select
+                    value={histDept}
+                    onChange={(e) => {
+                      setHistDept(e.target.value);
+                      const presets = PRESET_ISSUES[e.target.value];
+                      if (presets && presets.length > 0) {
+                        setHistCategory(presets[0].category);
+                      }
+                    }}
+                    className="ses-select"
+                  >
+                    {allDepartments.map((d) => (
+                      <option key={d.code} value={d.code}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                    Category
+                  </label>
+                  <select
+                    value={histCategory}
+                    onChange={(e) => setHistCategory(e.target.value)}
+                    className="ses-select"
+                  >
+                    {(PRESET_ISSUES[histDept] || DEFAULT_PRESETS).map((p) => (
+                      <option key={p.category} value={p.category}>{p.category}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                  Status
+                </label>
+                <select
+                  value={histStatus}
+                  onChange={(e) => setHistStatus(e.target.value as any)}
+                  className="ses-select"
+                >
+                  <option value="RESOLVED">RESOLVED (Past resolved ticket)</option>
+                  <option value="OPEN">OPEN (Unresolved historical issue)</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS (Currently being handled)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
+                  Incident Description
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Details of the incident, guest report, and resolution notes..."
+                  value={histDesc}
+                  onChange={(e) => setHistDesc(e.target.value)}
+                  className="ses-input"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isPending}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  background: "#f59e0b",
+                  border: "none",
+                  color: "#000",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                {isPending ? "Saving Entry..." : "💾 Save Historical Entry &rarr;"}
+              </button>
             </form>
           </div>
         </div>

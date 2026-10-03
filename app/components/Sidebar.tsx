@@ -27,9 +27,9 @@ export default function Sidebar({
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.75rem", padding: "0 6px" }}>
           <img
-            src="/icons/icon-96x96.png"
-            alt="Hotel SES Logo"
-            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid var(--border-subtle)" }}
+            src="/hotel-logo.png"
+            alt="Hôtel Méditerranée Thalasso Golf Hammamet"
+            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid var(--border-subtle)", objectFit: "cover" }}
           />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

@@ -69,7 +69,7 @@ export default function PrivacyPolicyPage() {
           </h1>
           <p style={{ fontSize: 16, color: "#cbd5e1", lineHeight: 1.6, margin: 0 }}>
             This Privacy Notice governs data processing across the Hotel SES (Service & Operations Management System)
-            deployed at Grand Palace Hotel. It details how employee operational records, incident tickets, and resident stay metrics are managed.
+            deployed at Hôtel Méditerranée Thalasso Golf Hammamet. It details how employee operational records, incident tickets, and resident stay metrics are managed.
           </p>
         </header>
 
@@ -91,12 +91,12 @@ export default function PrivacyPolicyPage() {
                 marginTop: 10,
               }}
             >
-              <p style={{ margin: "0 0 6px" }}><strong>Entity:</strong> Grand Palace Hotel Management S.A.S.</p>
-              <p style={{ margin: "0 0 6px" }}><strong>Address:</strong> 12 Avenue des Palaces, 75008 Paris, France</p>
+              <p style={{ margin: "0 0 6px" }}><strong>Entity:</strong> Hôtel Méditerranée Thalasso Golf Hammamet</p>
+              <p style={{ margin: "0 0 6px" }}><strong>Location:</strong> Hammamet, Tunisia</p>
               <p style={{ margin: "0 0 6px" }}>
-                <strong>Data Protection Officer (DPO):</strong>{" "}
-                <a href="mailto:dpo@grandpalacehotel.com" style={{ color: "#38bdf8", textDecoration: "underline" }}>
-                  dpo@grandpalacehotel.com
+                <strong>Data Protection Contact:</strong>{" "}
+                <a href="mailto:contact@hotelmediterraneehammamet.com" style={{ color: "#38bdf8", textDecoration: "underline" }}>
+                  contact@hotelmediterraneehammamet.com
                 </a>
               </p>
               <p style={{ margin: 0 }}>
@@ -250,7 +250,7 @@ export default function PrivacyPolicyPage() {
           }}
         >
           <div>
-            &copy; {new Date().getFullYear()} Grand Palace Hotel Operations • SES System
+            &copy; {new Date().getFullYear()} Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
           </div>
           <div style={{ display: "flex", gap: 16 }}>
             <Link href="/tos" style={{ color: "#38bdf8", textDecoration: "none" }}>
