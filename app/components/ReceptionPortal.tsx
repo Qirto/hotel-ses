@@ -787,38 +787,66 @@ export default function ReceptionPortal({
         {/* ========================================================================= */}
         {activeTab === "RECLAMATIONS" && (
           <div className="ses-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                  Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
-                </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                  Live operational tickets across all departments with status resolution.
-                </p>
+            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
+            <div className="tab-sticky-filter-bar">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                    Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                    Live operational tickets across all departments with status resolution.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={recStatusFilter}
+                    onChange={(e) => setRecStatusFilter(e.target.value as any)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="OPEN">Open Only</option>
+                    <option value="IN_PROGRESS">In Progress Only</option>
+                    <option value="RESOLVED">Resolved Only</option>
+                  </select>
+
+                  <select
+                    value={recDeptFilter}
+                    onChange={(e) => setRecDeptFilter(e.target.value)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Departments</option>
+                    {allDepartments.map((d) => (
+                      <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8 }}>
-                <select
-                  value={recStatusFilter}
-                  onChange={(e) => setRecStatusFilter(e.target.value as any)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+              {/* Fixed / Sticky Horizontal Department Pills Row (Fast 1-tap filtering on Mobile & Desktop) */}
+              <div className="filter-pills-row">
+                <button
+                  type="button"
+                  onClick={() => setRecDeptFilter("ALL")}
+                  className={`filter-pill-btn ${recDeptFilter === "ALL" ? "active" : ""}`}
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="OPEN">Open Only</option>
-                  <option value="IN_PROGRESS">In Progress Only</option>
-                  <option value="RESOLVED">Resolved Only</option>
-                </select>
-
-                <select
-                  value={recDeptFilter}
-                  onChange={(e) => setRecDeptFilter(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                >
-                  <option value="ALL">All Departments</option>
-                  {allDepartments.map((d) => (
-                    <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-                  ))}
-                </select>
+                  All Departments ({reclamationsList.length})
+                </button>
+                {allDepartments.map((d) => {
+                  const deptCount = reclamationsList.filter((r: Reclamation) => r.department === d.code).length;
+                  const displayIcon = d.icon && !d.icon.includes("?") ? d.icon : "🏢";
+                  return (
+                    <button
+                      key={d.code}
+                      type="button"
+                      onClick={() => setRecDeptFilter(d.code)}
+                      className={`filter-pill-btn ${recDeptFilter === d.code ? "active" : ""}`}
+                    >
+                      {displayIcon} {d.name} ({deptCount})
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

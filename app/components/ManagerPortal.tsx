@@ -186,6 +186,14 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
     return true;
   });
 
+  const incidentDepartments = useMemo(() => {
+    const set = new Set<string>();
+    reclamations.forEach((r) => {
+      if (r.department) set.add(r.department);
+    });
+    return Array.from(set).sort();
+  }, [reclamations]);
+
   const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY">("ACTIVE");
 
   // Specific Room Reclamations
@@ -486,9 +494,67 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
         {/* TAB 3: RECLAMATIONS */}
         {activeTab === "RECLAMATIONS" && (
           <div className="ses-card">
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-              Executive Incident Log ({filteredReclamations.length} tickets)
-            </h3>
+            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
+            <div className="tab-sticky-filter-bar">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                    Executive Incident Log ({filteredReclamations.length} tickets)
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                    Operational incidents overview with immediate management resolution.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={ticketStatusFilter}
+                    onChange={(e) => setTicketStatusFilter(e.target.value)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="OPEN">Open Only</option>
+                    <option value="IN_PROGRESS">In Progress Only</option>
+                    <option value="RESOLVED">Resolved Only</option>
+                  </select>
+
+                  <select
+                    value={ticketFilter}
+                    onChange={(e) => setTicketFilter(e.target.value)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Departments</option>
+                    {incidentDepartments.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Fixed / Sticky Horizontal Department Pills Row */}
+              <div className="filter-pills-row">
+                <button
+                  type="button"
+                  onClick={() => setTicketFilter("ALL")}
+                  className={`filter-pill-btn ${ticketFilter === "ALL" ? "active" : ""}`}
+                >
+                  All ({reclamations.length})
+                </button>
+                {incidentDepartments.map((dept) => {
+                  const deptCount = reclamations.filter((r: Reclamation) => r.department === dept).length;
+                  return (
+                    <button
+                      key={dept}
+                      type="button"
+                      onClick={() => setTicketFilter(dept)}
+                      className={`filter-pill-btn ${ticketFilter === dept ? "active" : ""}`}
+                    >
+                      {dept} ({deptCount})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Desktop Table View (>= 768px) */}
             <div className="responsive-table-view">

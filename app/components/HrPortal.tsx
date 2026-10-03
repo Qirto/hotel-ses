@@ -66,10 +66,10 @@ const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Satur
 type ShiftType = "MORNING" | "EVENING" | "NIGHT" | "OFF";
 
 const SHIFT_LABELS: Record<ShiftType, { label: string; time: string; color: string; bg: string }> = {
-  MORNING: { label: "🌅 Morning", time: "07:00 - 15:00", color: "#38bdf8", bg: "rgba(56, 189, 248, 0.2)" },
-  EVENING: { label: "🌇 Evening", time: "15:00 - 23:00", color: "#fbbf24", bg: "rgba(251, 191, 36, 0.2)" },
-  NIGHT: { label: "🌃 Night", time: "23:00 - 07:00", color: "#a855f7", bg: "rgba(168, 85, 247, 0.2)" },
-  OFF: { label: "🏖️ Off / Rest", time: "Rest Day", color: "#94a3b8", bg: "rgba(148, 163, 184, 0.1)" },
+  MORNING: { label: "🌅 Morning", time: "07:00 - 15:00", color: "var(--status-cyan)", bg: "var(--status-cyan-bg)" },
+  EVENING: { label: "🌇 Evening", time: "15:00 - 23:00", color: "var(--accent-amber)", bg: "var(--accent-amber-bg)" },
+  NIGHT: { label: "🌃 Night", time: "23:00 - 07:00", color: "var(--status-purple)", bg: "var(--status-purple-bg)" },
+  OFF: { label: "🏖️ Off / Rest", time: "Rest Day", color: "var(--text-muted)", bg: "var(--surface-2)" },
 };
 
 export default function HrPortal({
@@ -521,8 +521,8 @@ export default function HrPortal({
                   style={{
                     padding: "2px 8px",
                     borderRadius: 999,
-                    background: empSubTab === "DIRECTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
-                    color: empSubTab === "DIRECTORY" ? "#000" : "#cbd5e1",
+                    background: empSubTab === "DIRECTORY" ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
+                    color: empSubTab === "DIRECTORY" ? "#000" : "var(--text-primary)",
                     fontSize: 11,
                     fontWeight: 800,
                   }}
@@ -554,8 +554,8 @@ export default function HrPortal({
                   style={{
                     padding: "2px 8px",
                     borderRadius: 999,
-                    background: empSubTab === "SHIFTS" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)",
-                    color: empSubTab === "SHIFTS" ? "#000" : "#cbd5e1",
+                    background: empSubTab === "SHIFTS" ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
+                    color: empSubTab === "SHIFTS" ? "#000" : "var(--text-primary)",
                     fontSize: 11,
                     fontWeight: 800,
                   }}
@@ -570,32 +570,32 @@ export default function HrPortal({
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                 {/* SUMMARY CARDS BAR */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(52, 211, 153, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Total Staff Members</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#34d399", marginTop: 2 }}>{totalStaff}</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Total Staff Members</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-emerald)", marginTop: 2 }}>{totalStaff}</div>
                   </div>
-                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(56, 189, 248, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Active On Shift</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#38bdf8", marginTop: 2 }}>{onShiftCount}</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Active On Shift</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-cyan)", marginTop: 2 }}>{onShiftCount}</div>
                   </div>
-                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(251, 191, 36, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Off Shift / Standby</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#fbbf24", marginTop: 2 }}>{totalStaff - onShiftCount}</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Off Shift / Standby</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent-amber)", marginTop: 2 }}>{totalStaff - onShiftCount}</div>
                   </div>
-                  <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "14px", borderRadius: 14, border: "1px solid rgba(232, 121, 249, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>Departments Managed</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#e879f9", marginTop: 2 }}>{activeDepartments.length}</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Departments Managed</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-purple)", marginTop: 2 }}>{activeDepartments.length}</div>
                   </div>
                 </div>
 
                 {/* DIRECTORY CONTROLS & TABLE */}
-                <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="ses-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#34d399" }}>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-emerald)" }}>
                         👥 Employees Master Directory
                       </h3>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
                         Manage staff profiles, department assignments, and live shift status
                       </p>
                     </div>
@@ -606,13 +606,13 @@ export default function HrPortal({
                         placeholder="Search staff name or role..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ padding: "8px 14px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12, width: 220 }}
+                        style={{ padding: "8px 14px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, width: 220 }}
                       />
 
                       <select
                         value={selectedDept}
                         onChange={(e) => setSelectedDept(e.target.value)}
-                        style={{ padding: "8px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#34d399", fontSize: 12, fontWeight: 700 }}
+                        style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
                       >
                         <option value="ALL">All Departments ({totalStaff})</option>
                         {activeDepartments.map((d) => (
@@ -624,17 +624,18 @@ export default function HrPortal({
 
                       <button
                         onClick={() => setShowCreateModal(true)}
-                        style={{ padding: "8px 16px", borderRadius: 8, background: "#34d399", border: "none", color: "#000", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                        style={{ padding: "8px 16px", borderRadius: "var(--radius-md)", background: "var(--status-emerald)", border: "none", color: "#ffffff", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px var(--accent-amber-glow)" }}
                       >
                         ➕ Add New Employee
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ overflowX: "auto" }}>
+                  {/* Desktop Table View (>= 768px) */}
+                  <div className="responsive-table-view">
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
                       <thead>
-                        <tr style={{ background: "rgba(30, 41, 59, 0.8)", color: "#94a3b8" }}>
+                        <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
                           <th style={{ padding: "12px 10px" }}>Employee Name</th>
                           <th style={{ padding: "12px 10px" }}>Role</th>
                           <th style={{ padding: "12px 10px" }}>Department</th>
@@ -646,49 +647,49 @@ export default function HrPortal({
                       <tbody>
                         {filteredStaff.length === 0 ? (
                           <tr>
-                            <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+                            <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
                               No staff members found matching search & department filters.
                             </td>
                           </tr>
                         ) : (
                           filteredStaff.map((member) => (
-                            <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                              <td style={{ padding: "12px 10px", fontWeight: 700, color: "#fff" }}>
+                            <tr key={member.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td style={{ padding: "12px 10px", fontWeight: 700, color: "var(--text-primary)" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                   <span style={{ fontSize: 16 }}>👤</span>
                                   <span>{member.full_name}</span>
                                 </div>
                               </td>
-                              <td style={{ padding: "12px 10px", color: "#38bdf8", fontWeight: 600 }}>{member.role}</td>
+                              <td style={{ padding: "12px 10px", color: "var(--status-cyan)", fontWeight: 600 }}>{member.role}</td>
                               <td style={{ padding: "12px 10px" }}>
-                                <span style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(232, 121, 249, 0.15)", border: "1px solid rgba(232, 121, 249, 0.3)", color: "#e879f9", fontSize: 11, fontWeight: 700 }}>
+                                <span style={{ padding: "3px 8px", borderRadius: 6, background: "var(--status-purple-bg)", border: "1px solid var(--border-subtle)", color: "var(--status-purple)", fontSize: 11, fontWeight: 700 }}>
                                   {member.department || "RECEPTION"}
                                 </span>
                               </td>
-                              <td style={{ padding: "12px 10px", color: "#94a3b8", fontSize: 12 }}>
+                              <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: 12 }}>
                                 {member.phone_number || "📞 Unlisted"}
                               </td>
                               <td style={{ padding: "12px 10px" }}>
-                                <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "rgba(34, 197, 94, 0.2)" : "rgba(148, 163, 184, 0.2)", color: member.shift_status === "ON_SHIFT" ? "#4ade80" : "#94a3b8", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "rgba(74, 222, 128, 0.4)" : "rgba(148, 163, 184, 0.3)"}` }}>
+                                <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "var(--status-emerald-bg)" : "var(--surface-2)", color: member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--text-muted)", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--border-subtle)"}` }}>
                                   {member.shift_status === "ON_SHIFT" ? "🟢 ON SHIFT" : "⚪ OFF SHIFT"}
                                 </span>
                               </td>
                               <td style={{ padding: "12px 10px", textAlign: "right" }}>
                                 <button
                                   onClick={() => handleToggleShift(member)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.4)", color: "#38bdf8", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-cyan-bg)", border: "1px solid var(--status-cyan)", color: "var(--status-cyan)", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
                                 >
                                   ⚡ Toggle Shift
                                 </button>
                                 <button
                                   onClick={() => handleMarkAbsent(member)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(245, 158, 11, 0.2)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#fbbf24", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-amber-bg)", border: "1px solid var(--status-amber)", color: "var(--status-amber)", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
                                 >
                                   🚨 Absent
                                 </button>
                                 <button
                                   onClick={() => handleDeleteStaff(member.id, member.full_name)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#f87171", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-rose-bg)", border: "1px solid var(--status-rose)", color: "var(--status-rose)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                                 >
                                   🗑️ Delete
                                 </button>
@@ -699,6 +700,71 @@ export default function HrPortal({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
+                  <div className="responsive-cards-view">
+                    {filteredStaff.length === 0 ? (
+                      <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
+                        No staff members found matching search & department filters.
+                      </div>
+                    ) : (
+                      filteredStaff.map((member) => (
+                        <div key={member.id} className="mobile-staff-card">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 18 }}>👤</span>
+                              <div>
+                                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
+                                  {member.full_name}
+                                </div>
+                                <div style={{ fontSize: 12, color: "var(--status-cyan)", fontWeight: 700 }}>
+                                  {member.role}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "var(--status-emerald-bg)" : "var(--surface-2)", color: member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--text-muted)", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--border-subtle)"}` }}>
+                              {member.shift_status === "ON_SHIFT" ? "🟢 ON SHIFT" : "⚪ OFF SHIFT"}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border-subtle)", borderBottom: "1px solid var(--border-subtle)" }}>
+                            <span style={{ padding: "3px 8px", borderRadius: "var(--radius-sm)", background: "var(--status-purple-bg)", border: "1px solid var(--border-subtle)", color: "var(--status-purple)", fontSize: 11, fontWeight: 700 }}>
+                              🏢 {member.department || "RECEPTION"}
+                            </span>
+                            <a
+                              href={member.phone_number ? `tel:${member.phone_number}` : undefined}
+                              style={{ color: "var(--text-secondary)", fontSize: 12, textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}
+                            >
+                              📞 {member.phone_number || "Unlisted Contact"}
+                            </a>
+                          </div>
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
+                            <button
+                              onClick={() => handleToggleShift(member)}
+                              style={{ padding: "8px", borderRadius: "var(--radius-sm)", background: "var(--status-cyan-bg)", border: "1px solid var(--status-cyan)", color: "var(--status-cyan)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                            >
+                              ⚡ Shift
+                            </button>
+                            <button
+                              onClick={() => handleMarkAbsent(member)}
+                              style={{ padding: "8px", borderRadius: "var(--radius-sm)", background: "var(--status-amber-bg)", border: "1px solid var(--status-amber)", color: "var(--status-amber)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                            >
+                              🚨 Absent
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStaff(member.id, member.full_name)}
+                              style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "var(--status-rose-bg)", border: "1px solid var(--status-rose)", color: "var(--status-rose)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              aria-label="Delete Staff"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -708,49 +774,49 @@ export default function HrPortal({
               <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                 {/* SHIFT SUMMARY CARDS */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <div style={{ background: "rgba(56, 189, 248, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#38bdf8", fontWeight: 700 }}>🌅 Morning Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.morning} slots</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>07:00 - 15:00</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--status-cyan)", fontWeight: 700 }}>🌅 Morning Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.morning} slots</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>07:00 - 15:00</div>
                   </div>
 
-                  <div style={{ background: "rgba(251, 191, 36, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(251, 191, 36, 0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>🌇 Evening Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.evening} slots</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>15:00 - 23:00</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--accent-amber)", fontWeight: 700 }}>🌇 Evening Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.evening} slots</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>15:00 - 23:00</div>
                   </div>
 
-                  <div style={{ background: "rgba(168, 85, 247, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(168, 85, 247, 0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#a855f7", fontWeight: 700 }}>🌃 Night Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.night} slots</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>23:00 - 07:00</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--status-purple)", fontWeight: 700 }}>🌃 Night Shifts</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.night} slots</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>23:00 - 07:00</div>
                   </div>
 
-                  <div style={{ background: "rgba(148, 163, 184, 0.1)", padding: "14px", borderRadius: 14, border: "1px solid rgba(148, 163, 184, 0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 700 }}>🏖️ Rest Days</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff", marginTop: 2 }}>{rosterStats.off} days</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Off / Rest</div>
+                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 700 }}>🏖️ Rest Days</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.off} days</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Off / Rest</div>
                   </div>
                 </div>
 
                 {/* WEEKLY ROSTER MATRIX */}
-                <div style={{ background: "rgba(15, 23, 42, 0.75)", borderRadius: 16, padding: "1.25rem", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="ses-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#38bdf8" }}>
+                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-cyan)" }}>
                         🗓️ Weekly Shift Roster & Planning Matrix
                       </h3>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
                         Assign and adjust daily working shifts for all hotel departments across the week
                       </p>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <label style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>Filter Roster:</label>
+                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Filter Roster:</label>
                       <select
                         value={rosterDeptFilter}
                         onChange={(e) => setRosterDeptFilter(e.target.value)}
-                        style={{ padding: "6px 12px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#38bdf8", fontSize: 12, fontWeight: 700 }}
+                        style={{ padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
                       >
                         <option value="ALL">All Departments</option>
                         {activeDepartments.map((d) => (
@@ -762,14 +828,15 @@ export default function HrPortal({
                     </div>
                   </div>
 
-                  <div style={{ overflowX: "auto" }}>
+                  {/* Desktop Table View (>= 768px) */}
+                  <div className="responsive-table-view">
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "center" }}>
                       <thead>
-                        <tr style={{ background: "rgba(30, 41, 59, 0.9)", color: "#94a3b8" }}>
+                        <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
                           <th style={{ padding: "12px 10px", textAlign: "left", minWidth: 170 }}>Employee / Role</th>
                           {WEEKDAYS.map((day) => (
                             <th key={day} style={{ padding: "12px 10px", minWidth: 115 }}>
-                              <div style={{ color: "#ffffff", fontWeight: 800 }}>{day}</div>
+                              <div style={{ color: "var(--text-primary)", fontWeight: 800 }}>{day}</div>
                             </th>
                           ))}
                         </tr>
@@ -778,11 +845,11 @@ export default function HrPortal({
                         {filteredRosterStaff.map((member) => {
                           const memberShifts = shiftRoster[member.id] || {};
                           return (
-                            <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <tr key={member.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                               <td style={{ padding: "10px", textAlign: "left" }}>
-                                <div style={{ fontWeight: 700, color: "#ffffff", fontSize: 13 }}>{member.full_name}</div>
-                                <div style={{ fontSize: 11, color: "#34d399", fontWeight: 600 }}>{member.role}</div>
-                                <div style={{ fontSize: 10, color: "#94a3b8" }}>{member.department}</div>
+                                <div style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>{member.full_name}</div>
+                                <div style={{ fontSize: 11, color: "var(--status-emerald)", fontWeight: 600 }}>{member.role}</div>
+                                <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{member.department}</div>
                               </td>
                               {WEEKDAYS.map((day) => {
                                 const currentShift: ShiftType = memberShifts[day] || "MORNING";
@@ -818,6 +885,66 @@ export default function HrPortal({
                         })}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
+                  <div className="responsive-cards-view">
+                    {filteredRosterStaff.map((member) => {
+                      const memberShifts = shiftRoster[member.id] || {};
+                      return (
+                        <div key={member.id} className="mobile-roster-card">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 10 }}>
+                            <div>
+                              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
+                                {member.full_name}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--status-emerald)" }}>{member.role}</span>
+                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>• {member.department}</span>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", color: "var(--text-secondary)", fontWeight: 700 }}>
+                              7-Day Schedule
+                            </span>
+                          </div>
+
+                          <div className="roster-days-grid">
+                            {WEEKDAYS.map((day) => {
+                              const currentShift: ShiftType = memberShifts[day] || "MORNING";
+                              const shiftInfo = SHIFT_LABELS[currentShift];
+                              return (
+                                <div key={day} style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--surface-2)", padding: "8px 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-secondary)" }}>{day.slice(0, 3)}</span>
+                                    <span style={{ fontSize: 9.5, color: "var(--text-muted)" }}>{shiftInfo.time}</span>
+                                  </div>
+                                  <select
+                                    value={currentShift}
+                                    onChange={(e) => handleShiftChange(member.id, day, e.target.value as ShiftType)}
+                                    style={{
+                                      width: "100%",
+                                      padding: "6px 8px",
+                                      borderRadius: 6,
+                                      background: shiftInfo.bg,
+                                      border: `1px solid ${shiftInfo.color}`,
+                                      color: shiftInfo.color,
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    <option value="MORNING">🌅 Morning</option>
+                                    <option value="EVENING">🌇 Evening</option>
+                                    <option value="NIGHT">🌃 Night</option>
+                                    <option value="OFF">🏖️ Off</option>
+                                  </select>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -882,38 +1009,66 @@ export default function HrPortal({
         {/* TAB: RECLAMATIONS */}
         {activeTab === "RECLAMATIONS" && (
           <div className="ses-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-amber)" }}>
-                  🛎️ Reclamations Oversight ({filteredReclamations.length})
-                </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                  Operational tickets and department dispatches.
-                </p>
+            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
+            <div className="tab-sticky-filter-bar">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-amber)" }}>
+                    🛎️ Reclamations Oversight ({filteredReclamations.length})
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                    Operational tickets and department dispatches.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={recStatusFilter}
+                    onChange={(e) => setRecStatusFilter(e.target.value)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="OPEN">Open Only</option>
+                    <option value="IN_PROGRESS">In Progress Only</option>
+                    <option value="RESOLVED">Resolved Only</option>
+                  </select>
+
+                  <select
+                    value={recDeptFilter}
+                    onChange={(e) => setRecDeptFilter(e.target.value)}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+                  >
+                    <option value="ALL">All Departments</option>
+                    {activeDepartments.map((d) => (
+                      <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <select
-                  value={recStatusFilter}
-                  onChange={(e) => setRecStatusFilter(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
+              {/* Fixed / Sticky Horizontal Department Pills Row */}
+              <div className="filter-pills-row">
+                <button
+                  type="button"
+                  onClick={() => setRecDeptFilter("ALL")}
+                  className={`filter-pill-btn ${recDeptFilter === "ALL" ? "active" : ""}`}
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="OPEN">Open Only</option>
-                  <option value="IN_PROGRESS">In Progress Only</option>
-                  <option value="RESOLVED">Resolved Only</option>
-                </select>
-
-                <select
-                  value={recDeptFilter}
-                  onChange={(e) => setRecDeptFilter(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                >
-                  <option value="ALL">All Departments</option>
-                  {activeDepartments.map((d) => (
-                    <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-                  ))}
-                </select>
+                  All ({reclamationsList.length})
+                </button>
+                {activeDepartments.map((d) => {
+                  const deptCount = reclamationsList.filter((r: Reclamation) => r.department === d.code).length;
+                  const displayIcon = d.icon && !d.icon.includes("?") ? d.icon : "🏢";
+                  return (
+                    <button
+                      key={d.code}
+                      type="button"
+                      onClick={() => setRecDeptFilter(d.code)}
+                      className={`filter-pill-btn ${recDeptFilter === d.code ? "active" : ""}`}
+                    >
+                      {displayIcon} {d.name} ({deptCount})
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
