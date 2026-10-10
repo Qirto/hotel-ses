@@ -44,16 +44,18 @@ export default function HotelDashboard({
   const dirtyRoomsCount = initialRooms.filter((r) => r.cleaning_status === "DIRTY").length;
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "1.5rem 1.25rem", color: "#f8fafc" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "clamp(0.75rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1.25rem)", color: "#f8fafc", boxSizing: "border-box", width: "100%" }}>
       {/* Top Header Application Bar */}
       <header
         style={{
           marginBottom: "1.75rem",
           background: "rgba(15, 23, 42, 1)",
           borderRadius: 16,
-          padding: "1.25rem 1.5rem",
+          padding: "clamp(0.85rem, 3vw, 1.25rem) clamp(1rem, 3vw, 1.5rem)",
           border: "1px solid rgba(255, 255, 255, 0.08)",
           boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+          boxSizing: "border-box",
+          width: "100%",
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -63,12 +65,12 @@ export default function HotelDashboard({
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: isLiveSupabase ? "#22c55e" : "#f59e0b" }}></span>
               <span style={{ fontSize: 11, textTransform: "none", color: "#cbd5e1" }}>{isLiveSupabase ? "Supabase Live" : "Offline Mode"}</span>
             </div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: 0, letterSpacing: "-0.025em", color: "#f1f5f9" }}>
+            <h1 style={{ fontSize: "clamp(1.25rem, 4vw, 1.75rem)", fontWeight: 800, margin: 0, letterSpacing: "-0.025em", color: "#f1f5f9" }}>
               Hotel SES Operations
             </h1>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16, background: "rgba(15, 23, 42, 0.8)", padding: "10px 18px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, color: "#c1cad8" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgba(15, 23, 42, 0.8)", padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, color: "#c1cad8" }}>
             <span><strong className="font-mono" style={{ color: "#f1f5f9", fontSize: 15 }}>{initialRooms.length}</strong> rooms</span>
             <span style={{ color: "rgba(255,255,255,0.18)" }}>|</span>
             <span>
@@ -86,7 +88,7 @@ export default function HotelDashboard({
         </div>
 
         {/* ROLE DASHBOARDS NAVIGATION BAR */}
-        <nav style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
+        <nav className="filter-pills-row" style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto", paddingBottom: 4 }}>
           {[
             { id: "reception", label: "Reception", badge: null, color: "#38bdf8", subtitle: "Rooms & Reclamations" },
             { id: "hr", label: "HR Manager", badge: staffList.length, color: "#34d399", subtitle: "Employees, Shifts, Reclamations & Rooms" },

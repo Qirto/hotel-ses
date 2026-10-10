@@ -602,7 +602,10 @@ export default function HrPortal({
                 background: "var(--surface-card)",
                 borderRadius: "var(--radius-lg)",
                 border: "1px solid var(--border-subtle)",
-                width: "fit-content",
+                width: "100%",
+                maxWidth: "100%",
+                flexWrap: "wrap",
+                boxSizing: "border-box",
                 boxShadow: "var(--shadow-card)",
               }}
             >

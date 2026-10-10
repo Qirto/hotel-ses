@@ -873,7 +873,7 @@ export default function ReceptionPortal({
             </div>
 
             {/* Room Cards Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(130px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
               {filteredRooms.map((room) => {
                 const isDirty = room.cleaning_status === "DIRTY";
                 const isClean = room.cleaning_status === "CLEAN";
@@ -1275,79 +1275,56 @@ export default function ReceptionPortal({
       {/* INTERACTIVE ROOM POP-UP MODAL (WITH INTERNAL SIDEBAR: RECLAMATION & ROOM STAT) */}
       {/* ========================================================================= */}
       {selectedRoomModal && (
-        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div className="portal-modal-content" style={{ background: "#0f172a", border: "1.5px solid rgba(56, 189, 248, 0.4)", borderRadius: 20, maxWidth: 840, width: "100%", height: 560, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+        <div className="room-modal-overlay">
+          <div className="room-modal-panel">
             {/* Modal Top Bar */}
-            <div style={{ background: "rgba(30, 41, 59, 0.9)", padding: "1rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="room-modal-topbar">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🏨</span>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#ffffff" }}>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
                     Room {selectedRoomModal.room_number} Inspection & Operations
                   </h3>
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Floor {selectedRoomModal.floor} • {selectedRoomModal.block?.replace("_", " ") || "Main Block"}
                   </div>
                 </div>
               </div>
-
-              <button onClick={() => setSelectedRoomModal(null)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer" }}>✕</button>
+              <button
+                onClick={() => setSelectedRoomModal(null)}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "4px 8px", borderRadius: "var(--radius-sm)" }}
+                aria-label="Close room modal"
+              >
+                ✕
+              </button>
             </div>
 
-            {/* Modal Body: Internal Sidebar + Main Content */}
-            <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-              {/* MODAL INTERNAL SIDEBAR */}
-              <div style={{ width: 210, background: "rgba(15, 23, 42, 0.9)", borderRight: "1px solid rgba(255,255,255,0.08)", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", fontWeight: 800, marginBottom: 4 }}>Room Modal Menu</div>
-
+            {/* Modal Body: Sidebar (desktop left / mobile top) + Main Content */}
+            <div className="room-modal-body">
+              {/* MODAL NAV: left sidebar on desktop, top tab bar on mobile */}
+              <div className="room-modal-sidebar">
                 <button
                   onClick={() => setModalTab("ROOM_STAT")}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid",
-                    borderColor: modalTab === "ROOM_STAT" ? "#38bdf8" : "transparent",
-                    background: modalTab === "ROOM_STAT" ? "rgba(56, 189, 248, 0.2)" : "transparent",
-                    color: modalTab === "ROOM_STAT" ? "#fff" : "#94a3b8",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
+                  className={`room-modal-nav-btn ${modalTab === "ROOM_STAT" ? "active-cyan" : ""}`}
                 >
-                  <span>📊</span> 1. Room Stat
+                  <span>📊 Room Stat</span>
                 </button>
 
                 <button
                   onClick={() => setModalTab("RECLAMATIONS")}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid",
-                    borderColor: modalTab === "RECLAMATIONS" ? "#e879f9" : "transparent",
-                    background: modalTab === "RECLAMATIONS" ? "rgba(232, 121, 249, 0.2)" : "transparent",
-                    color: modalTab === "RECLAMATIONS" ? "#fff" : "#94a3b8",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
+                  className={`room-modal-nav-btn ${modalTab === "RECLAMATIONS" ? "active-purple" : ""}`}
                 >
-                  <span>🛎️ 2. Reclamations</span>
-                  <span style={{ padding: "1px 6px", borderRadius: 999, background: "rgba(232, 121, 249, 0.3)", color: "#e879f9", fontSize: 10, fontWeight: 800 }}>
-                    {roomModalReclamations.length}
-                  </span>
+                  <span>🛎️ Reclamations</span>
+                  {roomModalReclamations.length > 0 && (
+                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "rgba(232, 121, 249, 0.3)", color: "#e879f9", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                      {roomModalReclamations.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
               {/* MODAL MAIN TAB CONTENT */}
-              <div style={{ flex: 1, padding: "1.25rem", overflowY: "auto" }}>
+              <div className="room-modal-content">
                 {/* MODAL TAB 1: ROOM STAT */}
                 {modalTab === "ROOM_STAT" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

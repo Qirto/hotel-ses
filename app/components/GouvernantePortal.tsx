@@ -213,7 +213,7 @@ export default function GouvernantePortal({ rooms, reclamations = [], staff = []
         <div className="ses-card">
           {/* Filter Bar */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+            <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)", flexWrap: "wrap" }}>
               {["ALL", "DIRTY", "CLEANING", "INSPECTING", "CLEAN"].map((st) => (
                 <button
                   key={st}
@@ -234,7 +234,7 @@ export default function GouvernantePortal({ rooms, reclamations = [], staff = []
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+            <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)", flexWrap: "wrap" }}>
               {[
                 { label: "All Floors", value: "ALL" as const },
                 { label: "Floor 1", value: 1 },
@@ -266,7 +266,7 @@ export default function GouvernantePortal({ rooms, reclamations = [], staff = []
           </div>
 
           {/* Room Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))", gap: 14 }}>
             {filteredRooms.map((room) => {
               const statusColors: Record<string, { bg: string; text: string; border: string }> = {
                 DIRTY: { bg: "var(--status-rose-bg)", text: "var(--status-rose)", border: "var(--status-rose)" },

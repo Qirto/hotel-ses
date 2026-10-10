@@ -2,27 +2,32 @@
 
 import { useEffect } from "react";
 
-const CURRENT_CACHE_VERSION = "hotel-ses-v5";
+const CURRENT_CACHE_VERSION = "hotel-ses-v6";
 
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     // 1. Automatic cache-purge on mobile when cache version changes
-    if ("caches" in window) {
-      try {
-        const storedVersion = localStorage.getItem("ses_app_cache_version");
-        if (storedVersion !== CURRENT_CACHE_VERSION) {
+    try {
+      const storedVersion = localStorage.getItem("ses_app_cache_version");
+      if (storedVersion !== CURRENT_CACHE_VERSION) {
+        if ("caches" in window) {
           caches.keys().then((keys) => {
             Promise.all(keys.map((key) => caches.delete(key))).then(() => {
               console.log("[PWA] Purged old caches for updated version:", CURRENT_CACHE_VERSION);
-              localStorage.setItem("ses_app_cache_version", CURRENT_CACHE_VERSION);
             });
           });
         }
-      } catch (e) {
-        console.warn("[PWA] Error purging caches:", e);
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations().then((regs) => {
+            regs.forEach((r) => r.update());
+          });
+        }
+        localStorage.setItem("ses_app_cache_version", CURRENT_CACHE_VERSION);
       }
+    } catch (e) {
+      console.warn("[PWA] Error purging caches:", e);
     }
 
     // 2. Register Service Worker with cache-busting timestamp

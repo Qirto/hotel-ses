@@ -494,7 +494,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
 
         {/* TAB 1: STATS & GRAPHS */}
         {activeTab === "STATS" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 16 }}>
             <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
               <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>
                 🟡 Hotel Occupancy Distribution Graph
@@ -556,7 +556,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
             <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
               Executive Rooms Matrix ({filteredMatrixRooms.length} rooms)
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10, maxHeight: 600, overflowY: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(130px, 100%), 1fr))", gap: 10, maxHeight: 600, overflowY: "auto" }}>
               {filteredMatrixRooms.map((room) => (
                 <div
                   key={room.id}
@@ -958,7 +958,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
                 gap: 16,
               }}
             >
@@ -1248,37 +1248,50 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
 
       {/* ROOM POP-UP MODAL */}
       {selectedRoomModal && (
-        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
-          <div className="portal-modal-content" style={{ background: "var(--surface-0)", border: "1.5px solid var(--border-default)", borderRadius: 20, maxWidth: 880, width: "100%", maxHeight: "90vh", height: 620, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)" }}>
-            <div style={{ background: "var(--surface-1)", padding: "1rem 1.25rem", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="room-modal-overlay">
+          <div className="room-modal-panel">
+            {/* Modal Top Bar */}
+            <div className="room-modal-topbar">
               <div>
                 <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
                   Room {selectedRoomModal.room_number} Executive Inspection
                 </h3>
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Floor {selectedRoomModal.floor} • Block {selectedRoomModal.block}</span>
               </div>
-              <button onClick={() => setSelectedRoomModal(null)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}>✕</button>
+              <button
+                onClick={() => setSelectedRoomModal(null)}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "4px 8px", borderRadius: "var(--radius-sm)" }}
+                aria-label="Close room modal"
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-              {/* MODAL SIDEBAR */}
-              <div style={{ width: 200, background: "var(--surface-1)", borderRight: "1px solid var(--border-subtle)", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* Modal Body: Sidebar (desktop left / mobile top) + Main Content */}
+            <div className="room-modal-body">
+              {/* MODAL NAV: left sidebar on desktop, top tab bar on mobile */}
+              <div className="room-modal-sidebar">
                 <button
                   onClick={() => setModalTab("ROOM_STAT")}
-                  style={{ padding: "10px", borderRadius: 10, border: "1px solid", borderColor: modalTab === "ROOM_STAT" ? "var(--accent-amber)" : "transparent", background: modalTab === "ROOM_STAT" ? "rgba(245, 158, 11, 0.15)" : "transparent", color: modalTab === "ROOM_STAT" ? "var(--accent-amber)" : "var(--text-secondary)", fontSize: 12, fontWeight: 700, textAlign: "left", cursor: "pointer" }}
+                  className={`room-modal-nav-btn ${modalTab === "ROOM_STAT" ? "active-amber" : ""}`}
                 >
-                  📊 1. Room Stat
+                  📊 Room Stat
                 </button>
                 <button
                   onClick={() => setModalTab("RECLAMATIONS")}
-                  style={{ padding: "10px", borderRadius: 10, border: "1px solid", borderColor: modalTab === "RECLAMATIONS" ? "var(--brand-primary)" : "transparent", background: modalTab === "RECLAMATIONS" ? "rgba(99, 102, 241, 0.15)" : "transparent", color: modalTab === "RECLAMATIONS" ? "var(--brand-primary)" : "var(--text-secondary)", fontSize: 12, fontWeight: 700, textAlign: "left", cursor: "pointer" }}
+                  className={`room-modal-nav-btn ${modalTab === "RECLAMATIONS" ? "active-purple" : ""}`}
                 >
-                  🛎️ 2. Reclamations ({roomModalReclamations.length})
+                  <span>🛎️ Reclamations</span>
+                  {roomModalReclamations.length > 0 && (
+                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "rgba(99, 102, 241, 0.3)", color: "#a5b4fc", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                      {roomModalReclamations.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
               {/* MODAL CONTENT */}
-              <div style={{ flex: 1, padding: "1.25rem", overflowY: "auto", background: "var(--surface-0)" }}>
+              <div className="room-modal-content" style={{ background: "var(--surface-0)" }}>
                 {modalTab === "ROOM_STAT" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <h4 style={{ margin: 0, fontSize: 15, color: "var(--accent-amber)", fontWeight: 800 }}>📊 Executive Room Overview</h4>

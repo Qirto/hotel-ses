@@ -14,13 +14,15 @@ export default function PrivacyPolicyPage() {
         minHeight: "100vh",
         background: "#0b0f17",
         color: "#f8fafc",
-        padding: "3rem 1.5rem",
+        padding: "clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 1.5rem)",
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+        boxSizing: "border-box",
+        width: "100%",
       }}
     >
-      <div style={{ maxWidth: 860, margin: "0 auto" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         {/* Navigation Bar */}
-        <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <Link
             href="/login"
             style={{

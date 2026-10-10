@@ -27,7 +27,7 @@ export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: st
 
   cookieStore.set("hotel_role", role, {
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 31536000, // 1 Year Persistent Login (Keeps logged in until explicit logout)
     sameSite: "lax",
   });
 
@@ -66,12 +66,26 @@ export async function loginWithPasscode(passcode: string) {
 
   cookieStore.set("hotel_role", matchedRole, {
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 31536000, // 1 Year Persistent Login (Keeps logged in until explicit logout)
     sameSite: "lax",
   });
 
   revalidatePath(`/${matchedRole}`);
   return { success: true, redirectUrl: `/${matchedRole}`, role: matchedRole };
+}
+
+export async function restorePersistedSession(role: "reception" | "rh" | "gm") {
+  const cookieStore = await cookies();
+  if (role === "reception" || role === "rh" || role === "gm") {
+    cookieStore.set("hotel_role", role, {
+      path: "/",
+      maxAge: 31536000, // 1 Year Persistent Login
+      sameSite: "lax",
+    });
+    revalidatePath(`/${role}`);
+    return { success: true, redirectUrl: `/${role}`, role };
+  }
+  return { success: false, error: "Invalid portal role." };
 }
 
 export async function logoutRole() {

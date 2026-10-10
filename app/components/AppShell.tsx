@@ -116,7 +116,10 @@ export default function AppShell({
             ) : onSignOut ? (
               <button
                 type="button"
-                onClick={onSignOut}
+                onClick={() => {
+                  try { localStorage.removeItem("hotel_persisted_role"); } catch (_) {}
+                  onSignOut();
+                }}
                 aria-label="Sign Out"
                 title="Sign Out"
                 style={{

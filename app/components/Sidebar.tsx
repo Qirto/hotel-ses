@@ -29,9 +29,9 @@ export default function Sidebar({
           <img
             src="/hotel-logo.png"
             alt="Hôtel Méditerranée Thalasso Golf Hammamet"
-            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid var(--border-subtle)", objectFit: "cover" }}
+            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid var(--border-subtle)", objectFit: "cover", flexShrink: 0 }}
           />
-          <div>
+          <div className="sidebar-brand-text">
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
                 Hotel SES
@@ -67,11 +67,12 @@ export default function Sidebar({
               onClick={item.onClick}
               className={`sidebar-nav-btn ${item.isActive ? "active" : ""}`}
               aria-current={item.isActive ? "page" : undefined}
+              title={item.label}
             >
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22 }}>
+              <span className="sidebar-icon" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22, flexShrink: 0 }}>
                 {item.icon}
               </span>
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <span className="sidebar-label" style={{ flex: 1 }}>{item.label}</span>
               {typeof item.badge === "number" && item.badge > 0 && (
                 <span
                   style={{
@@ -92,7 +93,7 @@ export default function Sidebar({
       </div>
 
       {/* Bottom Section: Theme Toggle & Sign Out */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: "1rem", borderTop: "1px solid var(--border-subtle)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: "1rem", borderTop: "1px solid var(--border-subtle)", width: "100%" }}>
         {/* Full Theme Toggle Button */}
         <ThemeToggle variant="full" />
 
@@ -102,7 +103,11 @@ export default function Sidebar({
         ) : onSignOut ? (
           <button
             type="button"
-            onClick={onSignOut}
+            onClick={() => {
+              try { localStorage.removeItem("hotel_persisted_role"); } catch (_) {}
+              onSignOut();
+            }}
+            title="Sign Out"
             style={{
               width: "100%",
               display: "flex",
@@ -122,12 +127,12 @@ export default function Sidebar({
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--status-rose-bg)")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            <span>Sign Out</span>
+            <span className="sign-out-label">Sign Out</span>
           </button>
         ) : null}
       </div>

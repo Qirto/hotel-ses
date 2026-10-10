@@ -45,14 +45,15 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
     >
       <div
         style={{
-          maxWidth: 500,
+          maxWidth: "clamp(300px, 92vw, 500px)",
           width: "100%",
           background: "#111827",
           border: "1px solid rgba(239, 68, 68, 0.35)",
           borderRadius: 16,
-          padding: "2.25rem",
+          padding: "clamp(1.25rem, 4vw, 2.25rem)",
           textAlign: "center",
           boxShadow: "0 8px 30px rgba(0, 0, 0, 0.5)",
+          boxSizing: "border-box",
         }}
       >
         <div style={{ display: "inline-flex", padding: "4px 10px", borderRadius: 4, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#fca5a5", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 14 }}>

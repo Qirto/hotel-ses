@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { loginWithPasscode } from "@/app/actions";
+import { loginWithPasscode, restorePersistedSession } from "@/app/actions";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,26 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successRole, setSuccessRole] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Auto-restore login on phones/browsers if previously logged in
+  useEffect(() => {
+    try {
+      const savedRole = localStorage.getItem("hotel_persisted_role");
+      if (savedRole === "reception" || savedRole === "rh" || savedRole === "gm") {
+        setSuccessRole(savedRole);
+        startTransition(async () => {
+          const res = await restorePersistedSession(savedRole);
+          if (res.success && res.redirectUrl) {
+            router.push(res.redirectUrl);
+            router.refresh();
+          } else {
+            localStorage.removeItem("hotel_persisted_role");
+            setSuccessRole(null);
+          }
+        });
+      }
+    } catch (_) {}
+  }, [router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +42,11 @@ export default function LoginPage() {
       const res = await loginWithPasscode(passcode);
       if (res.success && res.redirectUrl) {
         setSuccessRole(res.role || "workspace");
+        try {
+          if (res.role) {
+            localStorage.setItem("hotel_persisted_role", res.role);
+          }
+        } catch (_) {}
         setTimeout(() => {
           router.push(res.redirectUrl!);
           router.refresh();
@@ -33,41 +58,21 @@ export default function LoginPage() {
   };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(217, 119, 6, 0.12), transparent 70%), #070a0f",
-        color: "#f8fafc",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1.5rem 1rem",
-        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 420 }}>
+    <main className="login-page-root">
+      <div className="login-card-container">
         {/* Brand & Monogram Header */}
         <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
           <div style={{ display: "inline-block", position: "relative", marginBottom: "1rem" }}>
             <img
               src="/hotel-logo.png"
               alt="Hôtel Méditerranée Thalasso Golf Hammamet"
-              style={{
-                width: 68,
-                height: 68,
-                borderRadius: 16,
-                objectFit: "cover",
-                border: "2px solid rgba(217, 119, 6, 0.4)",
-                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
-                display: "block",
-              }}
+              className="login-logo"
             />
           </div>
 
           <p
             style={{
-              fontSize: "0.75rem",
+              fontSize: "clamp(0.6875rem, 2vw, 0.75rem)",
               letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: "#d97706",
@@ -80,7 +85,7 @@ export default function LoginPage() {
           </p>
           <h1
             style={{
-              fontSize: "1.625rem",
+              fontSize: "clamp(1.35rem, 5vw, 1.625rem)",
               fontWeight: 800,
               margin: 0,
               letterSpacing: "-0.025em",
@@ -93,7 +98,7 @@ export default function LoginPage() {
           <p
             style={{
               color: "#94a3b8",
-              fontSize: "0.875rem",
+              fontSize: "clamp(0.8rem, 2.5vw, 0.875rem)",
               marginTop: "0.5rem",
               lineHeight: 1.5,
             }}
@@ -103,17 +108,7 @@ export default function LoginPage() {
         </div>
 
         {/* Unified Login Card */}
-        <section
-          style={{
-            background: "rgba(17, 24, 39, 0.8)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: 16,
-            padding: "2rem",
-            boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.7)",
-          }}
-        >
+        <section className="login-card">
           <form onSubmit={handleSubmit} role="form" noValidate>
             <div style={{ marginBottom: "1.25rem" }}>
               <label
@@ -413,17 +408,6 @@ export default function LoginPage() {
           </p>
         </footer>
       </div>
-
-      <style jsx global>{`
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </main>
   );
 }

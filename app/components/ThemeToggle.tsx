@@ -76,7 +76,7 @@ export default function ThemeToggle({ className = "", variant = "icon" }: ThemeT
       )}
 
       {variant === "full" && (
-        <span style={{ fontSize: 13, fontWeight: 600 }}>
+        <span className="theme-toggle-label" style={{ fontSize: 13, fontWeight: 600 }}>
           {isDark ? "Light Mode" : "Dark Mode"}
         </span>
       )}

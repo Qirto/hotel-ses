@@ -90,7 +90,7 @@ export default function MaintenancePortal({ reclamations, technicians, isLiveSup
       </div>
 
       {/* Control / Filter Bar */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 12 }}>
         <div>
           <label style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>Technician</label>
           <select
