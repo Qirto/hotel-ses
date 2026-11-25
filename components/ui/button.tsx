@@ -17,7 +17,7 @@ export type ButtonVariant =
   | 'link'
   | 'gradient';
 
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'touch';
 
 export interface ButtonProps
   extends Omit<HTMLMotionProps<'button'>, 'children'> {
@@ -66,6 +66,8 @@ const sizeStyles: Record<ButtonSize, string> = {
   md: 'h-10 px-4.5 text-sm rounded-lg gap-2',
   lg: 'h-12 px-6 text-base rounded-lg gap-2.5',
   icon: 'h-10 w-10 p-0 rounded-lg justify-center shrink-0',
+  /** Compact 40px action for rows, cards and tickets. */
+  touch: 'h-10 px-3 text-sm rounded-lg gap-1.5',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

@@ -40,7 +40,7 @@ export const TicketTable = memo(function TicketTable({
         key: "category",
         header: "Issue",
         primary: true,
-        width: "minmax(0, 2.2fr)",
+        width: "minmax(11rem, 2.2fr)",
         accessor: (t) => t.category,
         cell: (t) => {
           const Icon = categoryIcon(t.category);
@@ -67,14 +67,14 @@ export const TicketTable = memo(function TicketTable({
       {
         key: "department",
         header: "Department",
-        width: "minmax(0, 1.1fr)",
+        width: "minmax(8rem, 1.1fr)",
         accessor: (t) => departmentLabel(t.department),
         cell: (t) => {
           const Icon = departmentIcon(t.department);
           return (
-            <span className="inline-flex min-w-0 items-center gap-1.5 text-fg-secondary">
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-fg-secondary">
               <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
-              <span className="truncate">{departmentLabel(t.department)}</span>
+              <span className="min-w-0 truncate">{departmentLabel(t.department)}</span>
             </span>
           );
         },
@@ -82,38 +82,35 @@ export const TicketTable = memo(function TicketTable({
       {
         key: "priority",
         header: "Priority",
-        width: "minmax(6rem, 0.8fr)",
+        width: "minmax(7rem, 0.7fr)", // "Emergency" badge (86px) + cell padding
         accessor: (t) => PRIORITY_ORDER[t.priority] ?? 9,
         cell: (t) => <PriorityBadge priority={t.priority} />,
       },
       {
         key: "status",
         header: "Status",
-        width: "minmax(7.5rem, 0.9fr)",
+        width: "minmax(8.5rem, 0.8fr)", // "Acknowledged" badge with dot (108px) + padding
         accessor: (t) => STATUS_ORDER[t.status] ?? 9,
         cell: (t) => <TicketStatusBadge status={t.status} />,
       },
       {
         key: "created_at",
         header: "Reported",
-        width: "minmax(6.5rem, 0.8fr)",
+        width: "minmax(8rem, 1fr)",
         accessor: (t) => (t.created_at ? new Date(t.created_at).getTime() : 0),
+        // Date with the assignee underneath: one column instead of two keeps the
+        // Issue column readable next to the sidebar on laptop widths.
         cell: (t) => {
           const d = formatIncidentDate(t.created_at);
           return (
-            <span title={d.full} className="whitespace-nowrap text-fg-secondary">
-              {d.relative}
+            <span className="flex min-w-0 flex-col">
+              <span title={d.full} className="whitespace-nowrap text-fg-secondary">
+                {d.relative}
+              </span>
+              <span className="truncate text-xs text-fg-muted">{t.assigned_to?.full_name ?? "Unassigned"}</span>
             </span>
           );
         },
-      },
-      {
-        key: "assigned",
-        header: "Assignee",
-        width: "minmax(0, 1fr)",
-        hideOnMobile: true,
-        accessor: (t) => t.assigned_to?.full_name ?? "",
-        cell: (t) => <span className="truncate text-fg-secondary">{t.assigned_to?.full_name ?? "Unassigned"}</span>,
       },
     ];
     if (actions) {

@@ -5,6 +5,7 @@ import { CircleCheck, CircleX, History, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_PRESETS, DISPATCH_DEPARTMENTS, PRESET_ISSUES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { DateTimeField } from "./DateTimeField";
 
 /* ───────────── field primitives (same look in every form) ───────────── */
 
@@ -87,12 +88,14 @@ export function Segmented<V extends string>({
   );
 }
 
-/** Inline result message under a form or at the top of a view. */
+/**
+ * Result message look. Shown through `NoticeOutlet` (components/app/notice),
+ * which wraps it in a polite `role="status"` live region.
+ */
 export function Notice({ tone, children }: { tone: "success" | "danger"; children: ReactNode }) {
   const Icon = tone === "success" ? CircleCheck : CircleX;
   return (
     <p
-      role="status"
       className={cn(
         "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm",
         tone === "success" ? "border-success/30 bg-success-subtle text-success" : "border-danger/30 bg-danger-subtle text-danger"
@@ -207,6 +210,18 @@ const PAST_STATUSES = [
   { value: "OPEN", label: "Open", tone: "danger" },
 ] as const;
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Three days ago as local "YYYY-MM-DDTHH:mm" (datetime-local semantics, not UTC),
+ * minutes rounded down to a multiple of 5 to match the minute select.
+ */
+function defaultPastIncidentDate(): string {
+  const d = new Date(Date.now() - 3 * 864e5);
+  const minutes = Math.floor(d.getMinutes() / 5) * 5;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(minutes)}`;
+}
+
 /** Backfill a past incident with its real date. */
 export function PastIncidentForm({
   onSubmit,
@@ -221,7 +236,7 @@ export function PastIncidentForm({
   const [room, setRoom] = useState("");
   const [department, setDepartment] = useState("TECHNICAL");
   const [category, setCategory] = useState(categoriesFor("TECHNICAL")[0]?.value ?? "General");
-  const [createdAt, setCreatedAt] = useState(() => new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 16));
+  const [createdAt, setCreatedAt] = useState(() => defaultPastIncidentDate());
   const [status, setStatus] = useState<PastStatus>("RESOLVED");
   const [description, setDescription] = useState("");
 
@@ -243,9 +258,7 @@ export function PastIncidentForm({
             <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="e.g. 1031" value={room} onChange={(e) => setRoom(e.target.value)} />
           </Field>
         )}
-        <Field label="Date and time" htmlFor={`${id}-date`}>
-          <TextInput id={`${id}-date`} type="datetime-local" required value={createdAt} onChange={(e) => setCreatedAt(e.target.value)} />
-        </Field>
+        <DateTimeField id={`${id}-date`} label="Date and time" value={createdAt} onChange={setCreatedAt} maxDate={new Date()} required />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Department" htmlFor={`${id}-dept`}>

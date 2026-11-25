@@ -50,3 +50,76 @@ export function roomHeadline(room: HotelRoom, stats?: RoomTicketStats): { label:
 export function blockLabel(block?: string | null): string {
   return block ? block.replace("BLOCK_", "Block ") : "Main";
 }
+
+/** Housekeeping cycle: each step leads to the next. */
+export const NEXT_CLEANING: Record<HotelRoom["cleaning_status"], HotelRoom["cleaning_status"]> = {
+  DIRTY: "CLEANING",
+  CLEANING: "INSPECTING",
+  INSPECTING: "CLEAN",
+  CLEAN: "DIRTY",
+};
+
+export interface RoomStatusCounts {
+  occupied: number;
+  vacant: number;
+  /** Vacant and clean: ready to sell. */
+  vacantClean: number;
+  vacantDirty: number;
+  /** Dirty, occupied or not. */
+  dirty: number;
+  /** Vacant and being cleaned or inspected. */
+  inCleaning: number;
+}
+
+/** One pass over the rooms. occupied + vacantClean + vacantDirty + inCleaning is an exact partition. */
+export function roomStatusCounts(rooms: readonly Pick<HotelRoom, "is_occupied" | "cleaning_status">[]): RoomStatusCounts {
+  let occupied = 0;
+  let vacant = 0;
+  let vacantClean = 0;
+  let vacantDirty = 0;
+  let dirty = 0;
+  for (const r of rooms) {
+    if (r.is_occupied) occupied++;
+    else {
+      vacant++;
+      if (r.cleaning_status === "CLEAN") vacantClean++;
+      if (r.cleaning_status === "DIRTY") vacantDirty++;
+    }
+    if (r.cleaning_status === "DIRTY") dirty++;
+  }
+  return { occupied, vacant, vacantClean, vacantDirty, dirty, inCleaning: vacant - vacantClean - vacantDirty };
+}
+
+/** Room status filters shared by every Rooms view (and the dashboard deep links). */
+export type RoomFilter = "ALL" | "ATTENTION" | "OCCUPIED" | "VACANT" | "VACANT_CLEAN" | "DIRTY";
+
+export function matchesRoomFilter(room: HotelRoom, filter: RoomFilter, stats?: RoomTicketStats): boolean {
+  switch (filter) {
+    case "ATTENTION":
+      return room.cleaning_status === "DIRTY" || (stats?.open ?? 0) > 0;
+    case "OCCUPIED":
+      return Boolean(room.is_occupied);
+    case "VACANT":
+      return !room.is_occupied;
+    case "VACANT_CLEAN":
+      return !room.is_occupied && room.cleaning_status === "CLEAN";
+    case "DIRTY":
+      return room.cleaning_status === "DIRTY";
+    default:
+      return true;
+  }
+}
+
+/** Stay states the front desk can set (check in / check out). */
+export type StayState = "OCCUPIED" | "VACANT_DIRTY";
+
+/** Optimistic room patch after a successful stay change. */
+export const STAY_RESULT: Record<StayState, Partial<HotelRoom>> = {
+  OCCUPIED: { is_occupied: true },
+  VACANT_DIRTY: { is_occupied: false, cleaning_status: "DIRTY" },
+};
+
+export const STAY_MESSAGE: Record<StayState, string> = {
+  OCCUPIED: "checked in",
+  VACANT_DIRTY: "checked out and marked dirty",
+};

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { clearCachesAndReload } from "@/lib/pwa";
 import { signOutToLogin } from "@/lib/session";
 import { BottomNav } from "./BottomNav";
+import { NoticeOutlet } from "./notice";
 import { ThemeToggle } from "./ThemeToggle";
 import type { DepartmentTone, NavTabItem } from "./nav";
 
@@ -112,7 +113,10 @@ export default function AppShell({
           id="main"
           className="flex-1 px-4 pb-[calc(5rem+var(--safe-bottom))] pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8"
         >
-          <div className="mx-auto w-full max-w-screen-2xl">{children}</div>
+          <div className="mx-auto w-full max-w-screen-2xl">
+            <NoticeOutlet className="mb-4 md:mb-6" />
+            {children}
+          </div>
         </main>
       </div>
 

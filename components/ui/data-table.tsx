@@ -366,7 +366,18 @@ export function DataTable<T extends { id: Id }>({
 }: DataTableProps<T>) {
   const reduce = useReducedMotion();
   const [rootRef, width] = useElementWidth<HTMLDivElement>(960);
-  const cards = width < cardBreakpoint;
+  // Hotel SES: switch to cards whenever the table cannot fit its columns' minimum
+  // widths (e.g. next to the sidebar on tablets), not only below a fixed breakpoint.
+  const minTableWidth = useMemo(() => {
+    const remPx = 16;
+    let total = selectable ? 44 : 0;
+    for (const c of columns) {
+      const m = c.width?.match(/minmax\(\s*([\d.]+)(rem|px)/);
+      if (m) total += m[2] === "rem" ? parseFloat(m[1]) * remPx : parseFloat(m[1]);
+    }
+    return total;
+  }, [columns, selectable]);
+  const cards = width < Math.max(cardBreakpoint, minTableWidth);
 
   const [query, setQuery] = useState("");
   const [innerSort, setInnerSort] = useState<SortState>(defaultSort);
@@ -510,10 +521,10 @@ export function DataTable<T extends { id: Id }>({
           />
         </label>
       ) : (
-        <span className={`text-[13px] ${muted}`}>{processed.length} rows</span>
+        <span className={`text-[13px] ${muted}`}>{processed.length} {processed.length === 1 ? "row" : "rows"}</span>
       )}
       <div className="flex shrink-0 items-center gap-2">
-        {searchable && <span className={`hidden text-[12.5px] tabular-nums sm:block ${muted}`}>{processed.length} rows</span>}
+        {searchable && <span className={`hidden text-[12.5px] tabular-nums sm:block ${muted}`}>{processed.length} {processed.length === 1 ? "row" : "rows"}</span>}
         {toolbar}
       </div>
     </motion.div>
@@ -588,7 +599,7 @@ export function DataTable<T extends { id: Id }>({
                 type="button"
                 onClick={() => clickHeader(c)}
                 className={cx(
-                  "-mx-2 inline-flex h-8 items-center gap-1.5 rounded-lg px-2 transition-colors duration-150 [-webkit-tap-highlight-color:transparent]",
+                  "-mx-2 inline-flex h-8 min-w-0 max-w-[calc(100%+1rem)] items-center gap-1.5 rounded-lg px-2 transition-colors duration-150 [-webkit-tap-highlight-color:transparent]",
                   c.align === "right" && "flex-row-reverse",
                   state ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-500 [@media(hover:hover)]:hover:text-neutral-900 dark:[@media(hover:hover)]:hover:text-neutral-100",
                   focus,
@@ -668,7 +679,8 @@ export function DataTable<T extends { id: Id }>({
                 return (
                   <div key={c.key} role="cell" className={cx("min-w-0", c.fullWidthOnMobile && "col-span-2")}>
                     {label && <p className={`mb-1 text-[11.5px] ${muted}`}>{label}</p>}
-                    <div className="text-[13.5px] text-neutral-800 dark:text-neutral-200">{value}</div>
+                    {/* Hotel SES: values never exceed their cell (long text wraps or truncates) */}
+                    <div className="min-w-0 max-w-full overflow-hidden text-[13.5px] text-neutral-800 [overflow-wrap:anywhere] dark:text-neutral-200 [&>*]:max-w-full">{value}</div>
                   </div>
                 );
               })}

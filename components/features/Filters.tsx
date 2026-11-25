@@ -98,7 +98,7 @@ export function PillGroup<V extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="no-scrollbar scroll-fade-x -mx-1 flex gap-1.5 overflow-x-auto px-1 py-0.5">
+    <div role="radiogroup" aria-label={label} className="no-scrollbar scroll-fade-x flex max-w-full gap-1.5 overflow-x-auto p-1 scroll-px-1">
       {options.map((o) => {
         const active = o.value === value;
         return (
