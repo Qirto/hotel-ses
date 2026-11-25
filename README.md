@@ -1,232 +1,239 @@
-# 🏨 Hotel SES — Luxury Property & Incident Management System
+# Hotel SES
 
-A high-performance, real-time Hotel Property Management, Incident Dispatch, and Staff Operations platform built with **Next.js 16 (App Router & Turbopack)**, **React 19**, **TypeScript**, and **Supabase (PostgreSQL)**.
+Operations app for Hôtel Méditerranée Thalasso Golf Hammamet (341 rooms). Front desk, HR and management track rooms, guest issues ("tickets") and staff in real time, from a phone or a desktop.
 
-Designed for luxury, high-capacity hospitality properties (341+ rooms), **Hotel SES** seamlessly connects Front Desk Receptionists, Housekeeping, Technical Maintenance, HR Managers, and General Managers with live database synchronization, automated SLA routing, security route guards, granular room analytics, full mobile responsiveness, and offline-capable Progressive Web App (PWA) support.
+Built with Next.js 16, React 19, Supabase and the [easyui](https://easyui.site) component set. Installable as a PWA.
 
----
+## Portals
 
-## 📱 Progressive Web App (PWA) & Mobile-First Experience
+Staff sign in with a department passcode and land in their own portal.
 
-Hotel SES is engineered as a zero-friction **Progressive Web App (PWA)** that runs natively across iOS, Android, macOS, and Windows without requiring App Store or Google Play downloads:
+| Portal | Route | Who | Tabs |
+| --- | --- | --- | --- |
+| Reception | `/reception` | Front desk | Overview, Rooms, Tickets, Stats |
+| General Manager | `/gm` | Management | Dashboard, Rooms, Tickets, Analytics |
+| Human Resources | `/rh` | HR | Staff & Shifts, Rooms, Tickets, Analytics |
 
-* **Web App Manifest (`public/manifest.webmanifest`)**:
-  * Standalone display mode with custom brand themes (`#0b0f17` background / `#d97706` amber accents).
-  * Direct action shortcuts launching straight into `/reception`, `/rh`, and `/gm`.
-* **Offline-First Service Worker (`public/sw.js`)**:
-  * Pre-caches static assets and core shells (`hotel-ses-v1`).
-  * Employs a network-first strategy with background cache updates.
-  * Dedicated offline fallback page (`/offline`) allowing staff to check network health and reconnect seamlessly during connectivity drops.
-* **Smart In-App Install Banners**:
-  * **Android / Chromium**: Listens for the `beforeinstallprompt` event and presents a clean bottom sheet with a 1-click **"Install App"** trigger.
-  * **iOS Safari**: Automatically detects iOS devices running in Safari browser mode and displays a tailored 3-step guide: Tap Share (`⎋`), scroll, and tap **"Add to Home Screen"** (`➕`).
-  * **7-Day Dismissal Memory**: Remembers dismissals in `localStorage` so banners never spam staff.
-* **High-DPI App Icons & iOS Splash Screens**:
-  * Complete icon suite from 72×72 up to 512×512, plus `apple-touch-icon.png` and favicons.
-  * 8 iOS startup splash screens formatted for iPhone SE through iPhone 16 Pro Max and iPad Pro.
+Other pages: `/login`, `/offline`, `/privacy`, `/tos`.
 
----
+### What each portal can do
 
-## 📲 Responsive Adaptive Shell & Design System
+| Action | Reception | GM | HR |
+| --- | :---: | :---: | :---: |
+| See every room and its status | yes | yes | yes |
+| Check guests in and out | yes | | |
+| Advance the cleaning cycle | yes | yes | yes |
+| Dispatch a new ticket | yes | yes | yes |
+| Record a past incident | yes | yes | yes |
+| Acknowledge a ticket | yes | | |
+| Resolve a ticket | yes | yes | |
+| Room analytics (rush hour, repeat problems) | yes | yes | yes |
+| Manage staff, shifts and absences | | | yes |
 
-The system delivers a tailored UI across phones, tablets, foldables, and ultra-wide desktop monitors:
+## How it works
 
-* **Universal Layout Wrapper (`PortalLayout.tsx`)**:
-  * **Desktop (≥ 1024px)**: 270px fixed sidebar navigation with quick metric counters and sign-out controls.
-  * **Mobile (< 1024px)**: Sticky 56px top app bar featuring hotel identity, department badge (`REC`, `GM`, `HR`), and an accessible hamburger button.
-  * **Off-Canvas Drawer**: Smooth slide-in navigation drawer with vertical tabs, live counters, action buttons, and dark backdrop dismiss.
-* **Safe-Area Awareness**: Integrated `env(safe-area-inset-top)` and `env(safe-area-inset-bottom)` supporting iPhone notches, Dynamic Island, and Android gesture navigation bars.
-* **Mobile-Optimized Grid & Modals**:
-  * Room matrix utilizes `repeat(auto-fill, minmax(min(160px, 100%), 1fr))` preventing horizontal overflow on compact viewports.
-  * Inspection and ticket modals render as responsive bottom sheets on mobile devices.
-* **Clean Modern Aesthetics**: Stripped generic SaaS tropes (e.g. neon purple-blue gradients, heading emojis) in favor of high-contrast luxury dark glassmorphism, crisp typography (`Plus Jakarta Sans`), and WCAG 2.1 AA accessible contrast ratios.
+```mermaid
+flowchart LR
+  U[Staff browser or PWA] --> P[proxy.ts<br/>role check]
+  P --> S[Server page<br/>loadHotelData]
+  S --> C[Portal<br/>client components]
+  C -- server actions --> A[app/actions.ts]
+  A --> DB[(Supabase<br/>Postgres)]
+  S --> DB
+  DB -- realtime changes --> C
+  C -- router.refresh --> S
+```
 
----
+| Step | Where | What happens |
+| --- | --- | --- |
+| 1 | `proxy.ts` | Sends visitors without the matching role cookie to `/login` |
+| 2 | `app/<portal>/page.tsx` | Loads rooms, staff, residents, departments and tickets on the server |
+| 3 | `app/components/*Portal.tsx` | Renders the portal from shared views in `components/features` |
+| 4 | `app/actions.ts` | Every change (dispatch, resolve, check-in, shifts) is a server action |
+| 5 | `hooks/useRealtimeRefresh.ts` | Database changes refresh every open portal |
 
-## ✨ Role-Based Portals & Core Modules
+Realtime subscriptions per portal:
 
-### 🔐 Unified Access Control & Intelligent Role Routing
-* **Single Passcode Login**: A single, streamlined access portal (`/login`) with automatic role detection. Staff enter their assigned department code (`1111` for Reception, `2222` for HR, `3333` for General Manager); the system verifies credentials, sets the secure session cookie, and routes staff immediately to their dedicated operational workspace.
-* **Isolated Portals**:
-  * **Reception** (`/reception`) — Front desk operations and rapid dispatch.
-  * **General Manager** (`/gm`) — Executive oversight, analytics, and confidential grievance desk.
-  * **Human Resources** (`/rh`) — Staff master directory, shift schedules, and absenteeism redistribution.
-* **Route Guards (`proxy.ts`)**: Automated middleware protecting all internal routes, redirecting unauthenticated traffic to `/login` while bypassing static assets, manifest, and service worker endpoints.
-* **Configurable Passcode Auth**: PIN codes managed securely via server environment variables (`PASSCODE_RECEPTION`, `PASSCODE_RH`, `PASSCODE_GM`) with masked inputs and instant keyboard submission.
+| Portal | Tables |
+| --- | --- |
+| Reception | `rooms`, `reclamations` |
+| GM | `rooms`, `reclamations` |
+| HR | `staff`, `departments`, `reclamations` |
 
-### 📈 Room Rush Hour & Incident Intelligence
-* **⏰ Room Rush Hour Detection**: Calculates peak clock-hour intervals (e.g., `20:00 – 21:00`) for each room, pinpointing historical incident volume and highest incident spikes.
-* **🔁 Most Repeated Problems**: Identifies top complaint categories per room with ranking, occurrence counts, and progress bars.
-* **📊 Room-Specific MTTR**: Computes average Mean Time To Resolve (MTTR) in minutes per room and property-wide.
-* **Interactive Filtering & Sorting**: Filter rooms by Floor (1–3), Block (A/B), or instant search. Sort by Most Incidents, Most Open Issues, Rush Hour Spike, or Room Number.
-* **Severity-Based Status Indicators**:
-  * 🔴 **Critical Glow**: Room has open Emergency or High priority tickets.
-  * 🟡 **Amber Glow**: Room has standard open tickets.
-  * 🔵 **Sky Blue**: Room has historical tickets, all resolved.
-  * 🟢 **Clean Record**: Zero complaints filed.
+## Tickets
 
-### 🛎️ Reception Desk Portal (`/reception`)
-* **Rapid Incident Dispatch**: Instant ticket creation with smart department routing (`MAINTENANCE`, `HOUSEKEEPING`), priority levels (`EMERGENCY`, `HIGH`, `STANDARD`), and optional guest linking.
-* **341-Room Interactive Map**: Live visual overview of room occupancy, cleaning state, and open maintenance calls.
-* **Guest Stay Management**: Toggle stay states (`OCCUPIED`, `VACANT_DIRTY`, `RESERVED`) with adult and child headcounts.
-* **Historical Incident Backfill**: Log legacy or paper complaints directly into the room database history.
+### Lifecycle
 
-### 👔 General Manager Executive Control (`/gm`)
-* **Executive Dashboard & KPIs**: Real-time occupancy graphs, SLA compliance ring charts, and property-wide MTTR.
-* **All Reclamations Audit Table**: Search, filter by department or status, and resolve complaints with GM oversight.
-* **Room Deep Inspection Modal**: View room status, cycle cleaning states, and inspect full complaint history and rush hour analysis in one place.
-* **Confidential Grievance Desk**: Executive portal for sensitive guest grievances with recorded resolution remedies.
+```mermaid
+stateDiagram-v2
+  [*] --> OPEN: dispatched
+  OPEN --> IN_PROGRESS: acknowledged
+  OPEN --> RESOLVED: resolved
+  IN_PROGRESS --> RESOLVED: resolved
+  RESOLVED --> [*]
+```
 
-### 👥 Human Resources & Department Management (`/rh`)
-* **Staff Master Directory**: View all employees with shift statuses (`ON_SHIFT`, `OFF_SHIFT`, `ON_BREAK`), roles, phone numbers, and department affiliations.
-* **Shift Attendance Toggling**: One-click clock in/out with automated presence updating.
-* **Absenteeism Auto-Redistribution**: Mark staff absent and automatically reassign open tickets to available on-shift personnel.
-* **Dynamic Department CRUD**: Create, edit, and manage property departments with custom icons and heads of department.
+A ticket counts as **open** until it is resolved. `ACKNOWLEDGED` exists in the schema, but acknowledging currently moves a ticket straight to `IN_PROGRESS`.
 
----
+### Dispatch
 
-## ⚡ Real-Time Architecture
+```mermaid
+flowchart TD
+  F[Dispatch form<br/>room, department, issue, priority] --> N{Department}
+  N -- TECHNICAL --> M[MAINTENANCE]
+  N -- GOVERNANCE --> H[HOUSEKEEPING]
+  N -- other --> O[kept as chosen]
+  M --> A[Assign first present staff<br/>in that department]
+  H --> A
+  O --> A
+  A --> T[(reclamations)]
+```
 
-* **Supabase Realtime**: All portals subscribe to PostgreSQL changes via `supabase.channel` on `rooms`, `reclamations`, and `staff` tables, providing instant cross-device synchronization without manual page refreshes.
-* **Granular Cache Revalidation**: Server actions trigger targeted `revalidatePath` updates (e.g. `/reception`, `/gm`, `/rh`) instead of blanket cache flushes.
+| Field | Values |
+| --- | --- |
+| Priority | Standard, High, Emergency |
+| Status | Open, Acknowledged, In progress, Resolved |
+| Confidential | Stored flag on the ticket; the current forms always send `false` |
 
----
+### Room status
 
-## 🔀 Smart Ticket Routing Logic
+Each room tile shows the one thing that needs action first.
 
-| Ticket Category | Action Department | Notifications Sent To | Queue Status |
-| :--- | :--- | :--- | :--- |
-| **Technical Fixes** (HVAC, Plumbing, Electrical, Lock, TV, Fixtures) | 🔧 **Maintenance** | 🧹 Housekeeping & 📊 GM | Active in Maintenance Queue |
-| **Cleanliness & Amenities** (Linens, Restocking, Deep Clean) | 🧹 **Housekeeping** | 📊 General Manager | Filtered for Housekeeping |
-| **Confidential Complaints** | 📊 **General Manager** | 🛎️ Reception | Confidential Executive Desk |
+| Shown | When |
+| --- | --- |
+| Urgent issue | An open High or Emergency ticket |
+| N open issues | Any other open ticket |
+| Dirty / Cleaning / Inspecting | Not clean yet |
+| Occupied / Ready | Otherwise |
 
----
+## Data model
 
-## ⚖️ Legal, Compliance & Privacy
+```mermaid
+erDiagram
+  rooms ||--o{ residents : hosts
+  rooms ||--o{ reclamations : has
+  residents |o--o{ reclamations : reports
+  staff |o--o{ reclamations : "creates / is assigned"
+  departments ||..o{ staff : "groups (by code)"
 
-Hotel SES adheres to European GDPR, French CNIL, and enterprise data hygiene standards:
+  rooms {
+    bigint id PK
+    text room_number
+    int floor
+    text block
+    bool is_occupied
+    text cleaning_status
+  }
+  reclamations {
+    bigint id PK
+    bigint room_id FK
+    text department
+    text category
+    text priority
+    text status
+    bool is_confidential
+    timestamptz created_at
+    timestamptz resolved_at
+  }
+  staff {
+    bigint id PK
+    text full_name
+    text role
+    text department
+    text shift_status
+  }
+  residents {
+    bigint id PK
+    bigint room_id FK
+    text first_name
+    text last_name
+    text status
+  }
+  departments {
+    bigint id PK
+    text code
+    text name
+  }
+```
 
-* **Staff Privacy & Cookie Policy (`/privacy`)**: Transparent documentation of staff data collection, strictly necessary session cookies (`hotel_role`), audit logging, and data subject rights (Articles 15–22 GDPR).
-* **Terms of Service & AUP (`/tos`)**: Clear operational guidelines governing account credentials, system availability, data security, and acceptable use.
-* **Open Source Licenses Registry (`LICENSES.md`)**: Full attribution and license terms for third-party production dependencies.
-* **Login Security Disclosures**: Explicit disclosures regarding session cookies and audit tracking present on `/login`.
+## Getting started
 
----
-
-## 🛠️ Technology Stack
-
-* **Framework**: [Next.js 16 (App Router)](https://nextjs.org/) with Turbopack bundler
-* **UI Library**: [React 19](https://react.dev/)
-* **Language**: [TypeScript 5](https://www.typescriptlang.org/)
-* **Database & Auth**: [Supabase PostgreSQL](https://supabase.com/) (`@supabase/ssr` & `@supabase/supabase-js`)
-* **PWA & Offline**: Web App Manifest, Service Worker (`sw.js`), Sharp icon generation
-* **Styling**: Vanilla CSS (Tailored Dark Glassmorphism Luxury Design System with Safe Area insets)
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-* **Node.js**: `v18.x` or higher
-* **npm**: `v9.x` or higher
-* **Supabase Project**: Supabase URL and Publishable API key
-
-### 1. Clone & Install Dependencies
+Requirements: Node.js 20.9 or newer and a Supabase project.
 
 ```bash
 git clone https://github.com/Qirto/hotel-ses.git
 cd hotel-ses
 npm install
+cp .env.example .env.local   # then fill in the values
+npm run dev                  # http://localhost:3000
 ```
 
-### 2. Configure Environment Variables
+### Environment variables
 
-Create a `.env.local` file in the project root:
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
+| `PASSCODE_RECEPTION` | Passcode for the Reception portal |
+| `PASSCODE_RH` | Passcode for the HR portal |
+| `PASSCODE_GM` | Passcode for the GM portal |
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+Set your own passcodes. Never commit real values.
 
-# Role authentication passcodes
-PASSCODE_RECEPTION=1111
-PASSCODE_RH=2222
-PASSCODE_GM=3333
-```
+### Database setup
 
-### 3. Database Migration & Seeding (Optional)
+Run these in the Supabase SQL editor, in order:
 
-Run the SQL migration scripts in `supabase/` via your Supabase SQL Editor, then seed the 341 rooms into PostgreSQL:
+| Order | File | Adds |
+| --- | --- | --- |
+| 1 | `supabase/hotel_rooms.sql` | Tables, policies and the 341 rooms |
+| 2 | `supabase/migrations_roles_upgrade.sql` | Guest counts, staff presence, confidential flag, SLA deadline |
+| 3 | `supabase/migrations_department_crud.sql` | `departments` table |
+| 4 | `supabase/migrations_expand_departments.sql` | All hotel departments and roles for staff |
 
-```bash
-npm run seed
-```
+`npm run seed` re-seeds the rooms from a script instead of SQL.
 
-### 4. Run Development Server
+### Scripts
 
-```bash
-npm run dev
-```
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production build (includes type check) |
+| `npm run start` | Serve the production build |
+| `npm run seed` | Seed the 341 rooms into Supabase |
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Unauthenticated visits automatically redirect to `/login`.
+## Design
 
-### 5. Production Build & Verification
+| Area | Choice |
+| --- | --- |
+| Components | easyui.site (copied into `components/ui`), shared views in `components/features` |
+| Theme | easyui monochrome tokens, dark and light, defined once in `app/globals.css` |
+| Icons | lucide, mapped per department and issue type in `lib/icons.tsx` (no emojis) |
+| Layout | Sidebar on desktop, top bar and bottom tabs on phones; tables turn into cards when they do not fit |
+| Accessibility | WCAG AA contrast in both themes, 40px+ touch targets, skip link, reduced motion respected |
 
-```bash
-npm run build
-npm run start
-```
+## Stack
 
----
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js 16 (App Router, Turbopack) |
+| UI | React 19, Tailwind CSS 4, easyui, Framer Motion, lucide |
+| Data | Supabase Postgres, Realtime, `@supabase/ssr` |
+| Language | TypeScript |
+| Hosting | Vercel (`vercel.json`) |
+| Offline | Service worker (`public/sw.js`), web manifest, install prompts |
 
-## 📁 Repository Structure
+## Known limitations
 
-```text
-├── app/
-│   ├── actions.ts                  # Next.js Server Actions with granular cache revalidation
-│   ├── components/
-│   │   ├── HotelDashboard.tsx       # Dashboard state orchestrator & realtime listeners
-│   │   ├── InstallBannerAndroid.tsx # Android PWA beforeinstallprompt bottom sheet
-│   │   ├── InstallBannerIOS.tsx     # iOS Safari 3-step home screen installation guide
-│   │   ├── PortalLayout.tsx         # Responsive layout with mobile app bar & off-canvas drawer
-│   │   ├── ReceptionPortal.tsx      # Receptionist control desk & 341-room map
-│   │   ├── ManagerPortal.tsx        # GM Executive Portal, Master Table & Room Analytics
-│   │   ├── HrPortal.tsx             # HR Staff & Department Management
-│   │   ├── GouvernantePortal.tsx    # Housekeeping manager workflow
-│   │   ├── MaintenancePortal.tsx    # Technical repair task queue
-│   │   └── ServiceWorkerRegistrar.tsx # Client-side Service Worker registration
-│   ├── gm/                         # General Manager route (/gm)
-│   ├── login/                      # Role-based passcode login (/login)
-│   ├── offline/                    # PWA offline fallback route (/offline)
-│   ├── privacy/                    # Staff Privacy & Cookie Policy (/privacy)
-│   ├── reception/                  # Front desk reception route (/reception)
-│   ├── rh/                         # Human resources route (/rh)
-│   ├── tos/                        # Terms of Service & Acceptable Use Policy (/tos)
-│   ├── layout.tsx                  # Root HTML, PWA metadata, splash tags, & layout
-│   └── page.tsx                    # Root route with role-based redirection
-├── proxy.ts                        # Next.js Middleware route guard protecting internal routes
-├── public/
-│   ├── icons/                      # PWA icons (72x72 to 512x512, apple-touch-icon, favicons)
-│   ├── splash/                     # iOS startup splash screens (iPhone SE to iPad Pro)
-│   ├── manifest.webmanifest        # W3C Web App Manifest
-│   └── sw.js                       # Service worker with caching & offline fallback
-├── scripts/
-│   ├── generate_pwa_assets.js      # Script generating PWA icons & iOS splash screens via sharp
-│   ├── seed_supabase_rooms.js      # Node.js script seeding 341 rooms to Supabase
-│   └── generate_rooms_sql.js       # SQL generation helper
-├── supabase/                       # PostgreSQL schema migration files
-├── utils/
-│   ├── roomAnalytics.ts            # Pure analytics engine (rush hours, patterns, MTTR)
-│   ├── loadHotelData.ts            # Data loader for rooms, staff, reclamations
-│   ├── roomsData.ts                # Type definitions & classification helpers
-│   └── supabase/                   # Supabase SSR client helpers (server/client/middleware)
-├── LICENSES.md                     # Open source third-party licenses register
-├── next.config.ts                  # Next.js configuration with PWA headers
-└── package.json
-```
+These are open and should be fixed before production use with real guest data.
 
----
+| Issue | Risk | Fix |
+| --- | --- | --- |
+| The role cookie is not signed or `httpOnly` | Anyone can set it and open any portal | Supabase Auth or a signed, `httpOnly` session |
+| Row-level security policies allow everything | The public key can read and write all tables | Policies tied to the signed-in user and role |
+| Server actions do not check the role | Any caller can run any action | Verify the session inside every action |
+| `.env` files are tracked in git | Keys and passcodes are in the history | Remove them, rotate the key and passcodes |
 
-## 📜 License
+## License
 
-This project is proprietary software for hotel operations management. For full third-party software disclosures and open-source licenses, see [LICENSES.md](LICENSES.md).
+Proprietary software for hotel operations. Third-party licenses are listed in [LICENSES.md](LICENSES.md).
