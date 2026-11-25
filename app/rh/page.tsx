@@ -12,7 +12,7 @@ export default async function RhPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--surface-0)", color: "var(--text-primary)" }}>
+    <>
       <HrPortal
         staffList={staffList}
         departmentsList={departmentsList}
@@ -20,6 +20,6 @@ export default async function RhPage() {
         rooms={rooms}
         isLiveSupabase={isLiveSupabase}
       />
-    </main>
+    </>
   );
 }

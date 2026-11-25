@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, LogOut, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusScreen } from "@/components/app/StatusScreen";
 import { signOutToLogin } from "@/lib/session";
 
 interface Props {
@@ -10,107 +13,53 @@ interface Props {
 }
 
 const ROLE_NAMES: Record<string, string> = {
-  reception: "Reception Desk",
-  rh: "Human Resources (HR)",
-  gm: "General Manager (GM)",
+  reception: "Reception",
+  rh: "Human Resources",
+  gm: "General Manager",
 };
 
 export default function AccessDenied({ requiredRole, currentRole }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const handleLogout = () => {
-    startTransition(() => signOutToLogin());
-  };
-
-  const requiredRoleName = ROLE_NAMES[requiredRole] || requiredRole;
-  const currentRoleName = currentRole ? ROLE_NAMES[currentRole] || currentRole : "Unauthenticated Guest";
+  const required = ROLE_NAMES[requiredRole] ?? requiredRole;
+  const current = currentRole ? ROLE_NAMES[currentRole] ?? currentRole : null;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0b0f17",
-        color: "#f8fafc",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem 1rem",
-        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "clamp(300px, 92vw, 500px)",
-          width: "100%",
-          background: "#111827",
-          border: "1px solid rgba(239, 68, 68, 0.35)",
-          borderRadius: 16,
-          padding: "clamp(1.25rem, 4vw, 2.25rem)",
-          textAlign: "center",
-          boxShadow: "0 8px 30px rgba(0, 0, 0, 0.5)",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ display: "inline-flex", padding: "4px 10px", borderRadius: 4, background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#fca5a5", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 14 }}>
-          HTTP 403 • Role Access Mismatch
-        </div>
-
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0 0 10px", color: "#ffffff", letterSpacing: "-0.02em" }}>
-          Access Denied
-        </h1>
-
-        <p style={{ fontSize: 14, color: "#c1cad8", lineHeight: 1.6, marginBottom: 16 }}>
-          This workspace is restricted to <strong>{requiredRoleName}</strong> staff only.
-        </p>
-
-        <div style={{ padding: "12px", borderRadius: 8, background: "#1a2234", border: "1px solid rgba(255,255,255,0.08)", fontSize: 13, color: "#c1cad8", marginBottom: 20 }}>
-          Your current session: <strong style={{ color: "#fca5a5" }}>{currentRoleName}</strong>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <StatusScreen
+      icon={<ShieldAlert />}
+      tone="danger"
+      title="No access to this workspace"
+      actions={
+        <>
           {currentRole && currentRole !== requiredRole && (
-            <button
-              className="btn-primary"
+            <Button
+              variant="primary"
+              size="lg"
               onClick={() => router.push(`/${currentRole}`)}
-              aria-label={`Return to your authorized portal: ${ROLE_NAMES[currentRole] || currentRole}`}
-              style={{
-                width: "100%",
-                padding: "11px",
-                borderRadius: 8,
-                border: "1px solid rgba(56, 189, 248, 0.4)",
-                background: "rgba(56, 189, 248, 0.15)",
-                color: "#38bdf8",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
+              leftIcon={<ArrowLeft className="size-4" aria-hidden />}
+              className="w-full justify-center"
             >
-              &larr; Return to Workspace ({ROLE_NAMES[currentRole] || currentRole})
-            </button>
+              Go to {current}
+            </Button>
           )}
-
-          <button
-            className="btn-primary"
-            disabled={isPending}
-            onClick={handleLogout}
-            aria-label="Log out and switch department"
-            style={{
-              width: "100%",
-              padding: "11px",
-              borderRadius: 8,
-              border: "none",
-              background: "#ef4444",
-              color: "#ffffff",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
+          <Button
+            variant="secondary"
+            size="lg"
+            isLoading={isPending}
+            loadingText="Signing out"
+            onClick={() => startTransition(() => signOutToLogin())}
+            leftIcon={<LogOut className="size-4" aria-hidden />}
+            className="w-full justify-center"
           >
-            {isPending ? "Logging out..." : "Log Out & Switch Department"}
-          </button>
-        </div>
-      </div>
-    </div>
+            Sign in with another passcode
+          </Button>
+        </>
+      }
+    >
+      <p>
+        This page is for <strong className="font-semibold text-fg">{required}</strong> staff.
+      </p>
+      <p className="mt-1">{current ? `You are signed in as ${current}.` : "You are not signed in."}</p>
+    </StatusScreen>
   );
 }

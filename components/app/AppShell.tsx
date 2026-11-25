@@ -109,7 +109,7 @@ export default function AppShell({
         </header>
 
         <main
-          id="portal-main"
+          id="main"
           className="flex-1 px-4 pb-[calc(5rem+var(--safe-bottom))] pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8"
         >
           <div className="mx-auto w-full max-w-screen-2xl">{children}</div>

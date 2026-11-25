@@ -1,27 +1,54 @@
 "use client";
 
-import { formatIncidentDate } from "@/lib/format";
-import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import React, { useState, useTransition, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { HotelRoom, Resident, Department, Reclamation, Staff } from "@/utils/roomsData";
+import { useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import {
+  BedDouble,
+  Building2,
+  ChartColumn,
+  CircleCheck,
+  ClipboardList,
+  ConciergeBell,
+  Hotel,
+  Layers,
+  LayoutDashboard,
+  ListFilter,
+  LogIn,
+  LogOut,
+  Send,
+  Siren,
+  Sparkles,
+  TriangleAlert,
+  Users,
+  History,
+  Eye,
+} from "lucide-react";
+import type { Department, HotelRoom, Reclamation, Resident, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
 import type { NavTabItem } from "@/components/app/nav";
-import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
-import { BedDouble, ChartColumn, ClipboardList, History, LayoutDashboard, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Fab } from "@/components/app/Fab";
 import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { BarChart } from "@/components/ui/bar-chart";
+import { Panel, PageStack, EmptyState } from "@/components/features/Panel";
+import { Kpi, KpiGrid } from "@/components/features/Kpi";
+import { FilterBar, PillGroup, SearchInput, SelectField } from "@/components/features/Filters";
+import { RoomGrid } from "@/components/features/RoomGrid";
+import { TicketTable } from "@/components/features/TicketTable";
+import { RoomDetail, TicketCard } from "@/components/features/RoomDetail";
+import { Field, NewTicketForm, Notice, PastIncidentForm, Segmented, TextInput, type NewTicketInput, type PastIncidentInput } from "@/components/features/Forms";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { countOpenTickets, countRoomsNeedingAttention, isOpenTicket } from "@/lib/tickets";
+import { CLEANING_LABEL, ticketStatsByRoom } from "@/lib/rooms";
+import { departmentLabel, plural } from "@/lib/format";
 import {
-  createRapidReclamation,
-  createHistoricalReclamation,
-  updateRoomStayState,
   acknowledgeReclamation,
-  resolveReclamation,
+  createHistoricalReclamation,
+  createRapidReclamation,
   cycleRoomCleaning,
-  updateRoomHeadcount,
-  } from "@/app/actions";
+  resolveReclamation,
+  updateRoomStayState,
+} from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
@@ -32,2042 +59,537 @@ interface Props {
   isLiveSupabase?: boolean;
 }
 
-const PRESET_ISSUES: Record<string, { category: string; label: string }[]> = {
-  TECHNICAL: [
-    { category: "A/C", label: "❄️ A/C Not Cooling" },
-    { category: "Plumbing", label: "🚰 Leaking Sink / Shower" },
-    { category: "Electrical", label: "💡 Lighting / Power Issue" },
-    { category: "TV/Audio", label: "📺 TV / Remote Malfunction" },
-    { category: "Lock", label: "🔑 Door Lock Stiff" },
-  ],
-  HOUSEKEEPING: [
-    { category: "Towels", label: "🛁 Extra Towels Requested" },
-    { category: "Bedding", label: "🛏️ Extra Blanket / Pillow" },
-    { category: "Toiletries", label: "🧴 Shampoos & Soap Restock" },
-    { category: "Cleaning", label: "🧹 Urgent Floor Clean" },
-    { category: "Minibar", label: "🍫 Minibar Restock" },
-  ],
-  FOOD_AND_BEVERAGE: [
-    { category: "Room Service", label: "🍽️ Room Service Delivery" },
-    { category: "Breakfast", label: "🥐 Continental Breakfast Tray" },
-    { category: "Drinks", label: "🍾 Champagne & Ice Bucket" },
-  ],
-  CONCIERGE: [
-    { category: "Luggage", label: "🧳 Luggage Collection" },
-    { category: "Transport", label: "🚕 Airport Transfer" },
-    { category: "Keycard", label: "💳 Keycard Reprogramming" },
-  ],
+type Tab = "OVERVIEW" | "ROOMS" | "RECLAMATIONS" | "STATS";
+type DateRange = "ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE";
+type RoomFilter = "ALL" | "ATTENTION" | "OCCUPIED" | "VACANT" | "VACANT_CLEAN" | "DIRTY";
+type StayState = "OCCUPIED" | "VACANT_DIRTY";
+
+const NEXT_CLEANING: Record<HotelRoom["cleaning_status"], HotelRoom["cleaning_status"]> = {
+  DIRTY: "CLEANING",
+  CLEANING: "INSPECTING",
+  INSPECTING: "CLEAN",
+  CLEAN: "DIRTY",
 };
 
-const DEFAULT_PRESETS = [
-  { category: "General", label: "📋 General Guest Request" },
-  { category: "Urgent", label: "⚡ High-Priority Attention" },
+const STAY_ACTIONS: { state: StayState; label: string; icon: ReactNode }[] = [
+  { state: "OCCUPIED", label: "Check in", icon: <LogIn className="size-4" aria-hidden /> },
+  { state: "VACANT_DIRTY", label: "Check out", icon: <LogOut className="size-4" aria-hidden /> },
 ];
 
-export default function ReceptionPortal({
-  rooms,
-  departmentsList = [],
-  reclamationsList = [],
-  isLiveSupabase = false,
-}: Props) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"OVERVIEW" | "ROOMS" | "RECLAMATIONS" | "STATS">("OVERVIEW");
-  const [message, setMessage] = useState<string | null>(null);
+const STAY_RESULT: Record<StayState, Partial<HotelRoom>> = {
+  OCCUPIED: { is_occupied: true },
+  VACANT_DIRTY: { is_occupied: false, cleaning_status: "DIRTY" },
+};
+
+const STAY_MESSAGE: Record<StayState, string> = {
+  OCCUPIED: "checked in",
+  VACANT_DIRTY: "checked out and marked dirty",
+};
+
+const DATE_RANGES = [
+  { value: "ALL", label: "All time" },
+  { value: "TODAY", label: "Today" },
+  { value: "WEEK", label: "7 days" },
+  { value: "MONTH", label: "30 days" },
+  { value: "ARCHIVE", label: "Older" },
+] as const;
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "OPEN", label: "Open" },
+  { value: "ACKNOWLEDGED", label: "Acknowledged" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+];
+
+const DAY_MS = 864e5;
+
+export default function ReceptionPortal({ rooms, departmentsList = [], reclamationsList = [], isLiveSupabase = false }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("OVERVIEW");
+  const [, startTabTransition] = useTransition();
   const [isPending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
 
-  // Synchronized Reactive Reclamations State
-  const [localReclamations, setLocalReclamations] = useState<Reclamation[]>(reclamationsList || []);
-  useEffect(() => {
-    if (reclamationsList) {
-      setLocalReclamations(reclamationsList);
-    }
-  }, [reclamationsList]);
+  // Local copy so optimistic updates show instantly; server refreshes replace it.
+  const [tickets, setTickets] = useState<Reclamation[]>(reclamationsList);
+  useEffect(() => setTickets(reclamationsList), [reclamationsList]);
+  const [roomOverrides, setRoomOverrides] = useState<Record<number, Partial<HotelRoom>>>({});
+  useEffect(() => setRoomOverrides({}), [rooms]);
+  const liveRooms = useMemo(
+    () => (Object.keys(roomOverrides).length ? rooms.map((r) => (roomOverrides[r.id] ? { ...r, ...roomOverrides[r.id] } : r)) : rooms),
+    [rooms, roomOverrides]
+  );
+  const patchRoom = useCallback(
+    (id: number, patch: Partial<HotelRoom>) => setRoomOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } })),
+    []
+  );
 
-  // Rapid Incident Dispatch Modal (Bottom Sheet / FAB)
-  const [showNewTicketSheet, setShowNewTicketSheet] = useState(false);
-  const [quickRoom, setQuickRoom] = useState<string>("");
-  const [quickDept, setQuickDept] = useState<string>("TECHNICAL");
-  const [quickCategory, setQuickCategory] = useState<string>("A/C");
-  const [quickPriority, setQuickPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
-  const [quickDesc, setQuickDesc] = useState<string>("");
-  const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().slice(0, 16));
+  useRealtimeRefresh("realtime-reception", ["reclamations", "rooms"], isLiveSupabase);
 
-  const handleQuickTicketSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetRoom = rooms.find((r) => r.room_number.toString() === quickRoom.toString().trim());
-    if (!targetRoom) {
-      alert("Please select or enter a valid room number!");
-      return;
-    }
+  const flash = useCallback((tone: "success" | "danger", text: string) => {
+    setNotice({ tone, text });
+    window.setTimeout(() => setNotice(null), 3500);
+  }, []);
+  const noticeEl = notice && <Notice tone={notice.tone}>{notice.text}</Notice>;
 
-    const optimisticRec: Reclamation = {
-      id: Date.now(),
-      room_id: targetRoom.id,
-      room: targetRoom,
-      department: quickDept,
-      category: quickCategory,
-      description: quickDesc.trim() || `${quickCategory} incident reported via Quick Dispatch`,
-      priority: quickPriority,
-      status: "OPEN",
-      created_at: quickDate ? new Date(quickDate).toISOString() : new Date().toISOString(),
-      is_confidential: false,
-    };
-    setLocalReclamations((prev) => [optimisticRec, ...prev]);
+  /* ───────────── derived data ───────────── */
+  const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
+  const attentionCount = useMemo(() => countRoomsNeedingAttention(liveRooms, tickets), [liveRooms, tickets]);
+  const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
 
-    startTransition(async () => {
-      const res = await createRapidReclamation({
-        roomId: targetRoom.id,
-        department: quickDept,
-        category: quickCategory,
-        description: quickDesc.trim() || `${quickCategory} incident reported via Quick Dispatch`,
-        priority: quickPriority,
-        isConfidential: false,
-      });
-      if (res.success) {
-        setMessage(`Incident dispatched for Room ${targetRoom.room_number}!`);
-        setShowNewTicketSheet(false);
-        setQuickDesc("");
-        setQuickRoom("");
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        alert(`Error: ${res.error}`);
+  const roomCounts = useMemo(() => {
+    let occupied = 0;
+    let vacant = 0;
+    let vacantClean = 0;
+    let vacantDirty = 0;
+    let dirty = 0;
+    for (const r of liveRooms) {
+      if (r.is_occupied) occupied++;
+      else {
+        vacant++;
+        if (r.cleaning_status === "CLEAN") vacantClean++;
+        if (r.cleaning_status === "DIRTY") vacantDirty++;
       }
-    });
-  };
+      if (r.cleaning_status === "DIRTY") dirty++;
+    }
+    return { occupied, vacant, vacantClean, vacantDirty, dirty, inCleaning: vacant - vacantClean - vacantDirty };
+  }, [liveRooms]);
+  const occupancyPct = liveRooms.length ? `${Math.round((roomCounts.occupied / liveRooms.length) * 100)}%` : "–";
 
-  // Real-time synchronization
-  useRealtimeRefresh("realtime-reception", ["reclamations","rooms"], isLiveSupabase);
+  const urgentOpen = useMemo(
+    () => tickets.filter((t) => isOpenTicket(t) && (t.priority === "EMERGENCY" || t.priority === "HIGH")),
+    [tickets]
+  );
 
-  // Room Pop-up Modal State
-  const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
-  const [modalTab, setModalTab] = useState<"RECLAMATIONS" | "ROOM_STAT">("ROOM_STAT");
-  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY" | "TIMELINE">("ACTIVE");
+  const byDepartment = useMemo(() => {
+    const counts = new Map<string, { open: number; resolved: number }>();
+    for (const t of tickets) {
+      const c = counts.get(t.department) ?? { open: 0, resolved: 0 };
+      if (isOpenTicket(t)) c.open++;
+      else c.resolved++;
+      counts.set(t.department, c);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1].open + b[1].resolved - (a[1].open + a[1].resolved))
+      .slice(0, 6)
+      .map(([dept, c]) => ({ label: departmentLabel(dept), open: c.open, resolved: c.resolved }));
+  }, [tickets]);
 
-  // In-modal Past Incident Creation State
-  const [showInModalPastLog, setShowInModalPastLog] = useState(false);
-  const [inModalHistDate, setInModalHistDate] = useState(new Date().toISOString().slice(0, 16));
-  const [inModalHistDept, setInModalHistDept] = useState("TECHNICAL");
-  const [inModalHistCategory, setInModalHistCategory] = useState("A/C");
-  const [inModalHistStatus, setInModalHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
-  const [inModalHistDesc, setInModalHistDesc] = useState("");
-
-  // Specific Room Reclamations for Modal (using reactive local state)
-  const roomModalReclamations = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    return localReclamations.filter(
-      (r) =>
-        r.room_id === selectedRoomModal.id ||
-        r.room?.room_number === selectedRoomModal.room_number
-    );
-  }, [localReclamations, selectedRoomModal]);
-
-  // Active Reclamations for Room Modal
-  const roomActiveReclamations = useMemo(() => {
-    return roomModalReclamations.filter(
-      (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
-    );
-  }, [roomModalReclamations]);
-
-  // Chronologically Sorted Reclamations for Date Timeline
-  const roomTimelineReclamations = useMemo(() => {
-    return [...roomModalReclamations].sort((a, b) => {
-      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return timeB - timeA;
-    });
-  }, [roomModalReclamations]);
-
-  // Most Reported Problem Categories for Room Modal
-  const roomProblemStats = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    const counts: Record<string, { count: number; department: string; lastDate?: string }> = {};
-    roomModalReclamations.forEach((rec) => {
-      const cat = rec.category || "General";
-      if (!counts[cat]) {
-        counts[cat] = { count: 0, department: rec.department, lastDate: rec.created_at };
-      }
-      counts[cat].count += 1;
-    });
-    const total = roomModalReclamations.length || 1;
-    return Object.entries(counts)
-      .map(([category, info]) => ({
-        category,
-        count: info.count,
-        department: info.department,
-        percentage: Math.round((info.count / total) * 100),
-        lastDate: info.lastDate,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [roomModalReclamations, selectedRoomModal]);
-
-  // Modal New Ticket Form State
-  const [modalDept, setModalDept] = useState<string>("TECHNICAL");
-  const [modalCategory, setModalCategory] = useState<string>("A/C");
-  const [modalDesc, setModalDesc] = useState<string>("");
-  const [modalPriority, setModalPriority] = useState<"STANDARD" | "HIGH" | "EMERGENCY">("STANDARD");
-  const [modalConfidential, setModalConfidential] = useState<boolean>(false);
-  const [modalDate, setModalDate] = useState<string>(new Date().toISOString().slice(0, 16));
-
-  // Filters for Room Grid
+  /* ───────────── rooms tab ───────────── */
   const [roomSearch, setRoomSearch] = useState("");
-  const [floorFilter, setFloorFilter] = useState<number | "ALL">("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "OCCUPIED" | "VACANT" | "DIRTY">("ALL");
-
-  // Filters for Reclamations Table
-  const [recStatusFilter, setRecStatusFilter] = useState<"ALL" | "OPEN" | "IN_PROGRESS" | "RESOLVED">("ALL");
-  const [recDeptFilter, setRecDeptFilter] = useState<string>("ALL");
-  const [recDateFilter, setRecDateFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE">("ALL");
-
-  // Historical Ticket Modal State
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [histRoom, setHistRoom] = useState("");
-  const [histDept, setHistDept] = useState<string>("TECHNICAL");
-  const [histCategory, setHistCategory] = useState("A/C");
-  const [histDesc, setHistDesc] = useState("");
-  const [histDate, setHistDate] = useState(
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+  const [roomFloor, setRoomFloor] = useState<number | "ALL">("ALL");
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>("ALL");
+  const floors = useMemo(() => [...new Set(liveRooms.map((r) => r.floor))].sort((a, b) => a - b), [liveRooms]);
+  const filteredRooms = useMemo(
+    () =>
+      liveRooms.filter((r) => {
+        if (roomSearch && !r.room_number.includes(roomSearch.trim())) return false;
+        if (roomFloor !== "ALL" && r.floor !== roomFloor) return false;
+        const s = roomStats.get(r.id);
+        if (roomFilter === "ATTENTION" && !(r.cleaning_status === "DIRTY" || (s && s.open > 0))) return false;
+        if (roomFilter === "OCCUPIED" && !r.is_occupied) return false;
+        if (roomFilter === "VACANT" && r.is_occupied) return false;
+        if (roomFilter === "VACANT_CLEAN" && (r.is_occupied || r.cleaning_status !== "CLEAN")) return false;
+        if (roomFilter === "DIRTY" && r.cleaning_status !== "DIRTY") return false;
+        return true;
+      }),
+    [liveRooms, roomSearch, roomFloor, roomFilter, roomStats]
   );
-  const [histStatus, setHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
 
-  // Departments List
-  const allDepartments = useMemo(() => {
-    const list: { code: string; name: string; icon: string }[] = [
-      { code: "TECHNICAL", name: "Technical Maintenance", icon: "🔧" },
-      { code: "HOUSEKEEPING", name: "Housekeeping & Linen", icon: "🧹" },
-      { code: "FOOD_AND_BEVERAGE", name: "Food & Beverage", icon: "🍽️" },
-      { code: "CONCIERGE", name: "Concierge & Valet", icon: "🚗" },
-      { code: "SECURITY", name: "Security & Safety", icon: "🛡️" },
-      { code: "SPA_AND_WELLNESS", name: "Spa & Wellness", icon: "🧖" },
+  /* ───────────── tickets tab ───────────── */
+  const [deptFilter, setDeptFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dateRange, setDateRange] = useState<DateRange>("ALL");
+  const deptOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of tickets) if (t.department) counts.set(t.department, (counts.get(t.department) ?? 0) + 1);
+    for (const d of departmentsList) if (!counts.has(d.code)) counts.set(d.code, 0);
+    return [
+      { value: "ALL", label: `All departments (${tickets.length})` },
+      ...[...counts.entries()]
+        .sort((a, b) => departmentLabel(a[0]).localeCompare(departmentLabel(b[0])))
+        .map(([code, n]) => ({ value: code, label: `${departmentLabel(code)} (${n})` })),
     ];
-    departmentsList.forEach((d) => {
-      if (!list.some((e) => e.code === d.code)) {
-        list.push({ code: d.code, name: d.name, icon: d.icon || "🏢" });
-      }
-    });
-    return list;
-  }, [departmentsList]);
-
-  // Filtered Rooms
-  const filteredRooms = useMemo(() => {
-    return rooms.filter((r) => {
-      if (roomSearch && !r.room_number.includes(roomSearch)) return false;
-      if (floorFilter !== "ALL" && r.floor !== floorFilter) return false;
-      if (statusFilter === "OCCUPIED" && !r.is_occupied) return false;
-      if (statusFilter === "VACANT" && r.is_occupied) return false;
-      if (statusFilter === "DIRTY" && r.cleaning_status !== "DIRTY") return false;
-      return true;
-    });
-  }, [rooms, roomSearch, floorFilter, statusFilter]);
-
-  // Filtered Reclamations (using reactive localReclamations + recDateFilter)
-  const filteredReclamations = useMemo(() => {
-    const now = new Date();
-    return localReclamations.filter((rec) => {
-      if (recStatusFilter !== "ALL" && rec.status !== recStatusFilter) return false;
-      if (recDeptFilter !== "ALL" && rec.department !== recDeptFilter) return false;
-
-      if (recDateFilter !== "ALL" && rec.created_at) {
-        const ticketDate = new Date(rec.created_at);
-        const diffMs = now.getTime() - ticketDate.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-        if (recDateFilter === "TODAY" && diffDays > 1) return false;
-        if (recDateFilter === "WEEK" && diffDays > 7) return false;
-        if (recDateFilter === "MONTH" && diffDays > 30) return false;
-        if (recDateFilter === "ARCHIVE" && diffDays <= 30) return false;
+  }, [tickets, departmentsList]);
+  const filteredTickets = useMemo(() => {
+    const now = Date.now();
+    return tickets.filter((t) => {
+      if (deptFilter !== "ALL" && t.department !== deptFilter) return false;
+      if (statusFilter !== "ALL" && t.status !== statusFilter) return false;
+      if (dateRange !== "ALL" && t.created_at) {
+        const days = (now - new Date(t.created_at).getTime()) / DAY_MS;
+        if (dateRange === "TODAY" && days > 1) return false;
+        if (dateRange === "WEEK" && days > 7) return false;
+        if (dateRange === "MONTH" && days > 30) return false;
+        if (dateRange === "ARCHIVE" && days <= 30) return false;
       }
       return true;
     });
-  }, [localReclamations, recStatusFilter, recDeptFilter, recDateFilter]);
+  }, [tickets, deptFilter, statusFilter, dateRange]);
 
-  // Stay State Handler
-  const handleStayState = (roomId: number, state: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED") => {
-    startTransition(async () => {
-      const res = await updateRoomStayState(roomId, state);
-      if (res.success) {
-        setMessage(`✅ Room state updated!`);
-        if (selectedRoomModal) {
-          setSelectedRoomModal((prev) =>
-            prev ? { ...prev, is_occupied: state === "OCCUPIED" } : null
-          );
+  /* ───────────── ticket actions (optimistic, reverted on failure) ───────────── */
+  const updateTicket = useCallback(
+    (id: number, patch: Partial<Reclamation>, run: () => Promise<{ success: boolean }>, ok: string, fail: string) => {
+      let previous: Reclamation | undefined;
+      setTickets((prev) =>
+        prev.map((t) => {
+          if (t.id !== id) return t;
+          previous = t;
+          return { ...t, ...patch };
+        })
+      );
+      startTransition(async () => {
+        const res = await run();
+        if (res.success) flash("success", ok);
+        else {
+          if (previous) setTickets((prev) => prev.map((t) => (t.id === id ? previous! : t)));
+          flash("danger", fail);
         }
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Cleaning Cycle Handler
-  const handleCleaningCycle = (room: HotelRoom) => {
-    const nextMap: Record<string, "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"> = {
-      DIRTY: "CLEANING",
-      CLEANING: "INSPECTING",
-      INSPECTING: "CLEAN",
-      CLEAN: "DIRTY",
-    };
-    const nextStatus = nextMap[room.cleaning_status] || "DIRTY";
-    startTransition(async () => {
-      const res = await cycleRoomCleaning(room.id, nextStatus);
-      if (res.success) {
-        setMessage(`Room ${room.room_number} set to ${nextStatus}.`);
-        if (selectedRoomModal && selectedRoomModal.id === room.id) {
-          setSelectedRoomModal((prev) => (prev ? { ...prev, cleaning_status: nextStatus } : null));
-        }
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Create Reclamation inside Modal
-  const handleModalCreateReclamation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-
-    const optimisticRec: Reclamation = {
-      id: Date.now(),
-      room_id: selectedRoomModal.id,
-      room: selectedRoomModal,
-      department: modalDept,
-      category: modalCategory,
-      description: modalDesc.trim() || `${modalCategory} issue logged via Room Modal`,
-      priority: modalPriority,
-      status: "OPEN",
-      created_at: modalDate ? new Date(modalDate).toISOString() : new Date().toISOString(),
-      is_confidential: modalConfidential,
-    };
-    setLocalReclamations((prev) => [optimisticRec, ...prev]);
-
-    startTransition(async () => {
-      const res = await createRapidReclamation({
-        roomId: selectedRoomModal.id,
-        department: modalDept,
-        category: modalCategory,
-        description: modalDesc.trim() || `${modalCategory} issue logged via Room Modal`,
-        priority: modalPriority,
-        isConfidential: modalConfidential,
       });
-
-      if (res.success) {
-        setMessage(`✅ Reclamation created for Room ${selectedRoomModal.room_number}!`);
-        setModalDesc("");
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        alert(`Error: ${res.error}`);
-      }
-    });
-  };
-
-  // Create Historical Reclamation directly inside Room Modal
-  const handleInModalHistoricalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-
-    const optimisticHist: Reclamation = {
-      id: Date.now(),
-      room_id: selectedRoomModal.id,
-      room: selectedRoomModal,
-      department: inModalHistDept,
-      category: inModalHistCategory,
-      description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
-      priority: "STANDARD",
-      status: inModalHistStatus,
-      created_at: inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString(),
-      resolved_at: inModalHistStatus === "RESOLVED" ? (inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString()) : undefined,
-    };
-    setLocalReclamations((prev) => [optimisticHist, ...prev]);
-
-    startTransition(async () => {
-      const res = await createHistoricalReclamation({
-        roomId: selectedRoomModal.id,
-        department: inModalHistDept,
-        category: inModalHistCategory,
-        description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
-        status: inModalHistStatus,
-        createdAt: inModalHistDate,
-        isConfidential: false,
-      });
-
-      if (res.success) {
-        setShowInModalPastLog(false);
-        setInModalHistDesc("");
-        setMessage(`✅ Historical incident added for Room ${selectedRoomModal.room_number}!`);
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        alert(`Error: ${res.error}`);
-      }
-    });
-  };
-
-  // Acknowledge Ticket
-  const handleAcknowledgeTicket = (id: number) => {
-    setLocalReclamations((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "IN_PROGRESS" } : r))
-    );
-    startTransition(async () => {
-      const res = await acknowledgeReclamation(id);
-      if (res.success) {
-        setMessage(`📌 Reclamation #${id} set to IN_PROGRESS.`);
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Resolve Ticket
-  const handleResolveTicket = (id: number) => {
-    setLocalReclamations((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "RESOLVED", resolved_at: new Date().toISOString() } : r))
-    );
-    startTransition(async () => {
-      const res = await resolveReclamation(id, "Resolved by Reception");
-      if (res.success) {
-        setMessage(`✅ Ticket #${id} marked RESOLVED.`);
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Submit Historical Ticket from Global Modal
-  const handleHistoricalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetRoom = rooms.find((r) => r.room_number.toString() === histRoom.toString().trim());
-    if (!targetRoom) {
-      alert("Invalid room number!");
-      return;
-    }
-
-    const optimisticHist: Reclamation = {
-      id: Date.now(),
-      room_id: targetRoom.id,
-      room: targetRoom,
-      department: histDept,
-      category: histCategory,
-      description: histDesc || `Historical logbook entry for ${histCategory}`,
-      priority: "STANDARD",
-      status: histStatus,
-      created_at: histDate ? new Date(histDate).toISOString() : new Date().toISOString(),
-      resolved_at: histStatus === "RESOLVED" ? (histDate ? new Date(histDate).toISOString() : new Date().toISOString()) : undefined,
-    };
-    setLocalReclamations((prev) => [optimisticHist, ...prev]);
-
-    startTransition(async () => {
-      const res = await createHistoricalReclamation({
-        roomId: targetRoom.id,
-        department: histDept,
-        category: histCategory,
-        description: histDesc || `Historical logbook entry for ${histCategory}`,
-        status: histStatus,
-        createdAt: histDate,
-        isConfidential: false,
-      });
-
-      if (res.success) {
-        alert(`Successfully backfilled historical reclamation for Room ${targetRoom.room_number}!`);
-        setShowHistoryModal(false);
-        setHistDesc("");
-      } else {
-        alert(`Error: ${res.error}`);
-      }
-    });
-  };
-
-  // Summary Metrics (instantaneously updated from reactive localReclamations)
-  const totalRooms = rooms.length;
-  const occupiedCount = rooms.filter((r) => r.is_occupied).length;
-  const dirtyCount = rooms.filter((r) => r.cleaning_status === "DIRTY").length;
-  const vacantCleanCount = rooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length;
-  const openReclamationsCount = countOpenTickets(localReclamations);
-
-  const deptCounts: Record<string, number> = {};
-  localReclamations.forEach((rec) => {
-    deptCounts[rec.department] = (deptCounts[rec.department] || 0) + 1;
-  });
-
-  const urgentReclamations = localReclamations.filter(
-    (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && (r.priority === "HIGH" || r.priority === "EMERGENCY")
+    },
+    [flash]
   );
 
-  const openTicketCount = countOpenTickets(localReclamations);
-  const roomsNeedingAttention = countRoomsNeedingAttention(rooms, localReclamations);
+  const acknowledgeTicket = useCallback(
+    (id: number) =>
+      updateTicket(id, { status: "IN_PROGRESS" }, () => acknowledgeReclamation(id), "Ticket marked in progress.", "Could not update the ticket."),
+    [updateTicket]
+  );
+  const resolveTicket = useCallback(
+    (id: number) =>
+      updateTicket(
+        id,
+        { status: "RESOLVED", resolved_at: new Date().toISOString() },
+        () => resolveReclamation(id, "Resolved by Reception"),
+        "Ticket resolved.",
+        "Could not resolve the ticket."
+      ),
+    [updateTicket]
+  );
 
-  const navItems: NavTabItem[] = [
-    {
-      id: "OVERVIEW",
-      label: "Overview",
-      icon: <LayoutDashboard aria-hidden />,
-      isActive: activeTab === "OVERVIEW",
-      onClick: () => setActiveTab("OVERVIEW"),
-    },
-    {
-      id: "ROOMS",
-      label: "Rooms",
-      icon: <BedDouble aria-hidden />,
-      badge: roomsNeedingAttention,
-      badgeTone: "alert",
-      isActive: activeTab === "ROOMS",
-      onClick: () => setActiveTab("ROOMS"),
-    },
-    {
-      id: "RECLAMATIONS",
-      label: "Tickets",
-      icon: <ClipboardList aria-hidden />,
-      badge: openTicketCount,
-      badgeTone: "alert",
-      isActive: activeTab === "RECLAMATIONS",
-      onClick: () => setActiveTab("RECLAMATIONS"),
-    },
-    {
-      id: "STATS",
-      label: "Stats",
-      icon: <ChartColumn aria-hidden />,
-      isActive: activeTab === "STATS",
-      onClick: () => setActiveTab("STATS"),
-    },
-  ];
+  const ticketActions = useCallback(
+    (t: Reclamation) =>
+      isOpenTicket(t) ? (
+        <>
+          {t.status === "OPEN" && (
+            <Button size="md" variant="secondary" onClick={() => acknowledgeTicket(t.id)} disabled={isPending} leftIcon={<Eye className="size-4" aria-hidden />}>
+              Acknowledge
+            </Button>
+          )}
+          <Button size="md" variant="success" onClick={() => resolveTicket(t.id)} disabled={isPending} leftIcon={<CircleCheck className="size-4" aria-hidden />}>
+            Resolve
+          </Button>
+        </>
+      ) : null,
+    [acknowledgeTicket, resolveTicket, isPending]
+  );
+
+  /* ───────────── room detail + actions ───────────── */
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const selectedRoom = useMemo(() => liveRooms.find((r) => r.id === selectedRoomId) ?? null, [liveRooms, selectedRoomId]);
+  const openRoom = useCallback((room: HotelRoom) => setSelectedRoomId(room.id), []);
+  const [logMode, setLogMode] = useState<"NEW" | "PAST">("NEW");
+
+  const setStayState = (room: HotelRoom, state: StayState) =>
+    startTransition(async () => {
+      const res = await updateRoomStayState(room.id, state);
+      if (res.success) {
+        patchRoom(room.id, STAY_RESULT[state]);
+        flash("success", `Room ${room.room_number} ${STAY_MESSAGE[state]}.`);
+      } else flash("danger", "Could not update the stay state.");
+    });
+
+  const cycleCleaning = (room: HotelRoom) => {
+    const next = NEXT_CLEANING[room.cleaning_status] ?? "DIRTY";
+    startTransition(async () => {
+      const res = await cycleRoomCleaning(room.id, next);
+      if (res.success) {
+        patchRoom(room.id, { cleaning_status: next });
+        flash("success", `Room ${room.room_number} set to ${CLEANING_LABEL[next].toLowerCase()}.`);
+      } else flash("danger", "Could not update the cleaning status.");
+    });
+  };
+
+  /** Room-scoped dispatch, shared by the room detail and the quick-dispatch sheet. */
+  const dispatchTicket = (room: HotelRoom, input: NewTicketInput, fallback: string) =>
+    new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createRapidReclamation({
+          roomId: room.id,
+          department: input.department,
+          category: input.category,
+          description: input.description || fallback,
+          priority: input.priority,
+          isConfidential: false,
+        });
+        if (res.success && res.data) setTickets((prev) => [{ ...(res.data as Reclamation), room: { room_number: room.room_number } }, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Ticket dispatched for room ${room.room_number}.` : res.error || "Could not create the ticket.");
+        resolve(Boolean(res.success));
+      })
+    );
+
+  const recordPastIncident = (room: HotelRoom, input: PastIncidentInput, fallback: string) =>
+    new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createHistoricalReclamation({
+          roomId: room.id,
+          department: input.department,
+          category: input.category,
+          description: input.description || fallback,
+          status: input.status,
+          createdAt: input.createdAt,
+          isConfidential: false,
+        });
+        if (res.success && res.data) setTickets((prev) => [{ ...(res.data as Reclamation), room: { room_number: room.room_number } }, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Past incident recorded for room ${room.room_number}.` : res.error || "Could not record the incident.");
+        resolve(Boolean(res.success));
+      })
+    );
+
+  const createInRoom = async (input: NewTicketInput) =>
+    selectedRoom ? dispatchTicket(selectedRoom, input, `${input.category} issue logged via Room Modal`) : false;
+  const recordInRoom = async (input: PastIncidentInput) =>
+    selectedRoom ? recordPastIncident(selectedRoom, input, `Historical log for Room ${selectedRoom.room_number}`) : false;
+
+  /* ───────────── global sheets (room typed by hand) ───────────── */
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [backfillOpen, setBackfillOpen] = useState(false);
+
+  const findRoom = (number?: string) => {
+    const room = number ? rooms.find((r) => r.room_number === number) : undefined;
+    if (!room) flash("danger", number ? `No room numbered ${number}.` : "Enter a room number.");
+    return room;
+  };
+
+  const quickDispatch = async (input: NewTicketInput) => {
+    const room = findRoom(input.room);
+    if (!room) return false;
+    const ok = await dispatchTicket(room, input, `${input.category} incident reported via Quick Dispatch`);
+    if (ok) setDispatchOpen(false);
+    return ok;
+  };
+
+  const backfill = async (input: PastIncidentInput) => {
+    const room = findRoom(input.room);
+    if (!room) return false;
+    const ok = await recordPastIncident(room, input, `Historical logbook entry for ${input.category}`);
+    if (ok) setBackfillOpen(false);
+    return ok;
+  };
+
+  /* ───────────── navigation ───────────── */
+  const go = useCallback((tab: Tab) => startTabTransition(() => setActiveTab(tab)), []);
+  const showRooms = (filter: RoomFilter) => {
+    setRoomFilter(filter);
+    go("ROOMS");
+  };
+  const navItems = useMemo<NavTabItem[]>(
+    () => [
+      { id: "OVERVIEW", label: "Overview", icon: <LayoutDashboard aria-hidden />, isActive: activeTab === "OVERVIEW", onClick: () => go("OVERVIEW") },
+      { id: "ROOMS", label: "Rooms", icon: <BedDouble aria-hidden />, badge: attentionCount, badgeTone: "alert", isActive: activeTab === "ROOMS", onClick: () => go("ROOMS") },
+      { id: "RECLAMATIONS", label: "Tickets", icon: <ClipboardList aria-hidden />, badge: openCount, badgeTone: "alert", isActive: activeTab === "RECLAMATIONS", onClick: () => go("RECLAMATIONS") },
+      { id: "STATS", label: "Stats", icon: <ChartColumn aria-hidden />, isActive: activeTab === "STATS", onClick: () => go("STATS") },
+    ],
+    [activeTab, attentionCount, openCount, go]
+  );
 
   return (
     <AppShell
       items={navItems}
       departmentName="Reception Operations"
       departmentCode="Reception"
-      headerActions={
-        <Button
-          variant="outline"
-          onClick={() => setShowHistoryModal(true)}
-          aria-label="Backfill a past incident"
-          leftIcon={<History className="size-4" aria-hidden />}
-          className="h-10 px-3"
-        >
-          <span className="hidden sm:inline">Backfill</span>
-        </Button>
-      }
     >
-      {message && (
-        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--accent-amber-bg)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontSize: 14, fontWeight: 600 }}>
-          {message}
-        </div>
-      )}
+      <PageStack>
+        {noticeEl}
 
-      {/* ========================================================================= */}
-      {/* TAB 0: OVERVIEW / DASHBOARD SUMMARY */}
-      {/* ========================================================================= */}
-      {activeTab === "OVERVIEW" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {/* Top Hero Banner */}
-          <div
-            className="ses-card"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 16,
-              background: "linear-gradient(135deg, var(--surface-card), var(--surface-2))",
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-                Front Desk Overview
-              </h2>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-                Live property matrix, guest requests, and room dispatch status.
-              </p>
+        {activeTab === "OVERVIEW" && (
+          <>
+            <Panel title="Front desk" description="Live room status, guest requests and dispatch." icon={<ConciergeBell />}>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="primary" size="lg" onClick={() => setDispatchOpen(true)} leftIcon={<Send className="size-4" aria-hidden />} className="justify-center">
+                  Dispatch ticket
+                </Button>
+                <Button variant="outline" size="lg" onClick={() => setBackfillOpen(true)} leftIcon={<History className="size-4" aria-hidden />} className="justify-center">
+                  Past logbook
+                </Button>
+              </div>
+            </Panel>
+
+            <KpiGrid>
+              <Kpi label="Occupied" value={roomCounts.occupied} hint={`${occupancyPct} of ${plural(liveRooms.length, "room")}`} icon={<Hotel />} onClick={() => showRooms("OCCUPIED")} />
+              <Kpi label="Vacant and clean" value={roomCounts.vacantClean} hint="Ready for check-in" tone="success" icon={<Sparkles />} onClick={() => showRooms("VACANT_CLEAN")} />
+              <Kpi label="Dirty rooms" value={roomCounts.dirty} hint="Waiting for housekeeping" tone={roomCounts.dirty ? "danger" : "neutral"} icon={<TriangleAlert />} onClick={() => showRooms("DIRTY")} />
+              <Kpi label="Open tickets" value={openCount} hint={`${urgentOpen.length} urgent`} tone={openCount ? "warning" : "neutral"} icon={<ClipboardList />} onClick={() => go("RECLAMATIONS")} />
+            </KpiGrid>
+
+            <Panel
+              title="Urgent tickets"
+              description={`${plural(urgentOpen.length, "open ticket")} with emergency or high priority`}
+              icon={<Siren />}
+              actions={<Button size="md" variant="ghost" onClick={() => go("RECLAMATIONS")}>View all</Button>}
+            >
+              {urgentOpen.length === 0 ? (
+                <EmptyState icon={<CircleCheck />} title="Nothing urgent" description="No emergency or high-priority tickets are open." />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {urgentOpen.map((t) => (
+                    <TicketCard key={t.id} ticket={t} actions={ticketActions(t)} />
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </>
+        )}
+
+        {activeTab === "ROOMS" && (
+          <Panel title="Rooms" description={`${filteredRooms.length} of ${liveRooms.length} rooms`} icon={<BedDouble />}>
+            <div className="mb-5 flex flex-col gap-3">
+              <FilterBar>
+                <SearchInput label="Search rooms" placeholder="Room number" value={roomSearch} onChange={setRoomSearch} />
+                <SelectField
+                  label="Floor"
+                  icon={<Layers />}
+                  value={roomFloor}
+                  onChange={setRoomFloor}
+                  options={[{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))]}
+                />
+              </FilterBar>
+              <PillGroup
+                label="Room status"
+                value={roomFilter}
+                onChange={setRoomFilter}
+                options={[
+                  { value: "ALL", label: "All" },
+                  { value: "ATTENTION", label: "Needs attention", count: attentionCount },
+                  { value: "OCCUPIED", label: "Occupied", count: roomCounts.occupied },
+                  { value: "VACANT", label: "Vacant", count: roomCounts.vacant },
+                  { value: "VACANT_CLEAN", label: "Ready", count: roomCounts.vacantClean },
+                  { value: "DIRTY", label: "Dirty", count: roomCounts.dirty },
+                ]}
+              />
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setShowNewTicketSheet(true)}
-                className="btn-primary"
-                style={{
-                  background: "var(--accent-amber)",
-                  color: "var(--brand-foreground)",
-                  border: "none",
-                  borderRadius: "var(--radius-md)",
-                  padding: "9px 16px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <span>+ Dispatch Ticket</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowHistoryModal(true)}
-                style={{
-                  background: "var(--surface-2)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--border-default)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "9px 14px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Past Logbook
-              </button>
+            <RoomGrid rooms={filteredRooms} tickets={tickets} onSelect={openRoom} />
+          </Panel>
+        )}
+
+        {activeTab === "RECLAMATIONS" && (
+          <Panel title="Tickets" description={`${plural(filteredTickets.length, "ticket")} · ${openCount} open`} icon={<ClipboardList />}>
+            <div className="mb-4 flex flex-col gap-3">
+              <FilterBar>
+                <SelectField label="Department" icon={<Building2 />} value={deptFilter} onChange={setDeptFilter} options={deptOptions} />
+                <SelectField label="Status" icon={<ListFilter />} value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+              </FilterBar>
+              <PillGroup label="Date range" value={dateRange} onChange={setDateRange} options={DATE_RANGES} />
             </div>
+            <TicketTable tickets={filteredTickets} actions={ticketActions} />
+          </Panel>
+        )}
+
+        {activeTab === "STATS" && (
+          <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
+            <Panel title="Room status" description="Where all rooms stand right now" icon={<BedDouble />}>
+              {liveRooms.length === 0 ? (
+                <EmptyState icon={<BedDouble />} title="No rooms loaded" />
+              ) : (
+                <DonutChart
+                  data={[
+                    { label: "Occupied", value: roomCounts.occupied, color: "var(--text-primary)" },
+                    { label: "Ready", value: roomCounts.vacantClean, color: "var(--success)" },
+                    { label: "Dirty", value: roomCounts.vacantDirty, color: "var(--danger)" },
+                    { label: "In cleaning", value: Math.max(0, roomCounts.inCleaning), color: "var(--warning)" },
+                  ]}
+                  centerLabel="Rooms"
+                  size={200}
+                  ariaLabel="Room status breakdown"
+                />
+              )}
+            </Panel>
+            <Panel title="Tickets by department" description="Open and resolved, busiest departments first" icon={<ChartColumn />}>
+              {byDepartment.length > 0 ? (
+                <BarChart
+                  data={byDepartment}
+                  series={[
+                    { key: "open", label: "Open", color: "var(--danger)" },
+                    { key: "resolved", label: "Resolved", color: "var(--success)" },
+                  ]}
+                  variant="stacked"
+                  height={220}
+                  ariaLabel="Tickets by department"
+                />
+              ) : (
+                <EmptyState icon={<ClipboardList />} title="No tickets yet" />
+              )}
+            </Panel>
           </div>
+        )}
+      </PageStack>
 
-          {/* KPI Metrics Matrix */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Occupied Rooms</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: "var(--accent-amber)" }}>
-                  {occupiedCount}
-                </span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  / {totalRooms} ({Math.round((occupiedCount / (totalRooms || 1)) * 100)}%)
-                </span>
-              </div>
+      <RoomDetail
+        room={selectedRoom}
+        tickets={tickets}
+        onClose={() => setSelectedRoomId(null)}
+        ticketActions={ticketActions}
+        controls={
+          selectedRoom && (
+            <div className="flex flex-col gap-4">
+              {noticeEl}
+              <section className="flex flex-col gap-3 rounded-lg border border-border p-4">
+                <p className="text-sm font-medium">Stay</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {STAY_ACTIONS.map((a) => (
+                    <Button key={a.state} variant="secondary" size="md" onClick={() => setStayState(selectedRoom, a.state)} disabled={isPending} leftIcon={a.icon} className="justify-center px-2">
+                      {a.label}
+                    </Button>
+                  ))}
+                </div>
+              </section>              <section className="flex flex-col gap-2 rounded-lg border border-border p-4">
+                <p className="text-sm font-medium">Housekeeping</p>
+                <p className="text-sm text-fg-muted">
+                  Currently {CLEANING_LABEL[selectedRoom.cleaning_status].toLowerCase()}. Next step:{" "}
+                  {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}.
+                </p>
+                <Button variant="secondary" onClick={() => cycleCleaning(selectedRoom)} isLoading={isPending} loadingText="Updating" className="mt-1 w-full justify-center sm:w-auto">
+                  Mark as {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}
+                </Button>
+              </section>
             </div>
-
-            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Vacant Clean</div>
-              <div style={{ marginTop: 6 }}>
-                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: "var(--status-emerald)" }}>
-                  {vacantCleanCount}
-                </span>
-              </div>
-            </div>
-
-            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("ROOMS")}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Dirty Rooms</div>
-              <div style={{ marginTop: 6 }}>
-                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: dirtyCount > 0 ? "var(--status-rose)" : "var(--status-emerald)" }}>
-                  {dirtyCount}
-                </span>
-              </div>
-            </div>
-
-            <div className="ses-card" style={{ cursor: "pointer" }} onClick={() => setActiveTab("RECLAMATIONS")}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Open Reclamations</div>
-              <div style={{ marginTop: 6 }}>
-                <span className="font-mono" style={{ fontSize: 26, fontWeight: 800, color: openReclamationsCount > 0 ? "var(--status-amber)" : "var(--status-emerald)" }}>
-                  {openReclamationsCount}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Urgent Incident Queue */}
-          <div className="ses-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 9999, background: urgentReclamations.length > 0 ? "var(--status-rose)" : "var(--status-emerald)" }} />
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
-                  High-Priority Incidents ({urgentReclamations.length})
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("RECLAMATIONS")}
-                style={{ background: "transparent", border: "none", color: "var(--accent-amber)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-              >
-                View All Tickets →
-              </button>
-            </div>
-
-            {urgentReclamations.length === 0 ? (
-              <div style={{ padding: "1.5rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                All high-priority queues are clear. No pending escalations.
-              </div>
+          )
+        }
+        logForm={
+          <div className="flex flex-col gap-4">
+            {noticeEl}
+            <Segmented
+              label="Type"
+              value={logMode}
+              onChange={setLogMode}
+              options={[
+                { value: "NEW", label: "New ticket" },
+                { value: "PAST", label: "Past incident" },
+              ]}
+            />
+            {logMode === "NEW" ? (
+              <NewTicketForm onSubmit={createInRoom} pending={isPending} />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {urgentReclamations.map((rec) => (
-                  <div
-                    key={rec.id}
-                    style={{
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--border-subtle)",
-                      borderRadius: "var(--radius-md)",
-                      padding: "10px 14px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      flexWrap: "wrap",
-                      gap: 10,
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "var(--status-rose)", background: "var(--status-rose-bg)", padding: "2px 6px", borderRadius: "var(--radius-sm)" }}>
-                          {rec.priority}
-                        </span>
-                        <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>
-                          Room {rec.room?.room_number || rec.room_id} • {rec.category}
-                        </strong>
-                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({rec.department})</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
-                        {rec.description}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {rec.status === "OPEN" && (
-                        <button
-                          type="button"
-                          onClick={() => handleAcknowledgeTicket(rec.id)}
-                          style={{
-                            background: "var(--surface-3)",
-                            border: "1px solid var(--border-subtle)",
-                            borderRadius: "var(--radius-sm)",
-                            padding: "6px 10px",
-                            color: "var(--text-primary)",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Acknowledge
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleResolveTicket(rec.id)}
-                        style={{
-                          background: "var(--success-subtle)",
-                          color: "var(--success)",
-                          border: "none",
-                          borderRadius: "var(--radius-sm)",
-                          padding: "6px 12px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Resolve
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PastIncidentForm onSubmit={recordInRoom} pending={isPending} />
             )}
           </div>
+        }
+      />
+
+      <Fab label="Dispatch ticket" onClick={() => setDispatchOpen(true)} />
+
+      <ResponsiveSheet open={dispatchOpen} onOpenChange={setDispatchOpen} title="Dispatch ticket" description="Log and route a guest request now.">
+        <div className="flex flex-col gap-4">
+          {noticeEl}
+          <NewTicketForm withRoom onSubmit={quickDispatch} pending={isPending} />
         </div>
-      )}
+      </ResponsiveSheet>
 
-      {/* ========================================================================= */}
-      {/* TAB 1: ROOMS GRID */}
-      {/* ========================================================================= */}
-        {activeTab === "ROOMS" && (
-          <div className="ses-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                  Rooms Matrix ({filteredRooms.length} rooms)
-                </h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                  Select any room card to inspect stay details, service requests, and history.
-                </p>
-              </div>
-
-              {/* Room Grid Filters */}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input
-                  type="text"
-                  placeholder="Search room #..."
-                  value={roomSearch}
-                  onChange={(e) => setRoomSearch(e.target.value)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                />
-
-                <select
-                  value={floorFilter}
-                  onChange={(e) => setFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                >
-                  <option value="ALL">All Floors</option>
-                  <option value={1}>Floor 1</option>
-                  <option value={2}>Floor 2</option>
-                  <option value={3}>Floor 3</option>
-                </select>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="OCCUPIED">Occupied Only</option>
-                  <option value="VACANT">Vacant Only</option>
-                  <option value="DIRTY">Dirty Only</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Room Cards Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(130px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
-              {filteredRooms.map((room) => {
-                const isDirty = room.cleaning_status === "DIRTY";
-                const isClean = room.cleaning_status === "CLEAN";
-                const roomTickets = localReclamations.filter((r) => r.room_id === room.id || r.room?.room_number === room.room_number);
-                const roomTicketCount = roomTickets.length;
-                const hasActiveIncident = roomTickets.some((r) => r.status === "OPEN" || r.status === "IN_PROGRESS");
-
-                return (
-                  <div
-                    key={room.id}
-                    onClick={() => {
-                      setSelectedRoomModal(room);
-                      setModalTab("ROOM_STAT");
-                    }}
-                    className="room-matrix-card"
-                    style={{
-                      border: "1.5px solid",
-                      borderColor: hasActiveIncident
-                        ? "var(--status-amber)"
-                        : isDirty
-                        ? "var(--status-rose)"
-                        : isClean
-                        ? "var(--status-emerald)"
-                        : "var(--border-default)",
-                      background: "var(--surface-card)",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
-                        {hasActiveIncident && (
-                          <span title="Active incident in progress" style={{ fontSize: 11 }}>⚠️</span>
-                        )}
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          padding: "2px 7px",
-                          borderRadius: "var(--radius-sm)",
-                          background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
-                          color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
-                          border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
-                          fontWeight: 800,
-                        }}
-                      >
-                        {room.is_occupied ? "Occupied" : "Vacant"}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                      Floor {room.floor} • {room.block?.replace("_", " ") || "Main"}
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                      <span style={{ fontSize: 11, color: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--status-amber)", fontWeight: 700 }}>
-                        {isDirty ? "DIRTY" : isClean ? "CLEAN" : room.cleaning_status}
-                      </span>
-                      {roomTicketCount > 0 && (
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: "var(--radius-sm)", background: hasActiveIncident ? "var(--status-rose-bg)" : "var(--status-purple-bg)", color: hasActiveIncident ? "var(--status-rose)" : "var(--status-purple)", border: `1px solid ${hasActiveIncident ? "var(--status-rose)" : "var(--status-purple)"}`, fontWeight: 800 }}>
-                          {roomTicketCount} {roomTicketCount === 1 ? "ticket" : "tickets"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 2: RECLAMATIONS */}
-        {/* ========================================================================= */}
-        {activeTab === "RECLAMATIONS" && (
-          <div className="ses-card">
-            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
-            <div className="tab-sticky-filter-bar">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                    Reclamations Tracker & Dispatch ({filteredReclamations.length} tickets)
-                  </h3>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                    Live operational tickets across all departments with occurrence timestamps.
-                  </p>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <select
-                    value={recDateFilter}
-                    onChange={(e) => setRecDateFilter(e.target.value as any)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">📅 All Dates</option>
-                    <option value="TODAY">📅 Today Only</option>
-                    <option value="WEEK">📅 Past 7 Days</option>
-                    <option value="MONTH">📅 Past 30 Days</option>
-                    <option value="ARCHIVE">📅 Older History</option>
-                  </select>
-
-                  <select
-                    value={recStatusFilter}
-                    onChange={(e) => setRecStatusFilter(e.target.value as any)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="OPEN">Open Only</option>
-                    <option value="IN_PROGRESS">In Progress Only</option>
-                    <option value="RESOLVED">Resolved Only</option>
-                  </select>
-
-                  <select
-                    value={recDeptFilter}
-                    onChange={(e) => setRecDeptFilter(e.target.value)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Departments</option>
-                    {allDepartments.map((d) => (
-                      <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Fixed / Sticky Horizontal Department Pills Row (Fast 1-tap filtering on Mobile & Desktop) */}
-              <div className="filter-pills-row">
-                <button
-                  type="button"
-                  onClick={() => setRecDeptFilter("ALL")}
-                  className={`filter-pill-btn ${recDeptFilter === "ALL" ? "active" : ""}`}
-                >
-                  All Departments ({localReclamations.length})
-                </button>
-                {allDepartments.map((d) => {
-                  const deptCount = localReclamations.filter((r: Reclamation) => r.department === d.code).length;
-                  const displayIcon = d.icon && !d.icon.includes("?") ? d.icon : "🏢";
-                  return (
-                    <button
-                      key={d.code}
-                      type="button"
-                      onClick={() => setRecDeptFilter(d.code)}
-                      className={`filter-pill-btn ${recDeptFilter === d.code ? "active" : ""}`}
-                    >
-                      {displayIcon} {d.name} ({deptCount})
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Desktop Table View (>= 768px) */}
-            <div className="responsive-table-view">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                <thead>
-                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "10px" }}>ID / Room</th>
-                    <th style={{ padding: "10px" }}>Department</th>
-                    <th style={{ padding: "10px" }}>Category / Description</th>
-                    <th style={{ padding: "10px" }}>📅 Date & Time</th>
-                    <th style={{ padding: "10px" }}>Priority</th>
-                    <th style={{ padding: "10px" }}>Status</th>
-                    <th style={{ padding: "10px", textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReclamations.map((rec) => {
-                    const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
-                    const isResolved = rec.status === "RESOLVED";
-                    const isOpen = rec.status === "OPEN";
-                    const dt = formatIncidentDate(rec.created_at);
-
-                    return (
-                      <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • {roomNum}</td>
-                        <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
-                        <td style={{ padding: "10px" }}>
-                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
-                        </td>
-                        <td style={{ padding: "10px", whiteSpace: "nowrap" }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{dt.formatted}</div>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{dt.time} ({dt.relative})</div>
-                        </td>
-                        <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--danger-subtle)" : rec.priority === "HIGH" ? "var(--warning-subtle)" : "var(--accent-subtle)", color: rec.priority === "EMERGENCY" ? "var(--danger)" : rec.priority === "HIGH" ? "var(--warning)" : "var(--text-secondary)" }}>
-                            {rec.priority || "STANDARD"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
-                            {rec.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "right" }}>
-                          {!isResolved && (
-                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                              {isOpen && (
-                                <button disabled={isPending} onClick={() => handleAcknowledgeTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--surface-3)", border: "none", color: "var(--text-primary)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                  In Progress
-                                </button>
-                              )}
-                              <button disabled={isPending} onClick={() => handleResolveTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                Resolve
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Stacked Card View (< 768px) - NO horizontal scroll */}
-            <div className="responsive-cards-view">
-              {filteredReclamations.length === 0 ? (
-                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                  No incident tickets match the selected filters.
-                </div>
-              ) : (
-                filteredReclamations.map((rec) => {
-                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
-                  const isResolved = rec.status === "RESOLVED";
-                  const isOpen = rec.status === "OPEN";
-                  const dt = formatIncidentDate(rec.created_at);
-
-                  return (
-                    <div key={rec.id} className="mobile-ticket-card">
-                      {/* Top Header Row */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
-                            #{rec.id} • {roomNum}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: "var(--radius-sm)",
-                              background: "var(--surface-2)",
-                              border: "1px solid var(--border-subtle)",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {rec.department}
-                          </span>
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--danger-subtle)" : rec.priority === "HIGH" ? "var(--warning-subtle)" : "var(--accent-subtle)", color: rec.priority === "EMERGENCY" ? "var(--danger)" : rec.priority === "HIGH" ? "var(--warning)" : "var(--text-secondary)" }}>
-                            {rec.priority || "STANDARD"}
-                          </span>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
-                            {rec.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Date & Time Timestamp */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-muted)" }}>
-                        <span>📅 {dt.formatted}</span>
-                        <span>•</span>
-                        <span>{dt.time}</span>
-                        <span>({dt.relative})</span>
-                      </div>
-
-                      {/* Content Body */}
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
-                          {rec.category}
-                        </div>
-                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
-                          {rec.description}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons for Mobile (Touch-friendly 44px) */}
-                      {!isResolved && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 4, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
-                          {isOpen && (
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => handleAcknowledgeTicket(rec.id)}
-                              style={{
-                                flex: 1,
-                                minHeight: 44,
-                                padding: "8px 12px",
-                                borderRadius: "var(--radius-md)",
-                                background: "var(--surface-2)",
-                                border: "1px solid var(--border-default)",
-                                color: "var(--text-primary)",
-                                fontSize: 13,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              }}
-                            >
-                              In Progress
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={isPending}
-                            onClick={() => handleResolveTicket(rec.id)}
-                            style={{
-                              flex: 1,
-                              minHeight: 44,
-                              padding: "8px 12px",
-                              borderRadius: "var(--radius-md)",
-                              background: "var(--success-subtle)",
-                              border: "none",
-                              color: "var(--success)",
-                              fontSize: 13,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Resolve
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB 3: STATS & GRAPHS */}
-        {/* ========================================================================= */}
-        {activeTab === "STATS" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-            <div className="ses-card">
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
-                📊 Room State Distribution Graph
-              </h4>
-              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="var(--warning)"
-                    strokeWidth="3.8"
-                    strokeDasharray={`${Math.round((occupiedCount / (totalRooms || 1)) * 100)}, 100`}
-                  />
-                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
-                    {Math.round((occupiedCount / (totalRooms || 1)) * 100)}%
-                  </text>
-                </svg>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "var(--warning)", fontWeight: 700 }}>Occupied:</span>
-                    <strong style={{ color: "var(--text-primary)" }}>{occupiedCount}</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "var(--success)", fontWeight: 700 }}>Vacant Clean:</span>
-                    <strong style={{ color: "var(--text-primary)" }}>{vacantCleanCount}</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "var(--danger)", fontWeight: 700 }}>Dirty Rooms:</span>
-                    <strong style={{ color: "var(--text-primary)" }}>{dirtyCount}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
-                Department Ticket Demand Graph
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {Object.entries(deptCounts).map(([dept, count]) => {
-                  const maxCount = Math.max(...Object.values(deptCounts), 1);
-                  const pct = Math.round((count / maxCount) * 100);
-                  return (
-                    <div key={dept}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "var(--text-secondary)" }}>
-                        <span>{dept}</span>
-                        <strong className="font-mono" style={{ color: "var(--info)" }}>{count} tickets</strong>
-                      </div>
-                      <div style={{ height: 8, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: "var(--info)", borderRadius: 999 }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-      {/* ========================================================================= */}
-      {/* INTERACTIVE ROOM POP-UP MODAL (WITH INTERNAL SIDEBAR: RECLAMATION & ROOM STAT) */}
-      {/* ========================================================================= */}
-      {selectedRoomModal && (
-        <div className="room-modal-overlay">
-          <div className="room-modal-panel">
-            {/* Modal Top Bar */}
-            <div className="room-modal-topbar">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 20 }}>🏨</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
-                    Room {selectedRoomModal.room_number} Inspection & Operations
-                  </h3>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    Floor {selectedRoomModal.floor} • {selectedRoomModal.block?.replace("_", " ") || "Main Block"}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedRoomModal(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "4px 8px", borderRadius: "var(--radius-sm)" }}
-                aria-label="Close room modal"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body: Sidebar (desktop left / mobile top) + Main Content */}
-            <div className="room-modal-body">
-              {/* MODAL NAV: left sidebar on desktop, top tab bar on mobile */}
-              <div className="room-modal-sidebar">
-                <button
-                  onClick={() => setModalTab("ROOM_STAT")}
-                  className={`room-modal-nav-btn ${modalTab === "ROOM_STAT" ? "active-cyan" : ""}`}
-                >
-                  <span>📊 Room Stat</span>
-                </button>
-
-                <button
-                  onClick={() => setModalTab("RECLAMATIONS")}
-                  className={`room-modal-nav-btn ${modalTab === "RECLAMATIONS" ? "active-purple" : ""}`}
-                >
-                  <span>🛎️ Reclamations</span>
-                  {roomModalReclamations.length > 0 && (
-                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "var(--special-subtle)", color: "var(--special)", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
-                      {roomModalReclamations.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* MODAL MAIN TAB CONTENT */}
-              <div className="room-modal-content">
-                {/* MODAL TAB 1: ROOM STAT */}
-                {modalTab === "ROOM_STAT" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, color: "var(--info)", fontWeight: 800 }}>
-                      📊 Room Status & Live Parameters
-                    </h4>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-                      <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Occupancy State</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.is_occupied ? "var(--warning)" : "var(--success)", marginTop: 2 }}>
-                          {selectedRoomModal.is_occupied ? "Occupied (Guest In-House)" : "Vacant Room"}
-                        </div>
-                      </div>
-
-                      <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Cleaning Status</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.cleaning_status === "DIRTY" ? "var(--danger)" : "var(--success)", marginTop: 2 }}>
-                          {selectedRoomModal.cleaning_status}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stay State Quick Actions */}
-                    <div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6 }}>Stay Actions:</div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          disabled={isPending}
-                          onClick={() => handleStayState(selectedRoomModal.id, "OCCUPIED")}
-                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                        >
-                          🛎️ Check-In Guest
-                        </button>
-                        <button
-                          disabled={isPending}
-                          onClick={() => handleStayState(selectedRoomModal.id, "VACANT_DIRTY")}
-                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "var(--danger-subtle)", border: "1px solid var(--danger-subtle)", color: "var(--danger)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                        >
-                          🚪 Check-Out (Dirty)
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Cycle Cleanliness Button */}
-                    <div style={{ marginTop: 6 }}>
-                      <button
-                        disabled={isPending}
-                        onClick={() => handleCleaningCycle(selectedRoomModal)}
-                        style={{ width: "100%", padding: "10px", borderRadius: 10, background: "var(--info-subtle)", border: "1px solid color-mix(in srgb, var(--info) 45%, transparent)", color: "var(--text-primary)", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
-                      >
-                        🧹 Cycle Cleaning Status (Current: {selectedRoomModal.cleaning_status}) &rarr;
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* MODAL TAB 2: RECLAMATIONS WITH SUB-CATEGORIES */}
-                {modalTab === "RECLAMATIONS" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS (4 TABS) */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "4px", background: "var(--surface-hover)", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("ACTIVE")}
-                        style={{
-                          padding: "8px 6px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>⚡ Active</span>
-                        {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--danger)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
-                            {roomActiveReclamations.length}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("MOST_REPORTED")}
-                        style={{
-                          padding: "8px 6px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface-hover)" : "var(--accent-subtle)", color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
-                          {roomProblemStats.length}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("HISTORY")}
-                        style={{
-                          padding: "8px 6px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "var(--surface-hover)" : "var(--accent-subtle)", color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
-                          {roomModalReclamations.length}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("TIMELINE")}
-                        style={{
-                          padding: "8px 6px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📅 Timeline</span>
-                      </button>
-                    </div>
-
-                    {/* SUB-CATEGORY 1: ACTIVE PROBLEMS (IF EXIST) */}
-                    {roomModalSubTab === "ACTIVE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--info)", fontWeight: 800 }}>
-                            ⚡ Active Reclamations ({roomActiveReclamations.length})
-                          </h4>
-                        </div>
-
-                        {roomActiveReclamations.length === 0 ? (
-                          <div style={{ padding: "12px", borderRadius: 10, background: "var(--success-subtle)", border: "1px solid var(--success-subtle)", color: "var(--success)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>✅</span>
-                            <span>No active problems recorded for Room {selectedRoomModal.room_number}. Operations normal.</span>
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {roomActiveReclamations.map((rec) => (
-                              <div key={rec.id} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 10, border: "1px solid var(--info-subtle)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                                  <div>
-                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
-                                    <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "var(--info-subtle)", color: "var(--info)" }}>{rec.department}</span>
-                                  </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "var(--danger-subtle)" : "var(--warning-subtle)", color: rec.status === "OPEN" ? "var(--danger)" : "var(--warning)", fontWeight: 800, border: "1px solid currentColor" }}>
-                                    {rec.status}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{rec.description}</div>
-                                {rec.created_at && (
-                                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span>🕒 Logged: {formatIncidentDate(rec.created_at).full}</span>
-                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--accent-subtle)" }}>{formatIncidentDate(rec.created_at).relative}</span>
-                                  </div>
-                                )}
-                                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
-                                  <button
-                                    onClick={() => handleAcknowledgeTicket(rec.id)}
-                                    style={{ padding: "4px 8px", borderRadius: 6, background: "var(--warning-subtle)", border: "1px solid color-mix(in srgb, var(--warning) 45%, transparent)", color: "var(--warning)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                                  >
-                                    Acknowledge
-                                  </button>
-                                  <button
-                                    onClick={() => handleResolveTicket(rec.id)}
-                                    style={{ padding: "4px 8px", borderRadius: 6, background: "var(--success-subtle)", border: "1px solid color-mix(in srgb, var(--success) 45%, transparent)", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                                  >
-                                    Mark Resolved ✓
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* LOG NEW RECLAMATION FORM */}
-                        <form onSubmit={handleModalCreateReclamation} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 12, border: "1px solid var(--accent-subtle)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--info)" }}>➕ Log New Reclamation for Room {selectedRoomModal.room_number}</div>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <select
-                              value={modalDept}
-                              onChange={(e) => setModalDept(e.target.value)}
-                              style={{ flex: 1, padding: "6px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
-                            >
-                              {allDepartments.map((d) => (
-                                <option key={d.code} value={d.code}>{d.name}</option>
-                              ))}
-                            </select>
-                            <select
-                              value={modalPriority}
-                              onChange={(e) => setModalPriority(e.target.value as any)}
-                              style={{ width: 110, padding: "6px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
-                            >
-                              <option value="STANDARD">STANDARD</option>
-                              <option value="HIGH">HIGH</option>
-                              <option value="EMERGENCY">EMERGENCY</option>
-                            </select>
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="Description of issue..."
-                            value={modalDesc}
-                            onChange={(e) => setModalDesc(e.target.value)}
-                            style={{ padding: "8px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
-                          />
-                          <button
-                            type="submit"
-                            disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "var(--info-subtle)", border: "none", color: "var(--info)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Dispatch Reclamation &rarr;
-                          </button>
-                        </form>
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 2: MOST REPORTED PROBLEMS */}
-                    {roomModalSubTab === "MOST_REPORTED" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--warning)", fontWeight: 800 }}>
-                          💥 Most Reported Problem Categories
-                        </h4>
-
-                        {roomProblemStats.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No problem patterns recorded for Room {selectedRoomModal.room_number} yet.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {roomProblemStats.map((stat) => (
-                              <div key={stat.category} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 10, border: "1px solid var(--warning-subtle)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                  <div>
-                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stat.category}</span>
-                                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({stat.department})</span>
-                                  </div>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    {stat.count >= 2 && (
-                                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--danger-subtle)", color: "var(--danger)", fontWeight: 800 }}>
-                                        ⚠️ Frequent Issue
-                                      </span>
-                                    )}
-                                    <span style={{ fontWeight: 800, color: "var(--warning)", fontSize: 13 }}>{stat.count} Reports</span>
-                                  </div>
-                                </div>
-
-                                <div style={{ height: 6, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden", marginBottom: 8 }}>
-                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "var(--warning)" }} />
-                                </div>
-
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-muted)" }}>
-                                  <span>{stat.percentage}% of total issues in Room {selectedRoomModal.room_number}</span>
-                                  <button
-                                    onClick={() => {
-                                      setModalCategory(stat.category);
-                                      setModalDept(stat.department);
-                                      setRoomModalSubTab("ACTIVE");
-                                    }}
-                                    style={{ padding: "3px 8px", borderRadius: 4, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
-                                  >
-                                    ➕ Log {stat.category} Ticket
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 3: FULL HISTORY WITH INLINE PAST LOG BACKFILL */}
-                    {roomModalSubTab === "HISTORY" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--special)", fontWeight: 800 }}>
-                            📜 Room {selectedRoomModal.room_number} Ticket History ({roomModalReclamations.length})
-                          </h4>
-                          <button
-                            type="button"
-                            onClick={() => setShowInModalPastLog(!showInModalPastLog)}
-                            style={{
-                              padding: "5px 10px",
-                              borderRadius: 8,
-                              background: showInModalPastLog ? "var(--danger-subtle)" : "var(--special-subtle)",
-                              border: `1px solid ${showInModalPastLog ? "var(--danger)" : "var(--special)"}`,
-                              color: showInModalPastLog ? "var(--danger)" : "var(--special)",
-                              fontSize: 11,
-                              fontWeight: 800,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {showInModalPastLog ? "✕ Cancel Backfill" : "➕ Log Past Incident"}
-                          </button>
-                        </div>
-
-                        {/* INLINE HISTORICAL BACKFILL FORM */}
-                        {showInModalPastLog && (
-                          <form
-                            onSubmit={handleInModalHistoricalSubmit}
-                            style={{
-                              background: "var(--special-subtle)",
-                              padding: 12,
-                              borderRadius: 12,
-                              border: "1px dashed color-mix(in srgb, var(--special) 35%, transparent)",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 10,
-                            }}
-                          >
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--special)" }}>
-                              📝 Backfill Past Incident for Room {selectedRoomModal.room_number}
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Incident Date & Time
-                                </label>
-                                <input
-                                  type="datetime-local"
-                                  required
-                                  value={inModalHistDate}
-                                  onChange={(e) => setInModalHistDate(e.target.value)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Status
-                                </label>
-                                <select
-                                  value={inModalHistStatus}
-                                  onChange={(e) => setInModalHistStatus(e.target.value as any)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
-                                >
-                                  <option value="RESOLVED">RESOLVED (Past Solved)</option>
-                                  <option value="OPEN">OPEN (Needs Attention)</option>
-                                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Department
-                                </label>
-                                <select
-                                  value={inModalHistDept}
-                                  onChange={(e) => {
-                                    setInModalHistDept(e.target.value);
-                                    const presets = PRESET_ISSUES[e.target.value];
-                                    if (presets && presets.length > 0) {
-                                      setInModalHistCategory(presets[0].category);
-                                    }
-                                  }}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
-                                >
-                                  {allDepartments.map((d) => (
-                                    <option key={d.code} value={d.code}>{d.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Category
-                                </label>
-                                <select
-                                  value={inModalHistCategory}
-                                  onChange={(e) => setInModalHistCategory(e.target.value)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
-                                >
-                                  {(PRESET_ISSUES[inModalHistDept] || DEFAULT_PRESETS).map((p) => (
-                                    <option key={p.category} value={p.category}>{p.category}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                Description / Notes
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="What happened and how was it addressed..."
-                                value={inModalHistDesc}
-                                onChange={(e) => setInModalHistDesc(e.target.value)}
-                                style={{ width: "100%", padding: "7px 8px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
-                              />
-                            </div>
-
-                            <button
-                              type="submit"
-                              disabled={isPending}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 8,
-                                background: "var(--special-subtle)",
-                                border: "none",
-                                color: "var(--special)",
-                                fontWeight: 800,
-                                cursor: "pointer",
-                                fontSize: 11,
-                              }}
-                            >
-                              💾 Save Past Log to History &rarr;
-                            </button>
-                          </form>
-                        )}
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No past or historical tickets logged for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                            {roomModalReclamations.map((rec) => {
-                              const dateInfo = formatIncidentDate(rec.created_at);
-                              return (
-                                <div key={rec.id} style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--accent-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                                      <span>#{rec.id} • {rec.category}</span>
-                                      <span style={{ color: "var(--special)", fontWeight: 600, fontSize: 11 }}>({rec.department})</span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{rec.description}</div>
-                                    {rec.created_at && (
-                                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                                        <span>📅 {dateInfo.full}</span>
-                                        <span style={{ padding: "1px 5px", borderRadius: 4, background: "var(--accent-subtle)" }}>{dateInfo.relative}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "var(--success-subtle)" : "var(--danger-subtle)", color: rec.status === "RESOLVED" ? "var(--success)" : "var(--danger)", fontWeight: 800, whiteSpace: "nowrap" }}>
-                                    {rec.status}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 4: CHRONOLOGICAL DATE TIMELINE */}
-                    {roomModalSubTab === "TIMELINE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--success)", fontWeight: 800 }}>
-                            📅 Chronological Event Timeline (Room {selectedRoomModal.room_number})
-                          </h4>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                            {roomModalReclamations.length} recorded events
-                          </span>
-                        </div>
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No events in timeline for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative", paddingLeft: 20, maxHeight: 360, overflowY: "auto" }}>
-                            {/* Vertical connector guide line */}
-                            <div style={{ position: "absolute", left: 7, top: 10, bottom: 10, width: 2, background: "var(--success-subtle)" }} />
-
-                            {[...roomModalReclamations]
-                              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-                              .map((rec) => {
-                                const dateInfo = formatIncidentDate(rec.created_at);
-                                const isResolved = rec.status === "RESOLVED";
-                                return (
-                                  <div key={rec.id} style={{ position: "relative", paddingBottom: 16 }}>
-                                    {/* Timeline Node Icon */}
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        left: -20,
-                                        top: 3,
-                                        width: 16,
-                                        height: 16,
-                                        borderRadius: "50%",
-                                        background: isResolved ? "var(--success)" : "var(--warning)",
-                                        border: "2px solid var(--surface)",
-                                        boxShadow: isResolved ? "0 0 8px rgba(16, 185, 129, 0.5)" : "0 0 8px rgba(245, 158, 11, 0.5)",
-                                      }}
-                                    />
-
-                                    <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 12 }}>{rec.category}</span>
-                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--success-subtle)", color: "var(--success)", fontWeight: 700 }}>
-                                            {rec.department}
-                                          </span>
-                                        </div>
-                                        <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>
-                                          {dateInfo.relative}
-                                        </span>
-                                      </div>
-
-                                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{rec.description}</div>
-
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--text-muted)" }}>
-                                        <span>📅 {dateInfo.full}</span>
-                                        <span style={{ fontWeight: 800, color: isResolved ? "var(--success)" : "var(--warning)" }}>
-                                          {rec.status}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+      <ResponsiveSheet open={backfillOpen} onOpenChange={setBackfillOpen} title="Backfill past incident" description="Add an older ticket to a room's history with its real date.">
+        <div className="flex flex-col gap-4">
+          {noticeEl}
+          <PastIncidentForm withRoom onSubmit={backfill} pending={isPending} />
         </div>
-      )}
-
-      {/* HISTORICAL RECLAMATION MODAL (GLOBAL) */}
-      {showHistoryModal && (
-        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "var(--surface-hover)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
-          <div className="portal-modal-content ses-card" style={{ maxWidth: 520, width: "100%", padding: "1.5rem", borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 18, color: "var(--warning)", fontWeight: 800 }}>➕ Add Historical Incident Log</h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>Backfill past room reclamations with exact dates</p>
-              </div>
-              <button onClick={() => setShowHistoryModal(false)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
-            </div>
-            <form onSubmit={handleHistoricalSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                    Room Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 101, 204"
-                    value={histRoom}
-                    onChange={(e) => setHistRoom(e.target.value)}
-                    className="ses-input"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                    Incident Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={histDate}
-                    onChange={(e) => setHistDate(e.target.value)}
-                    className="ses-input"
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                    Department
-                  </label>
-                  <select
-                    value={histDept}
-                    onChange={(e) => {
-                      setHistDept(e.target.value);
-                      const presets = PRESET_ISSUES[e.target.value];
-                      if (presets && presets.length > 0) {
-                        setHistCategory(presets[0].category);
-                      }
-                    }}
-                    className="ses-select"
-                  >
-                    {allDepartments.map((d) => (
-                      <option key={d.code} value={d.code}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                    Category
-                  </label>
-                  <select
-                    value={histCategory}
-                    onChange={(e) => setHistCategory(e.target.value)}
-                    className="ses-select"
-                  >
-                    {(PRESET_ISSUES[histDept] || DEFAULT_PRESETS).map((p) => (
-                      <option key={p.category} value={p.category}>{p.category}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                  Status
-                </label>
-                <select
-                  value={histStatus}
-                  onChange={(e) => setHistStatus(e.target.value as any)}
-                  className="ses-select"
-                >
-                  <option value="RESOLVED">RESOLVED (Past resolved ticket)</option>
-                  <option value="OPEN">OPEN (Unresolved historical issue)</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS (Currently being handled)</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, marginBottom: 4, color: "var(--text-secondary)" }}>
-                  Incident Description
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Details of the incident, guest report, and resolution notes..."
-                  value={histDesc}
-                  onChange={(e) => setHistDesc(e.target.value)}
-                  className="ses-input"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isPending}
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: 8,
-                  background: "var(--warning-subtle)",
-                  border: "none",
-                  color: "var(--warning)",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  fontSize: 12,
-                }}
-              >
-                {isPending ? "Saving Entry..." : "💾 Save Historical Entry &rarr;"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* FLOATING ACTION BUTTON FOR RAPID DISPATCH */}
-      <Fab onClick={() => setShowNewTicketSheet(true)} label="Quick incident dispatch" />
-
-      {/* RAPID INCIDENT DISPATCH SHEET (bottom on phones, side panel on desktop) */}
-      <ResponsiveSheet
-        open={showNewTicketSheet}
-        onOpenChange={setShowNewTicketSheet}
-        title="Quick incident dispatch"
-        description="Log and route a guest request immediately."
-      >
-        <form onSubmit={handleQuickTicketSubmit} className="flex flex-col gap-4">
-          <div className="space-y-1.5">
-            <label htmlFor="quick-room" className="block text-xs font-semibold text-fg-secondary">
-              Room number
-            </label>
-            <input
-              id="quick-room"
-              type="text"
-              inputMode="numeric"
-              required
-              placeholder="e.g. 101, 204"
-              value={quickRoom}
-              onChange={(e) => setQuickRoom(e.target.value)}
-              className="ses-input"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="quick-dept" className="block text-xs font-semibold text-fg-secondary">
-                Department
-              </label>
-              <select
-                id="quick-dept"
-                value={quickDept}
-                onChange={(e) => {
-                  setQuickDept(e.target.value);
-                  const presets = PRESET_ISSUES[e.target.value];
-                  if (presets && presets.length > 0) {
-                    setQuickCategory(presets[0].category);
-                  }
-                }}
-                className="ses-select"
-              >
-                <option value="TECHNICAL">Technical / Maintenance</option>
-                <option value="HOUSEKEEPING">Housekeeping</option>
-                <option value="FOOD_AND_BEVERAGE">Food & Beverage</option>
-                <option value="CONCIERGE">Concierge & Front Desk</option>
-                <option value="SECURITY">Security & Safety</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="quick-category" className="block text-xs font-semibold text-fg-secondary">
-                Category
-              </label>
-              <select
-                id="quick-category"
-                value={quickCategory}
-                onChange={(e) => setQuickCategory(e.target.value)}
-                className="ses-select"
-              >
-                {(PRESET_ISSUES[quickDept] || DEFAULT_PRESETS).map((p) => (
-                  <option key={p.category} value={p.category}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <fieldset className="space-y-1.5">
-            <legend className="mb-1.5 block text-xs font-semibold text-fg-secondary">Priority</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {(["STANDARD", "HIGH", "EMERGENCY"] as const).map((pr) => (
-                <button
-                  key={pr}
-                  type="button"
-                  onClick={() => setQuickPriority(pr)}
-                  aria-pressed={quickPriority === pr}
-                  className={cn(
-                    "focus-ring min-h-11 rounded-lg border px-2 text-xs font-semibold capitalize transition-colors",
-                    quickPriority === pr
-                      ? pr === "EMERGENCY"
-                        ? "border-danger bg-danger-subtle text-danger"
-                        : "border-brand bg-brand-subtle text-brand"
-                      : "border-border bg-surface-hover text-fg-muted hover:text-fg"
-                  )}
-                >
-                  {pr.toLowerCase()}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="space-y-1.5">
-            <label htmlFor="quick-desc" className="block text-xs font-semibold text-fg-secondary">
-              Incident details
-            </label>
-            <textarea
-              id="quick-desc"
-              rows={3}
-              placeholder="Describe the guest request or observation"
-              value={quickDesc}
-              onChange={(e) => setQuickDesc(e.target.value)}
-              className="ses-textarea"
-            />
-          </div>
-
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isPending}
-            loadingText="Dispatching"
-            leftIcon={<Send className="size-4" aria-hidden />}
-            className="mt-1 w-full justify-center"
-          >
-            Dispatch incident
-          </Button>
-        </form>
       </ResponsiveSheet>
     </AppShell>
   );

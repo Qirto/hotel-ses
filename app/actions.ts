@@ -590,7 +590,7 @@ export async function createDepartment(data: {
     {
       code: cleanCode,
       name: data.name.trim(),
-      icon: data.icon?.trim() || "🏢",
+      icon: data.icon?.trim() || "building-2",
       description: data.description?.trim() || null,
       head_of_department: data.head_of_department?.trim() || null,
     },
@@ -622,7 +622,7 @@ export async function updateDepartment(
     updated_at: new Date().toISOString(),
   };
   if (data.name !== undefined) updatePayload.name = data.name.trim();
-  if (data.icon !== undefined) updatePayload.icon = data.icon.trim() || "🏢";
+  if (data.icon !== undefined) updatePayload.icon = data.icon.trim() || "building-2";
   if (data.description !== undefined) updatePayload.description = data.description.trim() || null;
   if (data.head_of_department !== undefined) updatePayload.head_of_department = data.head_of_department.trim() || null;
 

@@ -86,13 +86,13 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <a href="#main-content" className="skip-link">
+        <a href="#main" className="skip-link">
           Skip to main content
         </a>
         <ThemeProvider>
-          <div id="main-content">
+          <>
             {children}
-          </div>
+          </>
         </ThemeProvider>
 
         {/* PWA Components */}

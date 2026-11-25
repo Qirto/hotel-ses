@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, CircleAlert, CircleCheck, Eye, EyeOff, KeyRound, RefreshCw, WifiOff } from "lucide-react";
 import { loginWithPasscode, restorePersistedSession } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { clearCachesAndReload, forgetPersistedRole } from "@/lib/pwa";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,354 +62,115 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="login-page-root">
-      <div className="login-card-container">
-        {/* Brand & Monogram Header */}
-        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <div style={{ display: "inline-block", position: "relative", marginBottom: "1rem" }}>
-            <img
-              src="/hotel-logo.png"
-              alt="Hôtel Méditerranée Thalasso Golf Hammamet"
-              className="login-logo"
-            />
-          </div>
+    <main id="main" className="flex min-h-dvh flex-col items-center justify-center px-4 py-10 pt-[calc(2.5rem+var(--safe-top))]">
+      <div className="w-full max-w-sm">
+        <header className="mb-8 flex flex-col items-center text-center">
+          <img
+            src="/hotel-logo.png"
+            alt="Hôtel Méditerranée Thalasso Golf Hammamet"
+            className="mb-4 size-16 rounded-2xl object-cover shadow-float ring-1 ring-border"
+          />
+          <h1 className="text-2xl font-semibold tracking-tight">Hotel SES</h1>
+          <p className="mt-1 text-sm text-fg-muted">Hôtel Méditerranée Thalasso Golf Hammamet</p>
+        </header>
 
-          <p
-            style={{
-              fontSize: "clamp(0.6875rem, 2vw, 0.75rem)",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#d97706",
-              fontWeight: 800,
-              margin: "0 0 0.375rem 0",
-              lineHeight: 1.3,
-            }}
-          >
-            Hôtel Méditerranée Thalasso Golf Hammamet
-          </p>
-          <h1
-            style={{
-              fontSize: "clamp(1.35rem, 5vw, 1.625rem)",
-              fontWeight: 800,
-              margin: 0,
-              letterSpacing: "-0.025em",
-              color: "#ffffff",
-              lineHeight: 1.2,
-            }}
-          >
-            Hotel SES
-          </h1>
-          <p
-            style={{
-              color: "#94a3b8",
-              fontSize: "clamp(0.8rem, 2.5vw, 0.875rem)",
-              marginTop: "0.5rem",
-              lineHeight: 1.5,
-            }}
-          >
-            Internal Hotel Operations & Staff Access
-          </p>
-        </div>
+        <section className="rounded-2xl border border-border bg-surface p-5 shadow-float sm:p-6">
+          <h2 className="text-base font-semibold">Sign in</h2>
+          <p className="mt-1 text-sm text-fg-muted">Enter the passcode for your department.</p>
 
-        {/* Unified Login Card */}
-        <section className="login-card">
-          <form onSubmit={handleSubmit} role="form" noValidate>
-            <div style={{ marginBottom: "1.25rem" }}>
-              <label
-                htmlFor="passcode-input"
-                style={{
-                  display: "block",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  color: "#cbd5e1",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                Access Passcode
+          <form onSubmit={handleSubmit} noValidate className="mt-5 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="passcode-input" className="text-sm font-medium text-fg-secondary">
+                Passcode
               </label>
-
-              <div style={{ position: "relative" }}>
+              <div className="relative">
+                <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
                 <input
                   id="passcode-input"
                   name="passcode"
                   type={showPasscode ? "text" : "password"}
+                  inputMode="numeric"
                   autoFocus
                   required
                   autoComplete="current-password"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="Enter your access passcode"
+                  placeholder="Enter passcode"
                   disabled={isPending || Boolean(successRole)}
-                  style={{
-                    width: "100%",
-                    height: 48,
-                    padding: "0 46px 0 14px",
-                    background: "#0b0f17",
-                    border: errorMessage
-                      ? "1px solid #ef4444"
-                      : "1px solid rgba(255, 255, 255, 0.14)",
-                    borderRadius: 10,
-                    color: "#ffffff",
-                    fontSize: "0.9375rem",
-                    letterSpacing: showPasscode ? "normal" : "0.15em",
-                    fontFamily: showPasscode ? "inherit" : "monospace",
-                    boxSizing: "border-box",
-                    outline: "none",
-                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-                    /* Override global focus ring with amber */
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#d97706";
-                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(217, 119, 6, 0.2)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = errorMessage
-                      ? "#ef4444"
-                      : "rgba(255, 255, 255, 0.14)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
+                  aria-invalid={Boolean(errorMessage)}
+                  aria-describedby={errorMessage ? "passcode-error" : undefined}
+                  className={cn(
+                    "focus-ring h-12 w-full rounded-lg border bg-surface pl-9 pr-12 text-base text-fg placeholder:text-fg-muted disabled:opacity-60",
+                    !showPasscode && passcode && "tracking-[0.3em]",
+                    errorMessage ? "border-danger" : "border-border-strong"
+                  )}
                 />
-
-                {/* Show/Hide passcode toggle button */}
                 <button
                   type="button"
                   onClick={() => setShowPasscode((prev) => !prev)}
                   aria-label={showPasscode ? "Hide passcode" : "Show passcode"}
-                  tabIndex={-1}
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 46,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "transparent",
-                    border: "none",
-                    color: "#94a3b8",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
+                  aria-pressed={showPasscode}
+                  className="focus-ring absolute inset-y-1 right-1 grid w-10 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
                 >
-                  {showPasscode ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
+                  {showPasscode ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
                 </button>
               </div>
             </div>
 
-            {/* Error Message Pill */}
             {errorMessage && (
-              <div
-                role="alert"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  background: "rgba(239, 68, 68, 0.12)",
-                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                  color: "#fca5a5",
-                  fontSize: "0.8125rem",
-                  fontWeight: 500,
-                  marginBottom: "1.25rem",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <span>{errorMessage}</span>
-              </div>
+              <p id="passcode-error" role="alert" className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2.5 text-sm text-danger">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {errorMessage}
+              </p>
             )}
-
-            {/* Success Feedback Banner */}
             {successRole && (
-              <div
-                role="status"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  background: "rgba(16, 185, 129, 0.12)",
-                  border: "1px solid rgba(16, 185, 129, 0.35)",
-                  color: "#6ee7b7",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  marginBottom: "1.25rem",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-                <span>Authorization verified. Opening workspace...</span>
-              </div>
+              <p role="status" className="flex items-start gap-2 rounded-lg border border-success/30 bg-success-subtle px-3 py-2.5 text-sm text-success">
+                <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+                Signed in. Opening your workspace.
+              </p>
             )}
 
-            {/* Primary Submit Button */}
-            <button
+            <Button
               type="submit"
-              disabled={isPending || !passcode.trim() || Boolean(successRole)}
-              className="btn-primary"
-              style={{
-                width: "100%",
-                height: 48,
-                borderRadius: 10,
-                background:
-                  passcode.trim() && !isPending && !successRole
-                    ? "#d97706"
-                    : "#92400e",
-                border: "none",
-                color: "#ffffff",
-                fontSize: "0.9375rem",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                cursor: isPending || !passcode.trim() ? "not-allowed" : "pointer",
-                opacity: isPending || !passcode.trim() ? 0.7 : 1,
-                transition: "background 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease",
-                boxShadow:
-                  passcode.trim() && !isPending && !successRole
-                    ? "0 4px 20px rgba(217, 119, 6, 0.45)"
-                    : "none",
-              }}
+              variant="primary"
+              size="lg"
+              disabled={!passcode.trim() || Boolean(successRole)}
+              isLoading={isPending}
+              loadingText="Checking"
+              rightIcon={<ArrowRight className="size-4" aria-hidden />}
+              className="w-full justify-center"
             >
-              {isPending ? (
-                <>
-                  <svg
-                    style={{ animation: "spin 1s linear infinite" }}
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                    <path d="M12 2a10 10 0 0 1 10 10" />
-                  </svg>
-                  <span>Verifying...</span>
-                </>
-              ) : successRole ? (
-                <span>Redirecting...</span>
-              ) : (
-                <>
-                  <span>Access Workspace</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </>
-              )}
-            </button>
+              Continue
+            </Button>
           </form>
-
-          {/* Quick Portal Hint for Authorized Personnel */}
-          <div
-            style={{
-              marginTop: "1.5rem",
-              paddingTop: "1.25rem",
-              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: "0.75rem",
-              color: "#94a3b8",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "#10b981",
-                  display: "inline-block",
-                }}
-              />
-              System Secure
-            </span>
-            <span style={{ color: "#64748b" }}>SES v1.4.0</span>
-          </div>
         </section>
 
-        {/* Minimal Accessible Footer */}
-        <footer
-          style={{
-            marginTop: "2rem",
-            textAlign: "center",
-            fontSize: "0.75rem",
-            color: "#64748b",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-            <Link
-              href="/offline"
-              style={{ color: "#94a3b8", textDecoration: "none" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#d97706")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
-            >
-              System Offline Mode
+        <footer className="mt-6 flex flex-col items-center gap-3 text-center text-xs text-fg-muted">
+          <p>
+            Authorised staff only. A strictly necessary session cookie keeps you signed in.{" "}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-fg">
+              Privacy
+            </Link>{" "}
+            ·{" "}
+            <Link href="/tos" className="underline underline-offset-2 hover:text-fg">
+              Terms
             </Link>
-            <span>•</span>
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <Link href="/offline" className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 hover:bg-surface-hover hover:text-fg">
+              <WifiOff className="size-3.5" aria-hidden /> Offline help
+            </Link>
             <button
               type="button"
-              onClick={async () => {
-                try {
-                  if ("caches" in window) {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map((k) => caches.delete(k)));
-                  }
-                  if ("serviceWorker" in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    for (const reg of regs) {
-                      await reg.unregister();
-                    }
-                  }
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  window.location.reload();
-                } catch (e) {
-                  window.location.reload();
-                }
+              onClick={() => {
+                forgetPersistedRole();
+                void clearCachesAndReload();
               }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#d97706",
-                cursor: "pointer",
-                fontSize: "0.75rem",
-                padding: 0,
-                textDecoration: "underline",
-              }}
+              className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 hover:bg-surface-hover hover:text-fg"
             >
-              Clear Mobile Cache & Reload
+              <RefreshCw className="size-3.5" aria-hidden /> Clear cache and reload
             </button>
-            <span>•</span>
-            <span style={{ color: "#64748b" }}>Authorized Personnel Only</span>
           </div>
-          <p style={{ margin: 0, fontSize: "0.6875rem" }}>
-            Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
-          </p>
         </footer>
       </div>
     </main>

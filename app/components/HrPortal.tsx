@@ -1,29 +1,33 @@
 "use client";
 
-import { formatIncidentDate } from "@/lib/format";
-import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import React, { useState, useTransition, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Staff, Department, Reclamation, HotelRoom } from "@/utils/roomsData";
-import {
-  createStaffMember,
-  updateStaffMember,
-  deleteStaffMember,
-  toggleStaffShift,
-  markStaffAbsentAndRedistribute,
-  createDepartment,
-  updateDepartment,
-  deleteDepartment,
-  updateRoomStayState,
-  cycleRoomCleaning,
-  createRapidReclamation,
-  createHistoricalReclamation,
-  } from "@/app/actions";
+import { memo, useCallback, useEffect, useId, useMemo, useState, useTransition } from "react";
+import { BedDouble, Building2, CalendarDays, ChartColumn, ClipboardList, Layers, ListFilter, Phone, Power, Trash2 } from "lucide-react";
+import { UserCheck, UserMinus, UserPlus, UserRound, Users, UserX } from "lucide-react";
+import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
 import type { NavTabItem } from "@/components/app/nav";
-import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
-import { BedDouble, ChartColumn, ClipboardList, UserPlus, Users } from "lucide-react";
+import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
 import { Button } from "@/components/ui/button";
+import { AnimatedTabs } from "@/components/ui/animated-tabs";
+import { BarChart } from "@/components/ui/bar-chart";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Panel, PageStack, EmptyState } from "@/components/features/Panel";
+import { Kpi, KpiGrid } from "@/components/features/Kpi";
+import { FilterBar, PillGroup, SearchInput, SelectField } from "@/components/features/Filters";
+import { RoomGrid } from "@/components/features/RoomGrid";
+import { TicketTable } from "@/components/features/TicketTable";
+import { RoomDetail } from "@/components/features/RoomDetail";
+import { Field, NewTicketForm, Notice, PastIncidentForm, Segmented, Select, TextInput, type NewTicketInput, type PastIncidentInput } from "@/components/features/Forms";
+import { ToneBadge } from "@/components/features/StatusBadges";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { MD_UP, useMediaQuery } from "@/hooks/useMediaQuery";
+import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
+import { CLEANING_LABEL, ticketStatsByRoom } from "@/lib/rooms";
+import { departmentLabel, plural } from "@/lib/format";
+import { departmentIcon, SHIFT_ICONS } from "@/lib/icons";
+import { SHIFT_LABELS, type ShiftType } from "@/lib/constants";
+import { createHistoricalReclamation, createRapidReclamation, createStaffMember, cycleRoomCleaning } from "@/app/actions";
+import { deleteStaffMember, markStaffAbsentAndRedistribute, toggleStaffShift } from "@/app/actions";
 
 interface Props {
   staffList: Staff[];
@@ -33,462 +37,425 @@ interface Props {
   isLiveSupabase?: boolean;
 }
 
-export const DEFAULT_HOTEL_DEPARTMENTS: Department[] = [
-  { id: 1, code: "RECEPTION", name: "Reception & Front Desk", icon: "🛎️", description: "Guest check-in/out, switchboard, inquiries and concierge dispatches", head_of_department: "Sophie Mercier" },
-  { id: 2, code: "HOUSEKEEPING", name: "Housekeeping & Gouvernante", icon: "🧹", description: "Room cleaning, linen management, amenity restocking and floor inspections", head_of_department: "Martine Aubry" },
-  { id: 3, code: "TECHNICAL", name: "Technical & Maintenance", icon: "🔧", description: "Plumbing, electrical, HVAC, fixtures and preventive facilities maintenance", head_of_department: "Pierre Dubois" },
-  { id: 4, code: "FOOD_AND_BEVERAGE", name: "Food & Beverage (F&B)", icon: "🍽️", description: "Kitchen, restaurants, banquets, room service and bars", head_of_department: "Chef Antoine Girard" },
-  { id: 5, code: "MANAGEMENT", name: "Executive & General Management", icon: "👔", description: "Hotel operations oversight, executive decisions, VIP relations and strategy", head_of_department: "Jean-Paul Bonnet" },
-  { id: 6, code: "SECURITY", name: "Security & Safety", icon: "🛡️", description: "Premises surveillance, access control, keycards, guest safety and emergency protocols", head_of_department: "Marc Lambert" },
-  { id: 7, code: "CONCIERGE", name: "Concierge & Guest Relations", icon: "🚗", description: "Valet parking, luggage handling, excursions, transport and VIP guest assistance", head_of_department: "Lucie Moreau" },
-  { id: 8, code: "SPA_AND_WELLNESS", name: "Spa, Wellness & Fitness", icon: "🧖", description: "Massage treatments, thermal baths, sauna, gym and wellness therapies", head_of_department: "Camille Roux" },
-  { id: 9, code: "SALES_AND_MARKETING", name: "Sales, Marketing & Events", icon: "📈", description: "Group bookings, corporate events, weddings, digital marketing and PR", head_of_department: "Helene Fontaine" },
-  { id: 10, code: "FINANCE_AND_ACCOUNTING", name: "Finance, Accounting & Audit", icon: "💳", description: "Night audit, billing, purchasing, payroll and revenue management", head_of_department: "Bernard Leroy" },
-  { id: 11, code: "HUMAN_RESOURCES", name: "Human Resources (HR)", icon: "👥", description: "Recruitment, employee onboarding, scheduling, payroll and training", head_of_department: "Claire Delacroix" },
+/** Built-in departments. Icons are rendered with `departmentIcon(code)`, never stored here. */
+export const DEFAULT_HOTEL_DEPARTMENTS: Omit<Department, "icon">[] = [
+  { id: 1, code: "RECEPTION", name: "Reception & Front Desk", description: "Guest check-in/out, switchboard, inquiries and concierge dispatches", head_of_department: "Sophie Mercier" },
+  { id: 2, code: "HOUSEKEEPING", name: "Housekeeping & Gouvernante", description: "Room cleaning, linen management, amenity restocking and floor inspections", head_of_department: "Martine Aubry" },
+  { id: 3, code: "TECHNICAL", name: "Technical & Maintenance", description: "Plumbing, electrical, HVAC, fixtures and preventive facilities maintenance", head_of_department: "Pierre Dubois" },
+  { id: 4, code: "FOOD_AND_BEVERAGE", name: "Food & Beverage (F&B)", description: "Kitchen, restaurants, banquets, room service and bars", head_of_department: "Chef Antoine Girard" },
+  { id: 5, code: "MANAGEMENT", name: "Executive & General Management", description: "Hotel operations oversight, executive decisions, VIP relations and strategy", head_of_department: "Jean-Paul Bonnet" },
+  { id: 6, code: "SECURITY", name: "Security & Safety", description: "Premises surveillance, access control, keycards, guest safety and emergency protocols", head_of_department: "Marc Lambert" },
+  { id: 7, code: "CONCIERGE", name: "Concierge & Guest Relations", description: "Valet parking, luggage handling, excursions, transport and VIP guest assistance", head_of_department: "Lucie Moreau" },
+  { id: 8, code: "SPA_AND_WELLNESS", name: "Spa, Wellness & Fitness", description: "Massage treatments, thermal baths, sauna, gym and wellness therapies", head_of_department: "Camille Roux" },
+  { id: 9, code: "SALES_AND_MARKETING", name: "Sales, Marketing & Events", description: "Group bookings, corporate events, weddings, digital marketing and PR", head_of_department: "Helene Fontaine" },
+  { id: 10, code: "FINANCE_AND_ACCOUNTING", name: "Finance, Accounting & Audit", description: "Night audit, billing, purchasing, payroll and revenue management", head_of_department: "Bernard Leroy" },
+  { id: 11, code: "HUMAN_RESOURCES", name: "Human Resources (HR)", description: "Recruitment, employee onboarding, scheduling, payroll and training", head_of_department: "Claire Delacroix" },
 ];
 
 export const STANDARD_ROLES = [
-  "manager",
-  "receptionist",
-  "maintenance",
-  "governance",
-  "chef",
-  "cook",
-  "waiter",
-  "bartender",
-  "concierge",
-  "security_officer",
-  "spa_therapist",
-  "housekeeper",
-  "bellboy",
-  "accountant",
-  "hr_specialist",
-  "master",
+  "manager", "receptionist", "maintenance", "governance", "chef", "cook", "waiter", "bartender",
+  "concierge", "security_officer", "spa_therapist", "housekeeper", "bellboy", "accountant", "hr_specialist", "master",
 ];
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-type ShiftType = "MORNING" | "EVENING" | "NIGHT" | "OFF";
+type Tab = "EMPLOYEES" | "ROOMS" | "RECLAMATIONS" | "STATS";
+type SubTab = "DIRECTORY" | "SHIFTS";
+type DateRange = "ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE";
+type RoomFilter = "ALL" | "ATTENTION" | "OCCUPIED" | "VACANT_CLEAN" | "DIRTY";
+type Roster = Record<number, Record<string, ShiftType>>;
+type Pending = { kind: "absent" | "delete"; member: Staff } | null;
 
-const SHIFT_LABELS: Record<ShiftType, { label: string; time: string; color: string; bg: string }> = {
-  MORNING: { label: "🌅 Morning", time: "07:00 - 15:00", color: "var(--status-cyan)", bg: "var(--status-cyan-bg)" },
-  EVENING: { label: "🌇 Evening", time: "15:00 - 23:00", color: "var(--accent-amber)", bg: "var(--accent-amber-bg)" },
-  NIGHT: { label: "🌃 Night", time: "23:00 - 07:00", color: "var(--status-purple)", bg: "var(--status-purple-bg)" },
-  OFF: { label: "🏖️ Off / Rest", time: "Rest Day", color: "var(--text-muted)", bg: "var(--surface-2)" },
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const SHIFT_TYPES: ShiftType[] = ["MORNING", "EVENING", "NIGHT", "OFF"];
+const SHIFT_OPTIONS = SHIFT_TYPES.map((s) => ({ value: s, label: SHIFT_LABELS[s].label }));
+const ROLE_OPTIONS = STANDARD_ROLES.map((r) => ({ value: r, label: roleLabel(r) }));
+const DAY_MS = 864e5;
+
+const NEXT_CLEANING: Record<HotelRoom["cleaning_status"], HotelRoom["cleaning_status"]> = {
+  DIRTY: "CLEANING",
+  CLEANING: "INSPECTING",
+  INSPECTING: "CLEAN",
+  CLEAN: "DIRTY",
 };
 
-export default function HrPortal({
-  staffList,
-  departmentsList = [],
-  reclamationsList = [],
-  rooms = [],
-  isLiveSupabase = false,
-}: Props) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"ROOMS" | "RECLAMATIONS" | "STATS" | "EMPLOYEES">("EMPLOYEES");
-  const [empSubTab, setEmpSubTab] = useState<"DIRECTORY" | "SHIFTS">("DIRECTORY");
-  const [rosterDeptFilter, setRosterDeptFilter] = useState<string>("ALL");
-  const [search, setSearch] = useState("");
-  const [selectedDept, setSelectedDept] = useState<string>("ALL");
-  const [message, setMessage] = useState<string | null>(null);
+const DATE_RANGES = [
+  { value: "ALL", label: "All time" },
+  { value: "TODAY", label: "Today" },
+  { value: "WEEK", label: "7 days" },
+  { value: "MONTH", label: "30 days" },
+  { value: "ARCHIVE", label: "Older" },
+] as const;
+
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "OPEN", label: "Open" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+];
+
+const SHIFT_STATUS: Record<Staff["shift_status"], { label: string; tone: "success" | "neutral" | "warning" }> = {
+  ON_SHIFT: { label: "On shift", tone: "success" },
+  OFF_SHIFT: { label: "Off shift", tone: "neutral" },
+  ON_BREAK: { label: "On break", tone: "warning" },
+};
+
+function roleLabel(role: string) {
+  const s = role.replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Same seeded weekly pattern as before (client-side only, not persisted). */
+function initialRoster(staff: readonly Staff[]): Roster {
+  const roster: Roster = {};
+  staff.forEach((s, index) => {
+    roster[s.id] = {};
+    WEEKDAYS.forEach((day, d) => {
+      if ((index + d) % 7 === 0 || (index + d) % 7 === 6) roster[s.id][day] = "OFF";
+      else if (s.role === "receptionist" || s.role === "housekeeper") roster[s.id][day] = d % 2 === 0 ? "MORNING" : "EVENING";
+      else if (s.role === "security_officer" || s.role === "maintenance") roster[s.id][day] = d % 3 === 0 ? "NIGHT" : "MORNING";
+      else roster[s.id][day] = "MORNING";
+    });
+  });
+  return roster;
+}
+
+export default function HrPortal({ staffList, departmentsList = [], reclamationsList = [], rooms = [], isLiveSupabase = false }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("EMPLOYEES");
+  const [subTab, setSubTab] = useState<SubTab>("DIRECTORY");
+  const [, startTabTransition] = useTransition();
   const [isPending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
+  const isDesktop = useMediaQuery(MD_UP);
 
-  // Reactive Reclamations Store for instant updates across tabs, rooms & badges
-  const [localReclamations, setLocalReclamations] = useState<Reclamation[]>(reclamationsList);
-  useEffect(() => {
-    setLocalReclamations(reclamationsList);
-  }, [reclamationsList]);
-
-  // Real-time synchronization
-  useRealtimeRefresh("realtime-hr", ["staff","departments","reclamations"], isLiveSupabase);
-
-  // Room Pop-up Modal State
-  const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
-  const [modalTab, setModalTab] = useState<"RECLAMATIONS" | "ROOM_STAT">("ROOM_STAT");
-  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY" | "TIMELINE">("ACTIVE");
-  const [modalDept, setModalDept] = useState<string>("TECHNICAL");
-  const [modalDesc, setModalDesc] = useState<string>("");
-
-  // In-Modal Past Log Backfill State
-  const [showInModalPastLog, setShowInModalPastLog] = useState(false);
-  const [inModalHistDate, setInModalHistDate] = useState<string>(
-    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+  // Local copies so optimistic updates show instantly; server refreshes replace them.
+  const [tickets, setTickets] = useState<Reclamation[]>(reclamationsList);
+  useEffect(() => setTickets(reclamationsList), [reclamationsList]);
+  const [staff, setStaff] = useState<Staff[]>(staffList);
+  useEffect(() => setStaff(staffList), [staffList]);
+  const [roomOverrides, setRoomOverrides] = useState<Record<number, Partial<HotelRoom>>>({});
+  useEffect(() => setRoomOverrides({}), [rooms]);
+  const liveRooms = useMemo(
+    () => (Object.keys(roomOverrides).length ? rooms.map((r) => (roomOverrides[r.id] ? { ...r, ...roomOverrides[r.id] } : r)) : rooms),
+    [rooms, roomOverrides]
   );
-  const [inModalHistDept, setInModalHistDept] = useState<string>("TECHNICAL");
-  const [inModalHistCategory, setInModalHistCategory] = useState<string>("A/C & Climate");
-  const [inModalHistDesc, setInModalHistDesc] = useState<string>("");
-  const [inModalHistStatus, setInModalHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
 
-  // Shift Planning Roster State
-  const [shiftRoster, setShiftRoster] = useState<Record<number, Record<string, ShiftType>>>(() => {
-    const initial: Record<number, Record<string, ShiftType>> = {};
-    staffList.forEach((s, index) => {
-      initial[s.id] = {};
-      WEEKDAYS.forEach((day, dIdx) => {
-        if ((index + dIdx) % 7 === 0 || (index + dIdx) % 7 === 6) {
-          initial[s.id][day] = "OFF";
-        } else if (s.role === "receptionist" || s.role === "housekeeper") {
-          initial[s.id][day] = dIdx % 2 === 0 ? "MORNING" : "EVENING";
-        } else if (s.role === "security_officer" || s.role === "maintenance") {
-          initial[s.id][day] = dIdx % 3 === 0 ? "NIGHT" : "MORNING";
-        } else {
-          initial[s.id][day] = "MORNING";
-        }
-      });
-    });
-    return initial;
-  });
+  useRealtimeRefresh("realtime-hr", ["staff", "departments", "reclamations"], isLiveSupabase);
 
-  // Modal States
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newFullName, setNewFullName] = useState("");
-  const [newRole, setNewRole] = useState<string>("receptionist");
-  const [newDept, setNewDept] = useState<string>("RECEPTION");
-  const [newPhone, setNewPhone] = useState("");
+  const flash = useCallback((tone: "success" | "danger", text: string) => {
+    setNotice({ tone, text });
+    window.setTimeout(() => setNotice(null), 3500);
+  }, []);
 
-  // Filters
-  const [recDeptFilter, setRecDeptFilter] = useState<string>("ALL");
-  const [recStatusFilter, setRecStatusFilter] = useState<string>("ALL");
-  const [recDateFilter, setRecDateFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE">("ALL");
-  const [roomSearch, setRoomSearch] = useState("");
-  const [roomFloorFilter, setRoomFloorFilter] = useState<number | "ALL">("ALL");
-
-  // Departments List
+  /* ───────────── departments ───────────── */
   const activeDepartments = useMemo(() => {
-    const map = new Map<string, Department>();
-    DEFAULT_HOTEL_DEPARTMENTS.forEach((d) => map.set(d.code, d));
-    departmentsList.forEach((d) => map.set(d.code, d));
-    return Array.from(map.values());
+    const map = new Map<string, { code: string; name: string }>();
+    DEFAULT_HOTEL_DEPARTMENTS.forEach((d) => map.set(d.code, { code: d.code, name: d.name }));
+    departmentsList.forEach((d) => map.set(d.code, { code: d.code, name: d.name }));
+    return [...map.values()];
   }, [departmentsList]);
+  const deptName = useCallback(
+    (code?: string | null) => activeDepartments.find((d) => d.code === code)?.name ?? departmentLabel(code),
+    [activeDepartments]
+  );
+  const deptOptions = useMemo(() => activeDepartments.map((d) => ({ value: d.code, label: d.name })), [activeDepartments]);
 
-  // Filtered staff
+  /* ───────────── directory ───────────── */
+  const [search, setSearch] = useState("");
+  const [selectedDept, setSelectedDept] = useState("ALL");
   const filteredStaff = useMemo(() => {
-    return staffList.filter((s) => {
+    const q = search.trim().toLowerCase();
+    return staff.filter((s) => {
       if (selectedDept !== "ALL" && s.department !== selectedDept) return false;
-      if (
-        search.trim() &&
-        !s.full_name.toLowerCase().includes(search.trim().toLowerCase()) &&
-        !s.role.toLowerCase().includes(search.trim().toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
+      return !q || s.full_name.toLowerCase().includes(q) || s.role.toLowerCase().includes(q);
     });
-  }, [staffList, selectedDept, search]);
+  }, [staff, selectedDept, search]);
+  const onShiftCount = useMemo(() => staff.filter((s) => s.shift_status === "ON_SHIFT").length, [staff]);
 
-  // Filtered Reclamations (using reactive localReclamations + recDateFilter)
-  const filteredReclamations = useMemo(() => {
-    const now = new Date();
-    return localReclamations.filter((r) => {
-      if (recDeptFilter !== "ALL" && r.department !== recDeptFilter) return false;
-      if (recStatusFilter !== "ALL" && r.status !== recStatusFilter) return false;
+  const [pending, setPending] = useState<Pending>(null);
 
-      if (recDateFilter !== "ALL" && r.created_at) {
-        const ticketDate = new Date(r.created_at);
-        const diffMs = now.getTime() - ticketDate.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-        if (recDateFilter === "TODAY" && diffDays > 1) return false;
-        if (recDateFilter === "WEEK" && diffDays > 7) return false;
-        if (recDateFilter === "MONTH" && diffDays > 30) return false;
-        if (recDateFilter === "ARCHIVE" && diffDays <= 30) return false;
-      }
-      return true;
-    });
-  }, [localReclamations, recDeptFilter, recStatusFilter, recDateFilter]);
-
-  // Filtered Rooms
-  const filteredRooms = useMemo(() => {
-    return rooms.filter((r) => {
-      if (roomSearch && !r.room_number.includes(roomSearch)) return false;
-      if (roomFloorFilter !== "ALL" && r.floor !== roomFloorFilter) return false;
-      return true;
-    });
-  }, [rooms, roomSearch, roomFloorFilter]);
-
-  // Room Modal Reclamations (instantly reflects localReclamations additions)
-  const roomModalReclamations = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    return localReclamations.filter(
-      (r) => r.room_id === selectedRoomModal.id || r.room?.room_number === selectedRoomModal.room_number
-    );
-  }, [localReclamations, selectedRoomModal]);
-
-  // Active Reclamations for Room Modal
-  const roomActiveReclamations = useMemo(() => {
-    return roomModalReclamations.filter(
-      (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
-    );
-  }, [roomModalReclamations]);
-
-  // Most Reported Problem Categories for Room Modal
-  const roomProblemStats = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    const counts: Record<string, { count: number; department: string; lastDate?: string }> = {};
-    roomModalReclamations.forEach((rec) => {
-      const cat = rec.category || "General";
-      if (!counts[cat]) {
-        counts[cat] = { count: 0, department: rec.department, lastDate: rec.created_at };
-      }
-      counts[cat].count += 1;
-    });
-    const total = roomModalReclamations.length || 1;
-    return Object.entries(counts)
-      .map(([category, info]) => ({
-        category,
-        count: info.count,
-        department: info.department,
-        percentage: Math.round((info.count / total) * 100),
-        lastDate: info.lastDate,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [roomModalReclamations, selectedRoomModal]);
-
-  // Staff Handlers
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFullName.trim()) return;
-
-    startTransition(async () => {
-      const res = await createStaffMember({
-        full_name: newFullName.trim(),
-        role: newRole,
-        department: newDept,
-        phone_number: newPhone.trim() || undefined,
-        shift_status: "ON_SHIFT",
-      });
-
-      if (res.success) {
-        setMessage(`✅ Created employee "${newFullName}" successfully!`);
-        setShowCreateModal(false);
-        setNewFullName("");
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  const handleToggleShift = (member: Staff) => {
-    startTransition(async () => {
-      await toggleStaffShift(member.id, member.shift_status);
-      setMessage(`🔄 Shift status updated for ${member.full_name}.`);
-      setTimeout(() => setMessage(null), 3000);
-    });
-  };
-
-  const handleMarkAbsent = (member: Staff) => {
-    if (confirm(`Mark ${member.full_name} as ABSENT today and reassign open tickets?`)) {
+  const toggleShift = useCallback(
+    (member: Staff) =>
       startTransition(async () => {
-        await markStaffAbsentAndRedistribute(member.id);
-        setMessage(`🚨 Marked ${member.full_name} as Absent. Reassigned tasks.`);
-        setTimeout(() => setMessage(null), 4000);
-      });
-    }
-  };
-
-  const handleShiftChange = (staffId: number, day: string, newShift: ShiftType) => {
-    setShiftRoster((prev) => ({
-      ...prev,
-      [staffId]: { ...(prev[staffId] || {}), [day]: newShift },
-    }));
-  };
-
-  // Stay State Handler
-  const handleStayState = (roomId: number, state: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED") => {
-    startTransition(async () => {
-      const res = await updateRoomStayState(roomId, state);
-      if (res.success) {
-        setMessage(`✅ Room state updated!`);
-        if (selectedRoomModal) {
-          setSelectedRoomModal((prev) => (prev ? { ...prev, is_occupied: state === "OCCUPIED" } : null));
-        }
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Cleaning Cycle Handler
-  const handleCleaningCycle = (room: HotelRoom) => {
-    const nextMap: Record<string, "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"> = {
-      DIRTY: "CLEANING",
-      CLEANING: "INSPECTING",
-      INSPECTING: "CLEAN",
-      CLEAN: "DIRTY",
-    };
-    const nextStatus = nextMap[room.cleaning_status] || "DIRTY";
-    startTransition(async () => {
-      const res = await cycleRoomCleaning(room.id, nextStatus);
-      if (res.success) {
-        setMessage(`🧹 Room ${room.room_number} cleaning set to ${nextStatus}!`);
-        if (selectedRoomModal && selectedRoomModal.id === room.id) {
-          setSelectedRoomModal((prev) => (prev ? { ...prev, cleaning_status: nextStatus } : null));
-        }
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Create Rapid Reclamation in Room Modal
-  const handleModalCreateReclamation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-
-    const optimisticTicket: Reclamation = {
-      id: Date.now(),
-      room_id: selectedRoomModal.id,
-      room: selectedRoomModal,
-      department: modalDept,
-      category: "General",
-      description: modalDesc.trim() || `HR Ticket for Room ${selectedRoomModal.room_number}`,
-      priority: "STANDARD",
-      status: "OPEN",
-      created_at: new Date().toISOString(),
-    };
-    setLocalReclamations((prev) => [optimisticTicket, ...prev]);
-
-    startTransition(async () => {
-      const res = await createRapidReclamation({
-        roomId: selectedRoomModal.id,
-        department: modalDept,
-        category: "General",
-        description: modalDesc.trim() || `HR Ticket for Room ${selectedRoomModal.room_number}`,
-      });
-
-      if (res.success) {
-        setMessage(`✅ Ticket created for Room ${selectedRoomModal.room_number}!`);
-        setModalDesc("");
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  // Create Historical Reclamation directly inside Room Modal
-  const handleInModalHistoricalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-
-    const optimisticHist: Reclamation = {
-      id: Date.now(),
-      room_id: selectedRoomModal.id,
-      room: selectedRoomModal,
-      department: inModalHistDept,
-      category: inModalHistCategory,
-      description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
-      priority: "STANDARD",
-      status: inModalHistStatus,
-      created_at: inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString(),
-      resolved_at: inModalHistStatus === "RESOLVED" ? (inModalHistDate ? new Date(inModalHistDate).toISOString() : new Date().toISOString()) : undefined,
-    };
-    setLocalReclamations((prev) => [optimisticHist, ...prev]);
-
-    startTransition(async () => {
-      const res = await createHistoricalReclamation({
-        roomId: selectedRoomModal.id,
-        department: inModalHistDept,
-        category: inModalHistCategory,
-        description: inModalHistDesc.trim() || `Historical log for Room ${selectedRoomModal.room_number}`,
-        status: inModalHistStatus,
-        createdAt: inModalHistDate,
-        isConfidential: false,
-      });
-
-      if (res.success) {
-        setShowInModalPastLog(false);
-        setInModalHistDesc("");
-        setMessage(`✅ Historical incident added for Room ${selectedRoomModal.room_number}!`);
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        alert(`Error: ${res.error}`);
-      }
-    });
-  };
-
-  const handleDeleteStaff = (id: number, name: string) => {
-    if (confirm(`Are you sure you want to remove "${name}" from the staff directory?`)) {
-      startTransition(async () => {
-        const res = await deleteStaffMember(id);
+        const res = await toggleStaffShift(member.id, member.shift_status);
         if (res.success) {
-          setMessage(`🗑️ Removed ${name} from staff directory.`);
-          setTimeout(() => setMessage(null), 3000);
-        } else {
-          setMessage(`❌ Error removing staff member.`);
-        }
-      });
-    }
+          const next = member.shift_status === "ON_SHIFT" ? "OFF_SHIFT" : "ON_SHIFT";
+          setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, shift_status: next, is_present: next === "ON_SHIFT" } : s)));
+          flash("success", `${member.full_name} is now ${next === "ON_SHIFT" ? "on shift" : "off shift"}.`);
+        } else flash("danger", `Could not update the shift for ${member.full_name}.`);
+      }),
+    [flash]
+  );
+
+  const confirmPending = () => {
+    if (!pending) return;
+    const { kind, member } = pending;
+    startTransition(async () => {
+      if (kind === "absent") {
+        const res = await markStaffAbsentAndRedistribute(member.id);
+        if (res.success) {
+          setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, shift_status: "OFF_SHIFT", is_present: false } : s)));
+          flash("success", `${member.full_name} marked absent. Open tickets were reassigned.`);
+        } else flash("danger", `Could not mark ${member.full_name} absent.`);
+      } else {
+        const res = await deleteStaffMember(member.id);
+        if (res.success) {
+          setStaff((prev) => prev.filter((s) => s.id !== member.id));
+          flash("success", `${member.full_name} was removed from the directory.`);
+        } else flash("danger", `Could not remove ${member.full_name}.`);
+      }
+      setPending(null);
+    });
   };
 
-  // Filtered Roster Staff
-  const filteredRosterStaff = useMemo(() => {
-    return staffList.filter((s) => {
-      if (rosterDeptFilter !== "ALL" && s.department !== rosterDeptFilter) return false;
+  const staffColumns = useMemo<DataTableColumn<Staff>[]>(
+    () => [
+      {
+        key: "full_name",
+        header: "Employee",
+        primary: true,
+        width: "minmax(0, 1.6fr)",
+        cell: (s) => (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-hover text-fg-muted">
+              <UserRound className="size-4" aria-hidden />
+            </span>
+            <span className="truncate font-medium text-fg">{s.full_name}</span>
+          </span>
+        ),
+      },
+      { key: "role", header: "Role", width: "minmax(0, 1fr)", accessor: (s) => roleLabel(s.role), cell: (s) => <span className="truncate text-fg-secondary">{roleLabel(s.role)}</span> },
+      {
+        key: "department",
+        header: "Department",
+        width: "minmax(0, 1.3fr)",
+        accessor: (s) => deptName(s.department || "RECEPTION"),
+        cell: (s) => {
+          const Icon = departmentIcon(s.department || "RECEPTION");
+          return (
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-fg-secondary">
+              <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
+              <span className="truncate">{deptName(s.department || "RECEPTION")}</span>
+            </span>
+          );
+        },
+      },
+      {
+        key: "phone_number",
+        header: "Phone",
+        width: "minmax(0, 1fr)",
+        hideOnMobile: true,
+        accessor: (s) => s.phone_number ?? "",
+        cell: (s) => <span className="truncate tabular-nums text-fg-secondary">{s.phone_number || "–"}</span>,
+      },
+      {
+        key: "shift_status",
+        header: "Shift",
+        width: "minmax(6.5rem, 0.8fr)",
+        accessor: (s) => SHIFT_STATUS[s.shift_status]?.label ?? s.shift_status,
+        cell: (s) => {
+          const st = SHIFT_STATUS[s.shift_status] ?? { label: s.shift_status, tone: "neutral" as const };
+          return <ToneBadge tone={st.tone}>{st.label}</ToneBadge>;
+        },
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        sortable: false,
+        align: "right",
+        width: "minmax(19rem, auto)",
+        fullWidthOnMobile: true,
+        mobileLabel: "",
+        accessor: () => "",
+        cell: (s) => (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={() => toggleShift(s)} disabled={isPending} leftIcon={<Power className="size-4" aria-hidden />}>
+              {s.shift_status === "ON_SHIFT" ? "End shift" : "Start shift"}
+            </Button>
+            <Button variant="outline" onClick={() => setPending({ kind: "absent", member: s })} disabled={isPending} leftIcon={<UserMinus className="size-4" aria-hidden />}>
+              Absent
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setPending({ kind: "delete", member: s })} disabled={isPending} aria-label={`Remove ${s.full_name}`}>
+              <Trash2 className="size-4 text-danger" aria-hidden />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [deptName, toggleShift, isPending]
+  );
+
+  /* ───────────── shifts roster (client-side only) ───────────── */
+  const [roster, setRoster] = useState<Roster>(() => initialRoster(staffList));
+  const [rosterDept, setRosterDept] = useState("ALL");
+  const rosterStaff = useMemo(() => (rosterDept === "ALL" ? staff : staff.filter((s) => s.department === rosterDept)), [staff, rosterDept]);
+  const setShift = useCallback((staffId: number, day: string, shift: ShiftType) => {
+    setRoster((prev) => ({ ...prev, [staffId]: { ...(prev[staffId] || {}), [day]: shift } }));
+  }, []);
+  const rosterStats = useMemo(() => {
+    const counts: Record<ShiftType, number> = { MORNING: 0, EVENING: 0, NIGHT: 0, OFF: 0 };
+    Object.values(roster).forEach((days) => Object.values(days).forEach((s) => counts[s]++));
+    return counts;
+  }, [roster]);
+
+  /* ───────────── rooms tab ───────────── */
+  const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
+  const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
+  const attentionCount = useMemo(() => countRoomsNeedingAttention(liveRooms, tickets), [liveRooms, tickets]);
+  const [roomSearch, setRoomSearch] = useState("");
+  const [roomFloor, setRoomFloor] = useState<number | "ALL">("ALL");
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>("ALL");
+  const floors = useMemo(() => [...new Set(liveRooms.map((r) => r.floor))].sort((a, b) => a - b), [liveRooms]);
+  const floorOptions = useMemo(() => [{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))], [floors]);
+  const roomFilterOptions = useMemo(
+    () => [
+      { value: "ALL" as const, label: "All" },
+      { value: "ATTENTION" as const, label: "Needs attention", count: attentionCount },
+      { value: "OCCUPIED" as const, label: "Occupied", count: liveRooms.filter((r) => r.is_occupied).length },
+      { value: "VACANT_CLEAN" as const, label: "Ready", count: liveRooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length },
+      { value: "DIRTY" as const, label: "Dirty", count: liveRooms.filter((r) => r.cleaning_status === "DIRTY").length },
+    ],
+    [liveRooms, attentionCount]
+  );
+  const filteredRooms = useMemo(
+    () =>
+      liveRooms.filter((r) => {
+        if (roomSearch && !r.room_number.includes(roomSearch.trim())) return false;
+        if (roomFloor !== "ALL" && r.floor !== roomFloor) return false;
+        const s = roomStats.get(r.id);
+        if (roomFilter === "ATTENTION" && !(r.cleaning_status === "DIRTY" || (s && s.open > 0))) return false;
+        if (roomFilter === "OCCUPIED" && !r.is_occupied) return false;
+        if (roomFilter === "VACANT_CLEAN" && (r.is_occupied || r.cleaning_status !== "CLEAN")) return false;
+        if (roomFilter === "DIRTY" && r.cleaning_status !== "DIRTY") return false;
+        return true;
+      }),
+    [liveRooms, roomSearch, roomFloor, roomFilter, roomStats]
+  );
+
+  /* ───────────── tickets tab ───────────── */
+  const [recDept, setRecDept] = useState("ALL");
+  const [recStatus, setRecStatus] = useState("ALL");
+  const [dateRange, setDateRange] = useState<DateRange>("ALL");
+  const recDeptOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    tickets.forEach((t) => counts.set(t.department, (counts.get(t.department) ?? 0) + 1));
+    return [
+      { value: "ALL", label: `All departments (${tickets.length})` },
+      ...activeDepartments.map((d) => ({ value: d.code, label: `${d.name} (${counts.get(d.code) ?? 0})` })),
+    ];
+  }, [tickets, activeDepartments]);
+  const filteredTickets = useMemo(() => {
+    const now = Date.now();
+    return tickets.filter((t) => {
+      if (recDept !== "ALL" && t.department !== recDept) return false;
+      if (recStatus !== "ALL" && t.status !== recStatus) return false;
+      if (dateRange !== "ALL" && t.created_at) {
+        const days = (now - new Date(t.created_at).getTime()) / DAY_MS;
+        if (dateRange === "TODAY" && days > 1) return false;
+        if (dateRange === "WEEK" && days > 7) return false;
+        if (dateRange === "MONTH" && days > 30) return false;
+        if (dateRange === "ARCHIVE" && days <= 30) return false;
+      }
       return true;
     });
-  }, [staffList, rosterDeptFilter]);
+  }, [tickets, recDept, recStatus, dateRange]);
 
-  // Shift Roster Aggregations
-  const rosterStats = useMemo(() => {
-    let morning = 0;
-    let evening = 0;
-    let night = 0;
-    let off = 0;
-    Object.values(shiftRoster).forEach((memberDays) => {
-      Object.values(memberDays).forEach((shift) => {
-        if (shift === "MORNING") morning++;
-        else if (shift === "EVENING") evening++;
-        else if (shift === "NIGHT") night++;
-        else if (shift === "OFF") off++;
-      });
+  /* ───────────── analytics tab ───────────── */
+  const headcount = useMemo(() => {
+    const counts = new Map<string, { on: number; off: number }>();
+    for (const s of staff) {
+      const dept = s.department || "RECEPTION";
+      const c = counts.get(dept) ?? { on: 0, off: 0 };
+      if (s.shift_status === "ON_SHIFT") c.on++;
+      else c.off++;
+      counts.set(dept, c);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1].on + b[1].off - (a[1].on + a[1].off))
+      .map(([dept, c]) => ({ label: departmentLabel(dept), onShift: c.on, offShift: c.off }));
+  }, [staff]);
+
+  /* ───────────── room detail + actions ───────────── */
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const selectedRoom = useMemo(() => liveRooms.find((r) => r.id === selectedRoomId) ?? null, [liveRooms, selectedRoomId]);
+  const openRoom = useCallback((room: HotelRoom) => setSelectedRoomId(room.id), []);
+  const [logMode, setLogMode] = useState<"NEW" | "PAST">("NEW");
+
+  const cycleCleaning = (room: HotelRoom) => {
+    const next = NEXT_CLEANING[room.cleaning_status] ?? "DIRTY";
+    startTransition(async () => {
+      const res = await cycleRoomCleaning(room.id, next);
+      if (res.success) {
+        setRoomOverrides((prev) => ({ ...prev, [room.id]: { ...prev[room.id], cleaning_status: next } }));
+        flash("success", `Room ${room.room_number} set to ${CLEANING_LABEL[next].toLowerCase()}.`);
+      } else flash("danger", "Could not update the cleaning status.");
     });
-    return { morning, evening, night, off };
-  }, [shiftRoster]);
+  };
 
-  // Stats Data
-  const totalStaff = staffList.length;
-  const onShiftCount = staffList.filter((s) => s.shift_status === "ON_SHIFT").length;
+  const createTicket = async (input: NewTicketInput) => {
+    if (!selectedRoom) return false;
+    return new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createRapidReclamation({
+          roomId: selectedRoom.id,
+          department: input.department,
+          category: input.category,
+          priority: input.priority,
+          description: input.description || `HR ticket for room ${selectedRoom.room_number}`,
+        });
+        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Ticket created for room ${selectedRoom.room_number}.` : "Could not create the ticket.");
+        resolve(Boolean(res.success));
+      })
+    );
+  };
 
-  const deptStaffCounts: Record<string, number> = {};
-  staffList.forEach((s) => {
-    const dept = s.department || "RECEPTION";
-    deptStaffCounts[dept] = (deptStaffCounts[dept] || 0) + 1;
-  });
+  const recordPast = async (input: PastIncidentInput) => {
+    if (!selectedRoom) return false;
+    return new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createHistoricalReclamation({
+          roomId: selectedRoom.id,
+          department: input.department,
+          category: input.category,
+          description: input.description || `Historical log for room ${selectedRoom.room_number}`,
+          status: input.status,
+          createdAt: input.createdAt,
+          isConfidential: false,
+        });
+        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Past incident recorded for room ${selectedRoom.room_number}.` : res.error || "Could not record the incident.");
+        resolve(Boolean(res.success));
+      })
+    );
+  };
 
-  const openTicketCount = countOpenTickets(localReclamations);
-  const roomsNeedingAttention = countRoomsNeedingAttention(rooms, localReclamations);
+  /* ───────────── add staff ───────────── */
+  const [showCreate, setShowCreate] = useState(false);
+  const createStaff = async (input: NewStaffInput) =>
+    new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createStaffMember({ ...input, shift_status: "ON_SHIFT" });
+        if (res.success) {
+          setShowCreate(false);
+          flash("success", `${input.full_name} was added to the directory.`);
+        } else flash("danger", res.error || "Could not add the employee.");
+        resolve(Boolean(res.success));
+      })
+    );
 
-  const navItems: NavTabItem[] = [
-    {
-      id: "EMPLOYEES",
-      label: "Staff & Shifts",
-      icon: <Users aria-hidden />,
-      badge: totalStaff,
-      badgeTone: "neutral",
-      isActive: activeTab === "EMPLOYEES",
-      onClick: () => setActiveTab("EMPLOYEES"),
-    },
-    {
-      id: "ROOMS",
-      label: "Rooms",
-      icon: <BedDouble aria-hidden />,
-      badge: roomsNeedingAttention,
-      badgeTone: "alert",
-      isActive: activeTab === "ROOMS",
-      onClick: () => setActiveTab("ROOMS"),
-    },
-    {
-      id: "RECLAMATIONS",
-      label: "Tickets",
-      icon: <ClipboardList aria-hidden />,
-      badge: openTicketCount,
-      badgeTone: "alert",
-      isActive: activeTab === "RECLAMATIONS",
-      onClick: () => setActiveTab("RECLAMATIONS"),
-    },
-    {
-      id: "STATS",
-      label: "Analytics",
-      icon: <ChartColumn aria-hidden />,
-      isActive: activeTab === "STATS",
-      onClick: () => setActiveTab("STATS"),
-    },
-  ];
+  /* ───────────── navigation ───────────── */
+  const go = useCallback((tab: Tab) => startTabTransition(() => setActiveTab(tab)), []);
+  const navItems = useMemo<NavTabItem[]>(
+    () => [
+      { id: "EMPLOYEES", label: "Staff & Shifts", icon: <Users aria-hidden />, badge: staff.length, badgeTone: "neutral", isActive: activeTab === "EMPLOYEES", onClick: () => go("EMPLOYEES") },
+      { id: "ROOMS", label: "Rooms", icon: <BedDouble aria-hidden />, badge: attentionCount, badgeTone: "alert", isActive: activeTab === "ROOMS", onClick: () => go("ROOMS") },
+      { id: "RECLAMATIONS", label: "Tickets", icon: <ClipboardList aria-hidden />, badge: openCount, badgeTone: "alert", isActive: activeTab === "RECLAMATIONS", onClick: () => go("RECLAMATIONS") },
+      { id: "STATS", label: "Analytics", icon: <ChartColumn aria-hidden />, isActive: activeTab === "STATS", onClick: () => go("STATS") },
+    ],
+    [activeTab, staff.length, attentionCount, openCount, go]
+  );
+
+  const deptFilterOptions = useMemo(() => [{ value: "ALL", label: "All departments" }, ...deptOptions], [deptOptions]);
+  const largest = headcount[0];
 
   return (
     <AppShell
@@ -496,1390 +463,376 @@ export default function HrPortal({
       departmentName="Human Resources & Roster"
       departmentCode="HR"
       tone="success"
-      headerActions={
-        <Button
-          variant="primary"
-          onClick={() => setShowCreateModal(true)}
-          aria-label="Add staff member"
-          leftIcon={<UserPlus className="size-4" aria-hidden />}
-          className="h-10 px-3"
-        >
-          <span className="hidden sm:inline">Add staff</span>
-        </Button>
-      }
     >
-      {message && (
-        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--status-emerald-bg)", border: "1px solid var(--status-emerald)", color: "var(--status-emerald)", fontSize: 14, fontWeight: 600 }}>
-          {message}
-        </div>
-      )}
+      <PageStack>
+        {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
 
-        {/* TAB: EMPLOYEES & SHIFTS WITH SUB-CATEGORIES */}
         {activeTab === "EMPLOYEES" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            {/* SUB-CATEGORY SWITCHER BAR */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                padding: "6px 8px",
-                background: "var(--surface-card)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--border-subtle)",
-                width: "100%",
-                maxWidth: "100%",
-                flexWrap: "wrap",
-                boxSizing: "border-box",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <button
-                onClick={() => setEmpSubTab("DIRECTORY")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: empSubTab === "DIRECTORY" ? "var(--surface)" : "transparent",
-                  boxShadow: empSubTab === "DIRECTORY" ? "var(--shadow-subtle)" : "none",
-                  color: empSubTab === "DIRECTORY" ? "var(--text-primary)" : "var(--text-muted)",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  transition: "all 0.2s ease-in-out",
-                }}
-              >
-                <span>👥 1. Employees Directory</span>
-                <span
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: empSubTab === "DIRECTORY" ? "var(--surface-hover)" : "var(--surface-2)",
-                    color: empSubTab === "DIRECTORY" ? "var(--text-primary)" : "var(--text-primary)",
-                    fontSize: 11,
-                    fontWeight: 800,
-                  }}
+          <>
+            <AnimatedTabs
+              tabs={[
+                { id: "DIRECTORY", label: "Directory", icon: <Users className="size-4" aria-hidden />, badge: filteredStaff.length },
+                { id: "SHIFTS", label: "Shifts", icon: <CalendarDays className="size-4" aria-hidden /> },
+              ]}
+              activeTab={subTab}
+              onChange={(id) => setSubTab(id as SubTab)}
+              renderContent={false}
+              tabsContainerClassName="no-scrollbar max-w-full overflow-x-auto"
+            />
+
+            {subTab === "DIRECTORY" && (
+              <>
+                <KpiGrid>
+                  <Kpi label="Total staff" value={staff.length} hint="In the directory" icon={<Users />} />
+                  <Kpi label="On shift" value={onShiftCount} hint="Working now" tone="success" icon={<UserCheck />} />
+                  <Kpi label="Off shift" value={staff.length - onShiftCount} hint="Off or on break" icon={<UserX />} />
+                  <Kpi label="Departments" value={activeDepartments.length} hint="Managed by HR" icon={<Building2 />} />
+                </KpiGrid>
+
+                <Panel
+                  title="Staff directory"
+                  description={`${filteredStaff.length} of ${plural(staff.length, "employee")}`}
+                  icon={<Users />}
+                  actions={
+                    <Button variant="primary" onClick={() => setShowCreate(true)} leftIcon={<UserPlus className="size-4" aria-hidden />} className="h-10">
+                      Add staff
+                    </Button>
+                  }
                 >
-                  {filteredStaff.length}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setEmpSubTab("SHIFTS")}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: empSubTab === "SHIFTS" ? "var(--surface)" : "transparent",
-                  boxShadow: empSubTab === "SHIFTS" ? "var(--shadow-subtle)" : "none",
-                  color: empSubTab === "SHIFTS" ? "var(--text-primary)" : "var(--text-muted)",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  transition: "all 0.2s ease-in-out",
-                }}
-              >
-                <span>🗓️ 2. Weekly Shift Roster & Schedules</span>
-                <span
-                  style={{
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                    background: empSubTab === "SHIFTS" ? "var(--surface-hover)" : "var(--surface-2)",
-                    color: empSubTab === "SHIFTS" ? "var(--text-primary)" : "var(--text-primary)",
-                    fontSize: 11,
-                    fontWeight: 800,
-                  }}
-                >
-                  7 Days
-                </span>
-              </button>
-            </div>
-
-            {/* SUB-CATEGORY 1: EMPLOYEES DIRECTORY */}
-            {empSubTab === "DIRECTORY" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                {/* SUMMARY CARDS BAR */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Total Staff Members</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-emerald)", marginTop: 2 }}>{totalStaff}</div>
+                  <div className="mb-4">
+                    <FilterBar>
+                      <SearchInput label="Search staff" placeholder="Name or role" value={search} onChange={setSearch} />
+                      <SelectField label="Department" icon={<Building2 />} value={selectedDept} onChange={setSelectedDept} options={deptFilterOptions} />
+                    </FilterBar>
                   </div>
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Active On Shift</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-cyan)", marginTop: 2 }}>{onShiftCount}</div>
-                  </div>
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Off Shift / Standby</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent-amber)", marginTop: 2 }}>{totalStaff - onShiftCount}</div>
-                  </div>
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>Departments Managed</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--status-purple)", marginTop: 2 }}>{activeDepartments.length}</div>
-                  </div>
-                </div>
-
-                {/* DIRECTORY CONTROLS & TABLE */}
-                <div className="ses-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-emerald)" }}>
-                        👥 Employees Master Directory
-                      </h3>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                        Manage staff profiles, department assignments, and live shift status
-                      </p>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <input
-                        type="text"
-                        placeholder="Search staff name or role..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{ padding: "8px 14px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, width: 220 }}
-                      />
-
-                      <select
-                        value={selectedDept}
-                        onChange={(e) => setSelectedDept(e.target.value)}
-                        style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
-                      >
-                        <option value="ALL">All Departments ({totalStaff})</option>
-                        {activeDepartments.map((d) => (
-                          <option key={d.code} value={d.code}>
-                            {d.icon} {d.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        onClick={() => setShowCreateModal(true)}
-                        style={{ padding: "8px 16px", borderRadius: "var(--radius-md)", background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px var(--accent-amber-glow)" }}
-                      >
-                        ➕ Add New Employee
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Desktop Table View (>= 768px) */}
-                  <div className="responsive-table-view">
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                      <thead>
-                        <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-                          <th style={{ padding: "12px 10px" }}>Employee Name</th>
-                          <th style={{ padding: "12px 10px" }}>Role</th>
-                          <th style={{ padding: "12px 10px" }}>Department</th>
-                          <th style={{ padding: "12px 10px" }}>Phone / Contact</th>
-                          <th style={{ padding: "12px 10px" }}>Shift Status</th>
-                          <th style={{ padding: "12px 10px", textAlign: "right" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredStaff.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-                              No staff members found matching search & department filters.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredStaff.map((member) => (
-                            <tr key={member.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <td style={{ padding: "12px 10px", fontWeight: 700, color: "var(--text-primary)" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <span style={{ fontSize: 16 }}>👤</span>
-                                  <span>{member.full_name}</span>
-                                </div>
-                              </td>
-                              <td style={{ padding: "12px 10px", color: "var(--status-cyan)", fontWeight: 600 }}>{member.role}</td>
-                              <td style={{ padding: "12px 10px" }}>
-                                <span style={{ padding: "3px 8px", borderRadius: 6, background: "var(--status-purple-bg)", border: "1px solid var(--border-subtle)", color: "var(--status-purple)", fontSize: 11, fontWeight: 700 }}>
-                                  {member.department || "RECEPTION"}
-                                </span>
-                              </td>
-                              <td style={{ padding: "12px 10px", color: "var(--text-secondary)", fontSize: 12 }}>
-                                {member.phone_number || "📞 Unlisted"}
-                              </td>
-                              <td style={{ padding: "12px 10px" }}>
-                                <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "var(--status-emerald-bg)" : "var(--surface-2)", color: member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--text-muted)", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--border-subtle)"}` }}>
-                                  {member.shift_status === "ON_SHIFT" ? "🟢 ON SHIFT" : "⚪ OFF SHIFT"}
-                                </span>
-                              </td>
-                              <td style={{ padding: "12px 10px", textAlign: "right" }}>
-                                <button
-                                  onClick={() => handleToggleShift(member)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-cyan-bg)", border: "1px solid var(--status-cyan)", color: "var(--status-cyan)", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
-                                >
-                                  ⚡ Toggle Shift
-                                </button>
-                                <button
-                                  onClick={() => handleMarkAbsent(member)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-amber-bg)", border: "1px solid var(--status-amber)", color: "var(--status-amber)", fontSize: 11, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
-                                >
-                                  🚨 Absent
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteStaff(member.id, member.full_name)}
-                                  style={{ padding: "5px 10px", borderRadius: 6, background: "var(--status-rose-bg)", border: "1px solid var(--status-rose)", color: "var(--status-rose)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-                                >
-                                  🗑️ Delete
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
-                  <div className="responsive-cards-view">
-                    {filteredStaff.length === 0 ? (
-                      <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-                        No staff members found matching search & department filters.
-                      </div>
-                    ) : (
-                      filteredStaff.map((member) => (
-                        <div key={member.id} className="mobile-staff-card">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 18 }}>👤</span>
-                              <div>
-                                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
-                                  {member.full_name}
-                                </div>
-                                <div style={{ fontSize: 12, color: "var(--status-cyan)", fontWeight: 700 }}>
-                                  {member.role}
-                                </div>
-                              </div>
-                            </div>
-
-                            <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: member.shift_status === "ON_SHIFT" ? "var(--status-emerald-bg)" : "var(--surface-2)", color: member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--text-muted)", border: `1px solid ${member.shift_status === "ON_SHIFT" ? "var(--status-emerald)" : "var(--border-subtle)"}` }}>
-                              {member.shift_status === "ON_SHIFT" ? "🟢 ON SHIFT" : "⚪ OFF SHIFT"}
-                            </span>
-                          </div>
-
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border-subtle)", borderBottom: "1px solid var(--border-subtle)" }}>
-                            <span style={{ padding: "3px 8px", borderRadius: "var(--radius-sm)", background: "var(--status-purple-bg)", border: "1px solid var(--border-subtle)", color: "var(--status-purple)", fontSize: 11, fontWeight: 700 }}>
-                              🏢 {member.department || "RECEPTION"}
-                            </span>
-                            <a
-                              href={member.phone_number ? `tel:${member.phone_number}` : undefined}
-                              style={{ color: "var(--text-secondary)", fontSize: 12, textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}
-                            >
-                              📞 {member.phone_number || "Unlisted Contact"}
-                            </a>
-                          </div>
-
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
-                            <button
-                              onClick={() => handleToggleShift(member)}
-                              style={{ padding: "8px", borderRadius: "var(--radius-sm)", background: "var(--status-cyan-bg)", border: "1px solid var(--status-cyan)", color: "var(--status-cyan)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                            >
-                              ⚡ Shift
-                            </button>
-                            <button
-                              onClick={() => handleMarkAbsent(member)}
-                              style={{ padding: "8px", borderRadius: "var(--radius-sm)", background: "var(--status-amber-bg)", border: "1px solid var(--status-amber)", color: "var(--status-amber)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                            >
-                              🚨 Absent
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStaff(member.id, member.full_name)}
-                              style={{ padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "var(--status-rose-bg)", border: "1px solid var(--status-rose)", color: "var(--status-rose)", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                              aria-label="Delete Staff"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
+                  <DataTable<Staff>
+                    rows={filteredStaff}
+                    columns={staffColumns}
+                    getRowLabel={(s) => `${s.full_name}, ${roleLabel(s.role)}`}
+                    selectable={false}
+                    searchable={false}
+                    maxHeight={null}
+                    defaultSort={{ key: "full_name", dir: "asc" }}
+                    pageSize={25}
+                    density="comfortable"
+                    emptyState={<EmptyState icon={<Users />} title="No staff found" description="Nothing matches this search and department." />}
+                    ariaLabel="Staff directory"
+                  />
+                </Panel>
+              </>
             )}
 
-            {/* SUB-CATEGORY 2: SHIFT SCHEDULING & ROSTER */}
-            {empSubTab === "SHIFTS" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                {/* SHIFT SUMMARY CARDS */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--status-cyan)", fontWeight: 700 }}>🌅 Morning Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.morning} slots</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>07:00 - 15:00</div>
-                  </div>
-
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--accent-amber)", fontWeight: 700 }}>🌇 Evening Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.evening} slots</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>15:00 - 23:00</div>
-                  </div>
-
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--status-purple)", fontWeight: 700 }}>🌃 Night Shifts</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.night} slots</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>23:00 - 07:00</div>
-                  </div>
-
-                  <div style={{ background: "var(--surface-card)", padding: "14px", borderRadius: 14, border: "1px solid var(--border-default)", boxShadow: "var(--shadow-card)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 700 }}>🏖️ Rest Days</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{rosterStats.off} days</div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Off / Rest</div>
-                  </div>
-                </div>
-
-                {/* WEEKLY ROSTER MATRIX */}
-                <div className="ses-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-cyan)" }}>
-                        🗓️ Weekly Shift Roster & Planning Matrix
-                      </h3>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                        Assign and adjust daily working shifts for all hotel departments across the week
-                      </p>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Filter Roster:</label>
-                      <select
-                        value={rosterDeptFilter}
-                        onChange={(e) => setRosterDeptFilter(e.target.value)}
-                        style={{ padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 12, fontWeight: 700 }}
-                      >
-                        <option value="ALL">All Departments</option>
-                        {activeDepartments.map((d) => (
-                          <option key={d.code} value={d.code}>
-                            {d.icon} {d.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Desktop Table View (>= 768px) */}
-                  <div className="responsive-table-view">
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "center" }}>
-                      <thead>
-                        <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-                          <th style={{ padding: "12px 10px", textAlign: "left", minWidth: 170 }}>Employee / Role</th>
-                          {WEEKDAYS.map((day) => (
-                            <th key={day} style={{ padding: "12px 10px", minWidth: 115 }}>
-                              <div style={{ color: "var(--text-primary)", fontWeight: 800 }}>{day}</div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRosterStaff.map((member) => {
-                          const memberShifts = shiftRoster[member.id] || {};
-                          return (
-                            <tr key={member.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <td style={{ padding: "10px", textAlign: "left" }}>
-                                <div style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>{member.full_name}</div>
-                                <div style={{ fontSize: 11, color: "var(--status-emerald)", fontWeight: 600 }}>{member.role}</div>
-                                <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{member.department}</div>
-                              </td>
-                              {WEEKDAYS.map((day) => {
-                                const currentShift: ShiftType = memberShifts[day] || "MORNING";
-                                const shiftInfo = SHIFT_LABELS[currentShift];
-                                return (
-                                  <td key={day} style={{ padding: "6px" }}>
-                                    <select
-                                      value={currentShift}
-                                      onChange={(e) => handleShiftChange(member.id, day, e.target.value as ShiftType)}
-                                      style={{
-                                        width: "100%",
-                                        padding: "6px 4px",
-                                        borderRadius: 8,
-                                        background: shiftInfo.bg,
-                                        border: `1px solid ${shiftInfo.color}`,
-                                        color: shiftInfo.color,
-                                        fontSize: 11,
-                                        fontWeight: 800,
-                                        cursor: "pointer",
-                                        textAlign: "center",
-                                      }}
-                                    >
-                                      <option value="MORNING">🌅 Morning (07-15)</option>
-                                      <option value="EVENING">🌇 Evening (15-23)</option>
-                                      <option value="NIGHT">🌃 Night (23-07)</option>
-                                      <option value="OFF">🏖️ Off / Rest</option>
-                                    </select>
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
-                  <div className="responsive-cards-view">
-                    {filteredRosterStaff.map((member) => {
-                      const memberShifts = shiftRoster[member.id] || {};
-                      return (
-                        <div key={member.id} className="mobile-roster-card">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6, borderBottom: "1px solid var(--border-subtle)", paddingBottom: 10 }}>
-                            <div>
-                              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
-                                {member.full_name}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--status-emerald)" }}>{member.role}</span>
-                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>• {member.department}</span>
-                              </div>
-                            </div>
-                            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)", color: "var(--text-secondary)", fontWeight: 700 }}>
-                              7-Day Schedule
-                            </span>
-                          </div>
-
-                          <div className="roster-days-grid">
-                            {WEEKDAYS.map((day) => {
-                              const currentShift: ShiftType = memberShifts[day] || "MORNING";
-                              const shiftInfo = SHIFT_LABELS[currentShift];
-                              return (
-                                <div key={day} style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--surface-2)", padding: "8px 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-secondary)" }}>{day.slice(0, 3)}</span>
-                                    <span style={{ fontSize: 9.5, color: "var(--text-muted)" }}>{shiftInfo.time}</span>
-                                  </div>
-                                  <select
-                                    value={currentShift}
-                                    onChange={(e) => handleShiftChange(member.id, day, e.target.value as ShiftType)}
-                                    style={{
-                                      width: "100%",
-                                      padding: "6px 8px",
-                                      borderRadius: 6,
-                                      background: shiftInfo.bg,
-                                      border: `1px solid ${shiftInfo.color}`,
-                                      color: shiftInfo.color,
-                                      fontSize: 11,
-                                      fontWeight: 800,
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    <option value="MORNING">🌅 Morning</option>
-                                    <option value="EVENING">🌇 Evening</option>
-                                    <option value="NIGHT">🌃 Night</option>
-                                    <option value="OFF">🏖️ Off</option>
-                                  </select>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: ROOMS MAP */}
-        {activeTab === "ROOMS" && (
-          <div className="ses-card">
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--status-emerald)" }}>
-              🏨 Property Rooms Directory ({filteredRooms.length} rooms)
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))", gap: 10, maxHeight: "65vh", overflowY: "auto" }}>
-              {filteredRooms.map((room) => {
-                const isClean = room.cleaning_status === "CLEAN";
-                const isDirty = room.cleaning_status === "DIRTY";
-                const roomActiveIncidents = localReclamations.filter(
-                  (rec) => (rec.room_id === room.id || rec.room?.room_number === room.room_number) &&
-                           (rec.status === "OPEN" || rec.status === "IN_PROGRESS")
-                );
-                const hasActiveIncident = roomActiveIncidents.length > 0;
-
-                return (
-                  <div
-                    key={room.id}
-                    onClick={() => {
-                      setSelectedRoomModal(room);
-                      setModalTab("ROOM_STAT");
-                    }}
-                    className="room-matrix-card"
-                    style={{
-                      border: "1.5px solid",
-                      borderColor: hasActiveIncident
-                        ? "var(--status-rose)"
-                        : isDirty
-                        ? "var(--accent-amber)"
-                        : isClean
-                        ? "var(--status-emerald)"
-                        : "var(--border-default)",
-                      background: "var(--surface-card)",
-                      cursor: "pointer",
-                      position: "relative",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>Room {room.room_number}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        {hasActiveIncident && (
-                          <span
-                            title={`${roomActiveIncidents.length} active issue(s)`}
-                            style={{
-                              fontSize: 10,
-                              padding: "2px 6px",
-                              borderRadius: "var(--radius-sm)",
-                              background: "var(--status-rose-bg)",
-                              color: "var(--status-rose)",
-                              border: "1px solid var(--status-rose)",
-                              fontWeight: 800,
-                            }}
-                          >
-                            ⚠️ {roomActiveIncidents.length}
-                          </span>
-                        )}
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: "2px 7px",
-                            borderRadius: "var(--radius-sm)",
-                            background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
-                            color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
-                            border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
-                            fontWeight: 800,
-                          }}
-                        >
-                          {room.is_occupied ? "Occupied" : "Vacant"}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Floor {room.floor}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: isDirty ? "var(--status-rose)" : isClean ? "var(--status-emerald)" : "var(--status-amber)" }}>
-                        {room.cleaning_status}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB: RECLAMATIONS */}
-        {activeTab === "RECLAMATIONS" && (
-          <div className="ses-card">
-            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
-            <div className="tab-sticky-filter-bar">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--status-amber)" }}>
-                    🛎️ Reclamations Oversight ({filteredReclamations.length})
-                  </h3>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                    Operational tickets and department dispatches with date filtering.
-                  </p>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <select
-                    value={recStatusFilter}
-                    onChange={(e) => setRecStatusFilter(e.target.value)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="OPEN">Open Only</option>
-                    <option value="IN_PROGRESS">In Progress Only</option>
-                    <option value="RESOLVED">Resolved Only</option>
-                  </select>
-
-                  <select
-                    value={recDeptFilter}
-                    onChange={(e) => setRecDeptFilter(e.target.value)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Departments</option>
-                    {activeDepartments.map((d) => (
-                      <option key={d.code} value={d.code}>{d.name} ({d.code})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Fixed / Sticky Horizontal Department Pills Row */}
-              <div className="filter-pills-row">
-                <button
-                  type="button"
-                  onClick={() => setRecDeptFilter("ALL")}
-                  className={`filter-pill-btn ${recDeptFilter === "ALL" ? "active" : ""}`}
-                >
-                  All ({localReclamations.length})
-                </button>
-                {activeDepartments.map((d) => {
-                  const deptCount = localReclamations.filter((r: Reclamation) => r.department === d.code).length;
-                  const displayIcon = d.icon && !d.icon.includes("?") ? d.icon : "🏢";
-                  return (
-                    <button
-                      key={d.code}
-                      type="button"
-                      onClick={() => setRecDeptFilter(d.code)}
-                      className={`filter-pill-btn ${recDeptFilter === d.code ? "active" : ""}`}
-                    >
-                      {displayIcon} {d.name} ({deptCount})
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Date Timeline Filter Tabs */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, paddingTop: 6, borderTop: "1px solid var(--border-subtle)" }}>
-                {[
-                  { id: "ALL", label: "All Time" },
-                  { id: "TODAY", label: "📅 Today" },
-                  { id: "WEEK", label: "🗓️ Last 7 Days" },
-                  { id: "MONTH", label: "📆 Last 30 Days" },
-                  { id: "ARCHIVE", label: "🗄️ Older Logs" },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setRecDateFilter(t.id as any)}
-                    className={`filter-pill-btn ${recDateFilter === t.id ? "active" : ""}`}
-                    style={{ fontSize: 11, padding: "3px 8px" }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Desktop Table View (>= 768px) */}
-            <div className="responsive-table-view">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                <thead>
-                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "10px" }}>ID / Room</th>
-                    <th style={{ padding: "10px" }}>Department</th>
-                    <th style={{ padding: "10px" }}>Category / Description</th>
-                    <th style={{ padding: "10px" }}>Date & Time</th>
-                    <th style={{ padding: "10px" }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReclamations.map((rec) => {
-                    const dateInfo = formatIncidentDate(rec.created_at);
+            {subTab === "SHIFTS" && (
+              <>
+                <KpiGrid>
+                  {SHIFT_TYPES.map((s) => {
+                    const Icon = SHIFT_ICONS[s];
                     return (
-                      <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
-                        <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
-                        <td style={{ padding: "10px" }}>
-                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
-                        </td>
-                        <td style={{ padding: "10px", color: "var(--text-secondary)", fontSize: 12 }}>
-                          <div>{dateInfo.full}</div>
-                          <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{dateInfo.relative}</div>
-                        </td>
-                        <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)" }}>
-                            {rec.status}
-                          </span>
-                        </td>
-                      </tr>
+                      <Kpi
+                        key={s}
+                        label={SHIFT_LABELS[s].label}
+                        value={rosterStats[s]}
+                        hint={s === "OFF" ? `Rest days · ${SHIFT_LABELS[s].time}` : `Slots · ${SHIFT_LABELS[s].time}`}
+                        tone={SHIFT_LABELS[s].tone}
+                        icon={<Icon />}
+                      />
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </KpiGrid>
 
-            {/* Mobile Stacked Cards View (< 768px) - NO horizontal scroll */}
-            <div className="responsive-cards-view">
-              {filteredReclamations.length === 0 ? (
-                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                  No incident tickets match the selected filters.
-                </div>
-              ) : (
-                filteredReclamations.map((rec) => {
-                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
-                  const isResolved = rec.status === "RESOLVED";
-                  const dateInfo = formatIncidentDate(rec.created_at);
-
-                  return (
-                    <div key={rec.id} className="mobile-ticket-card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
-                            #{rec.id} • {roomNum}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: "var(--radius-sm)",
-                              background: "var(--surface-2)",
-                              border: "1px solid var(--border-subtle)",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {rec.department}
-                          </span>
-                        </div>
-
-                        <span
-                          style={{
-                            padding: "2px 8px",
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 800,
-                            background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)",
-                            color: isResolved ? "var(--status-emerald)" : "var(--status-rose)",
-                          }}
-                        >
-                          {rec.status}
-                        </span>
-                      </div>
-
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
-                          {rec.category}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                          {rec.description}
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-muted)", paddingTop: 6, borderTop: "1px dashed var(--border-subtle)" }}>
-                        <span>🕒 {dateInfo.full}</span>
-                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: "var(--radius-sm)", background: "var(--surface-2)" }}>{dateInfo.relative}</span>
-                      </div>
+                <Panel
+                  title="Weekly roster"
+                  description="Plan daily shifts for the week. Changes stay on this device and are not saved."
+                  icon={<CalendarDays />}
+                  actions={<SelectField label="Roster department" icon={<Building2 />} value={rosterDept} onChange={setRosterDept} options={deptFilterOptions} className="w-full sm:w-56" />}
+                >
+                  {rosterStaff.length === 0 ? (
+                    <EmptyState icon={<CalendarDays />} title="No staff in this department" />
+                  ) : isDesktop ? (
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full min-w-[56rem] border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-surface-raised text-left text-xs text-fg-muted">
+                            <th scope="col" className="sticky left-0 z-10 bg-surface-raised px-3 py-2.5 font-medium">
+                              Employee
+                            </th>
+                            {WEEKDAYS.map((d) => (
+                              <th key={d} scope="col" className="px-2 py-2.5 font-medium">
+                                {d}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rosterStaff.map((m) => (
+                            <RosterRow key={m.id} member={m} shifts={roster[m.id]} onChange={setShift} />
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                  ) : (
+                    <ul className="flex flex-col gap-3">
+                      {rosterStaff.map((m) => (
+                        <RosterCard key={m.id} member={m} shifts={roster[m.id]} onChange={setShift} />
+                      ))}
+                    </ul>
+                  )}
+                </Panel>
+              </>
+            )}
+          </>
         )}
 
-        {/* TAB: STATS (FIXED FOR LIGHT & DARK THEME) */}
+        {activeTab === "ROOMS" && (
+          <Panel title="Rooms" description={`${filteredRooms.length} of ${liveRooms.length} rooms`} icon={<BedDouble />}>
+            <div className="mb-5 flex flex-col gap-3">
+              <FilterBar>
+                <SearchInput label="Search rooms" placeholder="Room number" value={roomSearch} onChange={setRoomSearch} />
+                <SelectField label="Floor" icon={<Layers />} value={roomFloor} onChange={setRoomFloor} options={floorOptions} />
+              </FilterBar>
+              <PillGroup label="Room status" value={roomFilter} onChange={setRoomFilter} options={roomFilterOptions} />
+            </div>
+            <RoomGrid rooms={filteredRooms} tickets={tickets} onSelect={openRoom} />
+          </Panel>
+        )}
+
+        {activeTab === "RECLAMATIONS" && (
+          <Panel title="Tickets" description={`${plural(filteredTickets.length, "ticket")} · ${openCount} open`} icon={<ClipboardList />}>
+            <div className="mb-4 flex flex-col gap-3">
+              <FilterBar>
+                <SelectField label="Department" icon={<Building2 />} value={recDept} onChange={setRecDept} options={recDeptOptions} />
+                <SelectField label="Status" icon={<ListFilter />} value={recStatus} onChange={setRecStatus} options={STATUS_OPTIONS} />
+              </FilterBar>
+              <PillGroup label="Date range" value={dateRange} onChange={setDateRange} options={DATE_RANGES} />
+            </div>
+            <TicketTable tickets={filteredTickets} />
+          </Panel>
+        )}
+
         {activeTab === "STATS" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-            <div className="ses-card" style={{ padding: "1.5rem", borderRadius: "var(--radius-lg)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--status-emerald)" }}>
-                📊 Staff Headcount per Department
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {Object.entries(deptStaffCounts).map(([dept, count]) => (
-                  <div key={dept}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "var(--text-secondary)" }}>
-                      <span style={{ fontWeight: 600 }}>{dept}</span>
-                      <strong style={{ color: "var(--status-emerald)" }}>{count} employees</strong>
-                    </div>
-                    <div style={{ height: 8, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
-                      <div style={{ width: `${Math.round((count / Math.max(...Object.values(deptStaffCounts), 1)) * 100)}%`, height: "100%", background: "var(--success)" }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <>
+            <KpiGrid>
+              <Kpi label="Total staff" value={staff.length} icon={<Users />} />
+              <Kpi label="On shift" value={onShiftCount} hint={staff.length ? `${Math.round((onShiftCount / staff.length) * 100)}% of staff` : "–"} tone="success" icon={<UserCheck />} />
+              <Kpi label="Staffed departments" value={headcount.length} hint={`of ${activeDepartments.length} departments`} icon={<Building2 />} />
+              <Kpi label="Largest department" value={largest ? largest.label : "–"} hint={largest ? plural(largest.onShift + largest.offShift, "employee") : "No staff yet"} icon={<ChartColumn />} />
+            </KpiGrid>
+            <Panel title="Headcount per department" description="Employees on and off shift" icon={<ChartColumn />}>
+              {headcount.length > 0 ? (
+                <BarChart
+                  data={headcount}
+                  series={[
+                    { key: "onShift", label: "On shift", color: "var(--success)" },
+                    { key: "offShift", label: "Off shift", color: "var(--info)" },
+                  ]}
+                  variant="stacked"
+                  height={260}
+                  ariaLabel="Staff headcount per department"
+                />
+              ) : (
+                <EmptyState icon={<Users />} title="No staff yet" description="Headcount appears once employees are added." />
+              )}
+            </Panel>
+          </>
         )}
+      </PageStack>
 
-      {/* ROOM POP-UP MODAL */}
-      {selectedRoomModal && (
-        <div className="portal-modal-overlay">
-          <div className="portal-modal-content ses-card" style={{ maxWidth: 840, width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden", padding: 0, borderRadius: "var(--radius-lg)" }}>
-            <div style={{ background: "var(--surface-2)", padding: "1rem 1.25rem", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
-                  Room {selectedRoomModal.room_number} Inspection & Operations
-                </h3>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Floor {selectedRoomModal.floor} • {selectedRoomModal.block?.replace("_", " ") || "Main Wing"}</span>
-              </div>
-              <button onClick={() => setSelectedRoomModal(null)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
+      <RoomDetail
+        room={selectedRoom}
+        tickets={tickets}
+        onClose={() => setSelectedRoomId(null)}
+        controls={
+          selectedRoom && (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+              <p className="text-sm font-medium">Housekeeping</p>
+              <p className="text-sm text-fg-muted">
+                Currently {CLEANING_LABEL[selectedRoom.cleaning_status].toLowerCase()}. Next step:{" "}
+                {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}.
+              </p>
+              <Button variant="secondary" onClick={() => cycleCleaning(selectedRoom)} isLoading={isPending} loadingText="Updating" className="mt-1 w-full justify-center sm:w-auto">
+                Mark as {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}
+              </Button>
             </div>
-
-            <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-              {/* MODAL SIDEBAR */}
-              <div style={{ width: 210, background: "var(--surface-2)", borderRight: "1px solid var(--border-subtle)", padding: "1rem", display: "flex", flexDirection: "column", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setModalTab("ROOM_STAT")}
-                  style={{ padding: "10px", borderRadius: 10, border: "1px solid", borderColor: modalTab === "ROOM_STAT" ? "var(--status-emerald)" : "transparent", background: modalTab === "ROOM_STAT" ? "var(--status-emerald-bg)" : "transparent", color: modalTab === "ROOM_STAT" ? "var(--status-emerald)" : "var(--text-muted)", fontSize: 12, fontWeight: 700, textAlign: "left", cursor: "pointer" }}
-                >
-                  📊 1. Room Stat
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab("RECLAMATIONS")}
-                  style={{ padding: "10px", borderRadius: 10, border: "1px solid", borderColor: modalTab === "RECLAMATIONS" ? "var(--status-purple)" : "transparent", background: modalTab === "RECLAMATIONS" ? "var(--status-purple-bg)" : "transparent", color: modalTab === "RECLAMATIONS" ? "var(--status-purple)" : "var(--text-muted)", fontSize: 12, fontWeight: 700, textAlign: "left", cursor: "pointer" }}
-                >
-                  🛎️ 2. Reclamations ({roomModalReclamations.length})
-                </button>
-              </div>
-
-              {/* MODAL CONTENT */}
-              <div style={{ flex: 1, padding: "1.25rem", overflowY: "auto", background: "var(--surface-card)" }}>
-                {modalTab === "ROOM_STAT" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, color: "var(--status-emerald)", fontWeight: 800 }}>📊 Room Status & Live Parameters</h4>
-                    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Occupancy: <strong>{selectedRoomModal.is_occupied ? "Occupied" : "Vacant"}</strong></div>
-                    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Cleanliness: <strong>{selectedRoomModal.cleaning_status}</strong></div>
-                    <button onClick={() => handleCleaningCycle(selectedRoomModal)} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "var(--status-emerald-bg)", border: "1px solid var(--status-emerald)", color: "var(--status-emerald)", fontWeight: 800, cursor: "pointer" }}>
-                      🧹 Cycle Cleaning Status &rarr;
-                    </button>
-                  </div>
-                )}
-
-                {/* MODAL TAB 2: RECLAMATIONS WITH 4 SUB-CATEGORIES */}
-                {modalTab === "RECLAMATIONS" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "4px", background: "var(--surface-2)", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("ACTIVE")}
-                        style={{
-                          padding: "8px 4px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>⚡ Active</span>
-                        {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--status-rose)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
-                            {roomActiveReclamations.length}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("MOST_REPORTED")}
-                        style={{
-                          padding: "8px 4px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface-hover)" : "var(--surface-card)", color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
-                          {roomProblemStats.length}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("HISTORY")}
-                        style={{
-                          padding: "8px 4px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "var(--surface-hover)" : "var(--surface-card)", color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
-                          {roomModalReclamations.length}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setRoomModalSubTab("TIMELINE")}
-                        style={{
-                          padding: "8px 4px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 4,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📅 Timeline</span>
-                      </button>
-                    </div>
-
-                    {/* SUB-CATEGORY 1: ACTIVE PROBLEMS */}
-                    {roomModalSubTab === "ACTIVE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-emerald)", fontWeight: 800 }}>
-                          ⚡ Active Reclamations ({roomActiveReclamations.length})
-                        </h4>
-
-                        {roomActiveReclamations.length === 0 ? (
-                          <div style={{ padding: "12px", borderRadius: 10, background: "var(--status-emerald-bg)", border: "1px solid var(--status-emerald)", color: "var(--status-emerald)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>✅</span>
-                            <span>No active problems recorded for Room {selectedRoomModal.room_number}. Operations normal.</span>
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {roomActiveReclamations.map((rec) => (
-                              <div key={rec.id} style={{ background: "var(--surface-2)", padding: "12px", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                                  <div>
-                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
-                                    <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "var(--status-emerald-bg)", color: "var(--status-emerald)" }}>{rec.department}</span>
-                                  </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "var(--status-rose-bg)" : "var(--status-amber-bg)", color: rec.status === "OPEN" ? "var(--status-rose)" : "var(--status-amber)", fontWeight: 800, border: "1px solid currentColor" }}>
-                                    {rec.status}
-                                  </span>
-                                </div>
-                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{rec.description}</div>
-                                {rec.created_at && (
-                                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                                    <span>🕒 Logged: {formatIncidentDate(rec.created_at).full}</span>
-                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--surface-card)" }}>{formatIncidentDate(rec.created_at).relative}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* CREATE RAPID RECLAMATION FORM */}
-                        <form onSubmit={handleModalCreateReclamation} style={{ background: "var(--surface-2)", padding: "12px", borderRadius: 12, border: "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--status-emerald)" }}>➕ Log New Rapid Ticket for Room {selectedRoomModal.room_number}</div>
-                          <select
-                            value={modalDept}
-                            onChange={(e) => setModalDept(e.target.value)}
-                            className="ses-select"
-                          >
-                            {DEFAULT_HOTEL_DEPARTMENTS.map((d) => (
-                              <option key={d.code} value={d.code}>{d.name}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="text"
-                            placeholder="Description of issue..."
-                            value={modalDesc}
-                            onChange={(e) => setModalDesc(e.target.value)}
-                            className="ses-input"
-                          />
-                          <button
-                            type="submit"
-                            disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Dispatch Reclamation &rarr;
-                          </button>
-                        </form>
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 2: MOST REPORTED PROBLEMS */}
-                    {roomModalSubTab === "MOST_REPORTED" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--accent-amber)", fontWeight: 800 }}>
-                          💥 Most Reported Problem Categories
-                        </h4>
-
-                        {roomProblemStats.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No problem patterns recorded for Room {selectedRoomModal.room_number} yet.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {roomProblemStats.map((stat) => (
-                              <div key={stat.category} style={{ background: "var(--surface-2)", padding: "12px", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                  <div>
-                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stat.category}</span>
-                                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({stat.department})</span>
-                                  </div>
-                                  <span style={{ fontWeight: 800, color: "var(--accent-amber)", fontSize: 13 }}>{stat.count} Reports</span>
-                                </div>
-                                <div style={{ height: 6, borderRadius: 999, background: "var(--surface-card)", overflow: "hidden" }}>
-                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "var(--success)" }} />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 3: FULL HISTORY WITH INLINE PAST LOG BACKFILL */}
-                    {roomModalSubTab === "HISTORY" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-purple)", fontWeight: 800 }}>
-                            📜 Room {selectedRoomModal.room_number} History ({roomModalReclamations.length})
-                          </h4>
-                          <button
-                            type="button"
-                            onClick={() => setShowInModalPastLog(!showInModalPastLog)}
-                            style={{
-                              padding: "5px 10px",
-                              borderRadius: 8,
-                              background: showInModalPastLog ? "var(--status-rose-bg)" : "var(--status-purple-bg)",
-                              border: `1px solid ${showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)"}`,
-                              color: showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)",
-                              fontSize: 11,
-                              fontWeight: 800,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {showInModalPastLog ? "✕ Cancel Backfill" : "➕ Log Past Incident"}
-                          </button>
-                        </div>
-
-                        {/* INLINE HISTORICAL BACKFILL FORM */}
-                        {showInModalPastLog && (
-                          <form
-                            onSubmit={handleInModalHistoricalSubmit}
-                            style={{
-                              background: "var(--surface-2)",
-                              padding: 12,
-                              borderRadius: 12,
-                              border: "1px dashed var(--status-purple)",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 10,
-                            }}
-                          >
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--status-purple)" }}>
-                              📝 Backfill Past Incident for Room {selectedRoomModal.room_number}
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Incident Date & Time
-                                </label>
-                                <input
-                                  type="datetime-local"
-                                  required
-                                  value={inModalHistDate}
-                                  onChange={(e) => setInModalHistDate(e.target.value)}
-                                  className="ses-input"
-                                  style={{ padding: 6, fontSize: 11 }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Status
-                                </label>
-                                <select
-                                  value={inModalHistStatus}
-                                  onChange={(e) => setInModalHistStatus(e.target.value as any)}
-                                  className="ses-select"
-                                  style={{ padding: 6, fontSize: 11 }}
-                                >
-                                  <option value="RESOLVED">RESOLVED (Past Solved)</option>
-                                  <option value="OPEN">OPEN (Needs Attention)</option>
-                                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Department
-                                </label>
-                                <select
-                                  value={inModalHistDept}
-                                  onChange={(e) => setInModalHistDept(e.target.value)}
-                                  className="ses-select"
-                                  style={{ padding: 6, fontSize: 11 }}
-                                >
-                                  {DEFAULT_HOTEL_DEPARTMENTS.map((d) => (
-                                    <option key={d.code} value={d.code}>{d.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                  Category / Nature
-                                </label>
-                                <input
-                                  type="text"
-                                  value={inModalHistCategory}
-                                  onChange={(e) => setInModalHistCategory(e.target.value)}
-                                  placeholder="e.g. A/C, Plumbing, Keycard..."
-                                  className="ses-input"
-                                  style={{ padding: 6, fontSize: 11 }}
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
-                                Incident Description & Resolution Notes
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Summary of what happened and how it was resolved..."
-                                value={inModalHistDesc}
-                                onChange={(e) => setInModalHistDesc(e.target.value)}
-                                className="ses-input"
-                                style={{ padding: "7px 8px", fontSize: 11 }}
-                              />
-                            </div>
-
-                            <button
-                              type="submit"
-                              disabled={isPending}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: 8,
-                                background: "var(--special-subtle)",
-                                border: "none",
-                                color: "var(--special)",
-                                fontWeight: 800,
-                                cursor: "pointer",
-                                fontSize: 11,
-                              }}
-                            >
-                              💾 Save Past Log to History &rarr;
-                            </button>
-                          </form>
-                        )}
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No past or historical tickets logged for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                            {roomModalReclamations.map((rec) => {
-                              const dateInfo = formatIncidentDate(rec.created_at);
-                              return (
-                                <div key={rec.id} style={{ background: "var(--surface-2)", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                  <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
-                                      <span>#{rec.id} • {rec.category}</span>
-                                      <span style={{ color: "var(--status-purple)", fontWeight: 600, fontSize: 11 }}>({rec.department})</span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{rec.description}</div>
-                                    {rec.created_at && (
-                                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                                        <span>📅 {dateInfo.full}</span>
-                                        <span style={{ padding: "1px 5px", borderRadius: 4, background: "var(--surface-card)" }}>{dateInfo.relative}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)", fontWeight: 800, whiteSpace: "nowrap" }}>
-                                    {rec.status}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 4: CHRONOLOGICAL DATE TIMELINE */}
-                    {roomModalSubTab === "TIMELINE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-cyan)", fontWeight: 800 }}>
-                            📅 Chronological Event Timeline (Room {selectedRoomModal.room_number})
-                          </h4>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                            {roomModalReclamations.length} recorded events
-                          </span>
-                        </div>
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No events in timeline for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative", paddingLeft: 20, maxHeight: 360, overflowY: "auto" }}>
-                            {/* Vertical connector line */}
-                            <div style={{ position: "absolute", left: 7, top: 10, bottom: 10, width: 2, background: "var(--status-cyan)" }} />
-
-                            {[...roomModalReclamations]
-                              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-                              .map((rec) => {
-                                const dateInfo = formatIncidentDate(rec.created_at);
-                                const isResolved = rec.status === "RESOLVED";
-                                return (
-                                  <div key={rec.id} style={{ position: "relative", paddingBottom: 16 }}>
-                                    {/* Timeline Node */}
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        left: -20,
-                                        top: 3,
-                                        width: 16,
-                                        height: 16,
-                                        borderRadius: "50%",
-                                        background: isResolved ? "var(--status-emerald)" : "var(--accent-amber)",
-                                        border: "2px solid var(--surface-card)",
-                                        boxShadow: isResolved ? "0 0 8px rgba(16, 185, 129, 0.4)" : "0 0 8px rgba(245, 158, 11, 0.4)",
-                                      }}
-                                    />
-
-                                    <div style={{ background: "var(--surface-2)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 12 }}>{rec.category}</span>
-                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--status-cyan-bg)", color: "var(--status-cyan)", fontWeight: 700 }}>
-                                            {rec.department}
-                                          </span>
-                                        </div>
-                                        <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>
-                                          {dateInfo.relative}
-                                        </span>
-                                      </div>
-
-                                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{rec.description}</div>
-
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--text-muted)" }}>
-                                        <span>📅 {dateInfo.full}</span>
-                                        <span style={{ fontWeight: 800, color: isResolved ? "var(--status-emerald)" : "var(--accent-amber)" }}>
-                                          {rec.status}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+          )
+        }
+        logForm={
+          <div className="flex flex-col gap-4">
+            <Segmented
+              label="Type"
+              value={logMode}
+              onChange={setLogMode}
+              options={[
+                { value: "NEW", label: "New ticket" },
+                { value: "PAST", label: "Past incident" },
+              ]}
+            />
+            {logMode === "NEW" ? (
+              <NewTicketForm onSubmit={createTicket} pending={isPending} submitLabel="Create ticket" />
+            ) : (
+              <PastIncidentForm onSubmit={recordPast} pending={isPending} />
+            )}
           </div>
-        </div>
-      )}
-      {/* ADD EMPLOYEE MODAL */}
-      {showCreateModal && (
-        <div className="portal-modal-overlay">
-          <div className="portal-modal-content" style={{ maxWidth: 500, width: "100%", padding: "1.5rem", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--success)" }}>
-                ➕ Add New Employee
-              </h3>
-              <button onClick={() => setShowCreateModal(false)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
-            </div>
+        }
+      />
 
-            <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Marc Vance"
-                  value={newFullName}
-                  onChange={(e) => setNewFullName(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 13 }}
-                />
-              </div>
+      <AddStaffSheet open={showCreate} onOpenChange={setShowCreate} departments={deptOptions} pending={isPending} onSubmit={createStaff} />
 
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Role Position *</label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--info)", fontSize: 13, fontWeight: 700 }}
-                >
-                  {STANDARD_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r.replace("_", " ").toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Department *</label>
-                <select
-                  value={newDept}
-                  onChange={(e) => setNewDept(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--special)", fontSize: 13, fontWeight: 700 }}
-                >
-                  {activeDepartments.map((d) => (
-                    <option key={d.code} value={d.code}>
-                      {d.icon} {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Phone Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="+33 6 12 34 56 78"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 13 }}
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  style={{ padding: "10px 16px", borderRadius: 8, background: "transparent", border: "1px solid var(--border-strong)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  style={{ padding: "10px 20px", borderRadius: 8, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
-                >
-                  Create Staff Profile
-                </button>
-              </div>
-            </form>
+      <ResponsiveSheet
+        open={pending !== null}
+        onOpenChange={(o) => !o && !isPending && setPending(null)}
+        title={pending?.kind === "delete" ? "Remove employee" : "Mark absent"}
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setPending(null)} disabled={isPending} className="justify-center">
+              Cancel
+            </Button>
+            <Button
+              variant={pending?.kind === "delete" ? "destructive" : "primary"}
+              onClick={confirmPending}
+              isLoading={isPending}
+              loadingText={pending?.kind === "delete" ? "Removing" : "Updating"}
+              className="justify-center"
+            >
+              {pending?.kind === "delete" ? "Remove" : "Mark absent"}
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <p className="text-sm text-fg-secondary">
+          {pending?.kind === "delete"
+            ? `Remove ${pending.member.full_name} from the staff directory? Their tickets become unassigned. This can't be undone.`
+            : `Mark ${pending?.member.full_name ?? "this employee"} absent today and reassign their open tickets?`}
+        </p>
+      </ResponsiveSheet>
     </AppShell>
+  );
+}
+
+/* ───────────── roster rows ───────────── */
+
+type RosterProps = { member: Staff; shifts?: Record<string, ShiftType>; onChange: (id: number, day: string, shift: ShiftType) => void };
+
+function ShiftSelect({ member, day, shift, onChange }: { member: Staff; day: string; shift: ShiftType; onChange: RosterProps["onChange"] }) {
+  const Icon = SHIFT_ICONS[shift];
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+      <Select
+        aria-label={`${member.full_name}, ${day}`}
+        value={shift}
+        options={SHIFT_OPTIONS}
+        onChange={(e) => onChange(member.id, day, e.target.value as ShiftType)}
+        className="pl-8"
+      />
+    </div>
+  );
+}
+
+const RosterRow = memo(function RosterRow({ member, shifts, onChange }: RosterProps) {
+  return (
+    <tr className="border-b border-border last:border-b-0">
+      <th scope="row" className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-medium">
+        <span className="block max-w-44 truncate">{member.full_name}</span>
+        <span className="block truncate text-xs font-normal text-fg-muted">{roleLabel(member.role)}</span>
+      </th>
+      {WEEKDAYS.map((day) => (
+        <td key={day} className="min-w-32 px-1.5 py-2">
+          <ShiftSelect member={member} day={day} shift={shifts?.[day] ?? "MORNING"} onChange={onChange} />
+        </td>
+      ))}
+    </tr>
+  );
+});
+
+const RosterCard = memo(function RosterCard({ member, shifts, onChange }: RosterProps) {
+  const DeptIcon = departmentIcon(member.department);
+  return (
+    <li className="rounded-lg border border-border bg-surface-raised p-3.5">
+      <p className="font-medium">{member.full_name}</p>
+      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-fg-muted">
+        <DeptIcon className="size-3.5" aria-hidden />
+        {roleLabel(member.role)} · {departmentLabel(member.department)}
+      </p>
+      <dl className="mt-3 flex flex-col gap-2">
+        {WEEKDAYS.map((day) => (
+          <div key={day} className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2">
+            <dt className="text-sm text-fg-secondary">{day}</dt>
+            <dd>
+              <ShiftSelect member={member} day={day} shift={shifts?.[day] ?? "MORNING"} onChange={onChange} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </li>
+  );
+});
+
+/* ───────────── add staff sheet (owns its form state) ───────────── */
+
+type NewStaffInput = { full_name: string; role: string; department: string; phone_number?: string };
+
+function AddStaffSheet({ open, onOpenChange, departments, pending, onSubmit }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  departments: { value: string; label: string }[];
+  pending: boolean;
+  onSubmit: (input: NewStaffInput) => Promise<boolean>;
+}) {
+  const id = useId();
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState("receptionist");
+  const [department, setDepartment] = useState("RECEPTION");
+  const [phone, setPhone] = useState("");
+
+  return (
+    <ResponsiveSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Add employee"
+      description="Create a staff profile. New employees start on shift."
+      footer={
+        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="justify-center">
+            Cancel
+          </Button>
+          <Button type="submit" form={`${id}-form`} variant="primary" isLoading={pending} loadingText="Saving" leftIcon={<UserPlus className="size-4" aria-hidden />} className="justify-center">
+            Create profile
+          </Button>
+        </div>
+      }
+    >
+      <form
+        id={`${id}-form`}
+        className="flex flex-col gap-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const name = fullName.trim();
+          if (!name) return;
+          const ok = await onSubmit({ full_name: name, role, department, phone_number: phone.trim() || undefined });
+          if (ok) {
+            setFullName("");
+            setPhone("");
+          }
+        }}
+      >
+        <Field label="Full name" htmlFor={`${id}-name`}>
+          <TextInput id={`${id}-name`} required autoComplete="off" placeholder="e.g. Marc Vance" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        </Field>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Role" htmlFor={`${id}-role`}>
+            <Select id={`${id}-role`} value={role} options={ROLE_OPTIONS} onChange={(e) => setRole(e.target.value)} />
+          </Field>
+          <Field label="Department" htmlFor={`${id}-dept`}>
+            <Select id={`${id}-dept`} value={department} options={departments} onChange={(e) => setDepartment(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Phone number" htmlFor={`${id}-phone`} hint="Optional">
+          <div className="relative">
+            <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+            <TextInput id={`${id}-phone`} type="tel" placeholder="+33 6 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" />
+          </div>
+        </Field>
+      </form>
+    </ResponsiveSheet>
   );
 }
