@@ -4,6 +4,23 @@ import ServiceWorkerRegistrar from "@/app/components/ServiceWorkerRegistrar";
 import InstallBannerAndroid from "@/app/components/InstallBannerAndroid";
 import InstallBannerIOS from "@/app/components/InstallBannerIOS";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
+import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+// Self-hosted by next/font; exposed as CSS variables consumed by the
+// Tailwind theme in globals.css (--font-sans / --font-mono).
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-mono",
+  display: "swap",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -54,14 +71,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn("font-sans antialiased", jakarta.variable, plexMono.variable)}
+    >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var s=localStorage.getItem("ses-theme");var t=s||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`,

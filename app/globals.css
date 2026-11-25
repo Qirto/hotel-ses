@@ -1,63 +1,255 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tailwind `dark:` follows the app theme switch (ThemeProvider sets data-theme
+   on <html> before first paint), not a `.dark` class. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* =====================================================================
-   HOTEL SES 2.0 — LUXURY PROPERTY OPERATIONAL DESIGN SYSTEM
-   Modern Responsive Navigation, Dark & Light Mode Tokens, Accessible Components
+   HOTEL SES DESIGN TOKENS
+   One token set, named after the easyui.site contract (--bg, --surface,
+   --border, --text-*, --accent-*, --shadow-*) so registry components work
+   unmodified, with values from the hotel palette (slate + amber).
+   Dark is the default; [data-theme="light"] overrides colours only.
    ===================================================================== */
 
-:root {
-  /* Surface Hierarchy — Luxury Dark Mode (Default) */
-  --surface-0: #070a0f;
-  --surface-1: #0f172a;
-  --surface-2: #1e293b;
-  --surface-3: #334155;
-  --surface-card: rgba(15, 23, 42, 0.85);
-  --surface-glass: rgba(15, 23, 42, 0.75);
-  --surface-header: rgba(11, 15, 23, 0.92);
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
 
-  /* Borders & Dividers */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-default: rgba(255, 255, 255, 0.14);
-  --border-active: rgba(217, 119, 6, 0.6);
-  --border-focus: #d97706;
+  /* Surfaces */
+  --bg: #070a0f;
+  --surface: #0f172a;
+  --surface-hover: #1e293b;
+  --surface-raised: #131c2e;
 
-  /* Typography / Text tokens (WCAG AA Compliant) */
+  /* Borders */
+  --border: #1e293b;
+  --border-hover: #334155;
+  --border-subtle: #111a2b;
+
+  /* Text */
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
-  --text-disabled: #64748b;
+  --text-subtle: #64748b;
 
-  /* Brand Luxury Accent (Amber Gold) */
-  --accent-amber: #d97706;
-  --accent-amber-light: #f59e0b;
-  --accent-amber-glow: rgba(217, 119, 6, 0.22);
-  --accent-amber-bg: rgba(217, 119, 6, 0.12);
+  /* easyui accent = neutral emphasis; focus ring uses the brand amber */
+  --accent: #f8fafc;
+  --accent-subtle: rgba(248, 250, 252, 0.06);
+  --accent-glow: rgba(248, 250, 252, 0.08);
+  --accent-ring: rgba(245, 158, 11, 0.55);
+  --indicator-active: #f59e0b;
 
-  /* Operational Status Accents */
-  --status-emerald: #10b981;
-  --status-emerald-bg: rgba(16, 185, 129, 0.16);
-  --status-amber: #f59e0b;
-  --status-amber-bg: rgba(245, 158, 11, 0.16);
-  --status-rose: #ef4444;
-  --status-rose-bg: rgba(239, 68, 68, 0.16);
-  --status-cyan: #0ea5e9;
-  --status-cyan-bg: rgba(14, 165, 233, 0.16);
-  --status-purple: #a855f7;
-  --status-purple-bg: rgba(168, 85, 247, 0.16);
+  /* Brand (amber). Dark text on amber keeps WCAG AA contrast. */
+  --brand: #f59e0b;
+  --brand-hover: #fbbf24;
+  --brand-foreground: #1a1206;
+  --brand-subtle: rgba(245, 158, 11, 0.14);
 
-  /* Shadows */
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
-  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.5);
-  --shadow-bottom-nav: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  /* Operational status */
+  --success: #10b981;
+  --success-subtle: rgba(16, 185, 129, 0.16);
+  --warning: #f59e0b;
+  --warning-subtle: rgba(245, 158, 11, 0.16);
+  --danger: #ef4444;
+  --danger-subtle: rgba(239, 68, 68, 0.16);
+  --info: #0ea5e9;
+  --info-subtle: rgba(14, 165, 233, 0.16);
+  --special: #a855f7;
+  --special-subtle: rgba(168, 85, 247, 0.16);
 
-  /* Safe Area Insets for Mobile / PWA */
-  --safe-area-top: env(safe-area-inset-top, 0px);
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-left: env(safe-area-inset-left, 0px);
-  --safe-area-right: env(safe-area-inset-right, 0px);
+  /* easyui navbar pill tokens */
+  --pill-bg-scrolled: rgba(7, 10, 15, 0.85);
+  --pill-bg-idle: rgba(7, 10, 15, 0);
+  --pill-border-scrolled: rgba(30, 41, 59, 1);
+  --pill-border-idle: rgba(30, 41, 59, 0);
+  --pill-shadow-scrolled: 0 12px 28px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(248, 250, 252, 0.04);
+  --pill-shadow-idle: 0 0 0 0 rgba(0, 0, 0, 0);
 
-  /* Layout dimensions */
-  --sidebar-width: 250px;
+  /* Elevation */
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(248, 250, 252, 0.02);
+  --shadow-elevated: 0 10px 25px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(248, 250, 252, 0.04);
+  --shadow-glow: 0 0 15px -3px rgba(245, 158, 11, 0.2);
 
-  /* Spacing Scale */
+  /* Typography tracking (easyui) */
+  --tracking-tighter: -0.04em;
+  --tracking-tight-heading: -0.035em;
+  --tracking-snug: -0.02em;
+  --tracking-body: -0.011em;
+
+  /* Layout */
+  --sidebar-width: 16rem;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --surface-raised: #f4f6f9;
+
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-subtle: #eef2f6;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+
+  --accent: #0f172a;
+  --accent-subtle: rgba(15, 23, 42, 0.05);
+  --accent-glow: rgba(15, 23, 42, 0.06);
+  --accent-ring: rgba(217, 119, 6, 0.5);
+  --indicator-active: #d97706;
+
+  --brand: #d97706;
+  --brand-hover: #b45309;
+  --brand-foreground: #ffffff;
+  --brand-subtle: rgba(217, 119, 6, 0.1);
+
+  --success: #059669;
+  --success-subtle: rgba(16, 185, 129, 0.12);
+  --warning: #b45309;
+  --warning-subtle: rgba(245, 158, 11, 0.14);
+  --danger: #dc2626;
+  --danger-subtle: rgba(239, 68, 68, 0.12);
+  --info: #0284c7;
+  --info-subtle: rgba(14, 165, 233, 0.12);
+  --special: #9333ea;
+  --special-subtle: rgba(168, 85, 247, 0.12);
+
+  --pill-bg-scrolled: rgba(255, 255, 255, 0.85);
+  --pill-bg-idle: rgba(255, 255, 255, 0);
+  --pill-border-scrolled: rgba(226, 232, 240, 1);
+  --pill-border-idle: rgba(226, 232, 240, 0);
+  --pill-shadow-scrolled: 0 12px 28px -8px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.04);
+
+  --shadow-subtle: 0 1px 2px 0 rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(15, 23, 42, 0.04);
+  --shadow-elevated: 0 10px 25px -8px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 0 15px -3px rgba(217, 119, 6, 0.18);
+}
+
+/* Tailwind theme: utilities such as bg-surface, text-fg-muted, border-border,
+   bg-brand, text-danger, font-mono, rounded-lg. */
+@theme inline {
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-border-subtle: var(--border-subtle);
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-muted: var(--text-muted);
+  --color-fg-subtle: var(--text-subtle);
+  --color-ring: var(--accent-ring);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-special: var(--special);
+  --color-special-subtle: var(--special-subtle);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Named differently from the raw tokens to avoid a self-referencing var() */
+  --shadow-card: var(--shadow-subtle);
+  --shadow-float: var(--shadow-elevated);
+  --shadow-brand: var(--shadow-glow);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    font-family: var(--font-sans);
+  }
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    letter-spacing: var(--tracking-body);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* easyui helpers used by registry components */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+.glass-surface {
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+/* =====================================================================
+   LEGACY ALIASES (removed in Phase 6, once no component uses them)
+   Old portal styles still reference these names.
+   ===================================================================== */
+:root {
+  --surface-0: var(--bg);
+  --surface-1: var(--surface);
+  --surface-2: var(--surface-hover);
+  --surface-3: var(--border-hover);
+  --surface-card: color-mix(in srgb, var(--surface) 85%, transparent);
+  --surface-glass: color-mix(in srgb, var(--surface) 75%, transparent);
+  --surface-header: color-mix(in srgb, var(--bg) 92%, transparent);
+  --border-default: var(--border-hover);
+  --border-active: color-mix(in srgb, var(--brand) 60%, transparent);
+  --border-focus: var(--brand);
+  --text-disabled: var(--text-subtle);
+  --accent-amber: var(--brand);
+  --accent-amber-light: var(--brand-hover);
+  --accent-amber-glow: color-mix(in srgb, var(--brand) 22%, transparent);
+  --accent-amber-bg: var(--brand-subtle);
+  --brand-primary: var(--brand);
+  --status-emerald: var(--success);
+  --status-emerald-bg: var(--success-subtle);
+  --status-amber: var(--warning);
+  --status-amber-bg: var(--warning-subtle);
+  --status-rose: var(--danger);
+  --status-rose-bg: var(--danger-subtle);
+  --status-cyan: var(--info);
+  --status-cyan-bg: var(--info-subtle);
+  --status-purple: var(--special);
+  --status-purple-bg: var(--special-subtle);
+  --shadow-bottom-nav: 0 -4px 24px rgba(0, 0, 0, 0.25);
+  --safe-area-top: var(--safe-top);
+  --safe-area-bottom: var(--safe-bottom);
+  --safe-area-left: var(--safe-left);
+  --safe-area-right: var(--safe-right);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -65,72 +257,7 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-
-  /* Border-radius scale */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
   --radius-pill: 9999px;
-}
-
-/* =====================================================================
-   LIGHT THEME OVERRIDES
-   ===================================================================== */
-[data-theme="light"] {
-  --surface-0: #f8fafc;
-  --surface-1: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e2e8f0;
-  --surface-card: #ffffff;
-  --surface-glass: rgba(255, 255, 255, 0.9);
-  --surface-header: rgba(255, 255, 255, 0.94);
-
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --border-default: rgba(0, 0, 0, 0.14);
-  --border-active: rgba(217, 119, 6, 0.7);
-  --border-focus: #d97706;
-
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --text-disabled: #94a3b8;
-
-  --accent-amber: #d97706;
-  --accent-amber-light: #b45309;
-  --accent-amber-glow: rgba(217, 119, 6, 0.16);
-  --accent-amber-bg: rgba(217, 119, 6, 0.1);
-
-  --status-emerald: #059669;
-  --status-emerald-bg: rgba(16, 185, 129, 0.12);
-  --status-amber: #d97706;
-  --status-amber-bg: rgba(245, 158, 11, 0.12);
-  --status-rose: #dc2626;
-  --status-rose-bg: rgba(239, 68, 68, 0.12);
-  --status-cyan: #0284c7;
-  --status-cyan-bg: rgba(14, 165, 233, 0.12);
-  --status-purple: #9333ea;
-  --status-purple-bg: rgba(168, 85, 247, 0.12);
-
-  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.06);
-  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.12);
-  --shadow-bottom-nav: 0 -2px 16px rgba(0, 0, 0, 0.08);
-}
-
-/* Base Body Styles */
-body {
-  background-color: var(--surface-0);
-  color: var(--text-primary);
-  transition: background-color 0.2s ease, color 0.2s ease;
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
-
-/* Typography Utility for Monospace Data */
-.font-mono {
-  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 }
 
 /* Interactive Button Hover */
@@ -666,8 +793,6 @@ body {
   border-color: var(--accent-amber);
 }
 
-
-
 /* =====================================================================
    STICKY TAB FILTER HEADER (Tickets & Department Navigation)
    ===================================================================== */
@@ -989,7 +1114,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: clamp(1rem, 3vw, 2rem) clamp(0.75rem, 3vw, 1.5rem);
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   box-sizing: border-box;
   width: 100%;
 }
@@ -1031,4 +1156,3 @@ body {
     transform: rotate(360deg);
   }
 }
-

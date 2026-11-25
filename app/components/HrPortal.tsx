@@ -1,8 +1,9 @@
 "use client";
 
+import { formatIncidentDate } from "@/lib/format";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
 import { Staff, Department, Reclamation, HotelRoom } from "@/utils/roomsData";
 import {
   createStaffMember,
@@ -73,30 +74,6 @@ const SHIFT_LABELS: Record<ShiftType, { label: string; time: string; color: stri
   OFF: { label: "🏖️ Off / Rest", time: "Rest Day", color: "var(--text-muted)", bg: "var(--surface-2)" },
 };
 
-export function formatIncidentDate(dateStr?: string | null) {
-  if (!dateStr) return { formatted: "Recent", time: "", relative: "Just now", full: "Recent" };
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return { formatted: "Recent", time: "", relative: "Just now", full: "Recent" };
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  let relative = "Today";
-  if (diffDays === 1) relative = "Yesterday";
-  else if (diffDays > 1 && diffDays < 30) relative = `${diffDays}d ago`;
-  else if (diffDays >= 30 && diffDays < 365) relative = `${Math.floor(diffDays / 30)}mo ago`;
-  else if (diffDays >= 365) relative = `${Math.floor(diffDays / 365)}y ago`;
-  else if (diffDays < 0) relative = "Scheduled";
-
-  const formatted = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-
-  return { formatted, time, relative, full: `${formatted} • ${time}` };
-}
-
 export default function HrPortal({
   staffList,
   departmentsList = [],
@@ -120,26 +97,7 @@ export default function HrPortal({
   }, [reclamationsList]);
 
   // Real-time synchronization
-  useEffect(() => {
-    if (!isLiveSupabase) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel("realtime-hr")
-      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, () => {
-        router.refresh();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "departments" }, () => {
-        router.refresh();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "reclamations" }, () => {
-        router.refresh();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isLiveSupabase, router]);
+  useRealtimeRefresh("realtime-hr", ["staff","departments","reclamations"], isLiveSupabase);
 
   // Room Pop-up Modal State
   const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
