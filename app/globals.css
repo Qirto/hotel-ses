@@ -164,6 +164,11 @@
   --color-fg-secondary: var(--text-secondary);
   --color-fg-muted: var(--text-muted);
   --color-fg-subtle: var(--text-subtle);
+  /* easyui registry class names (text-text-primary, ...) */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
   --color-ring: var(--accent-ring);
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);

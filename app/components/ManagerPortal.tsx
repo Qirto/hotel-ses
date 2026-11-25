@@ -1,24 +1,43 @@
 "use client";
 
-import { formatIncidentDate } from "@/lib/format";
-import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import React, { useState, useTransition, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  BedDouble,
+  Building2,
+  ChartColumn,
+  CircleCheck,
+  ClipboardList,
+  Clock,
+  Hotel,
+  Layers,
+  LayoutDashboard,
+  ListFilter,
+  Repeat,
+  Siren,
+  Sparkles,
+  Timer,
+  TriangleAlert,
+} from "lucide-react";
+import type { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
 import type { NavTabItem } from "@/components/app/nav";
-import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
-import { BedDouble, ChartColumn, ClipboardList, LayoutDashboard } from "lucide-react";
-import { computeAllRoomsAnalytics, RoomAnalyticsSummary } from "@/utils/roomAnalytics";
-import {
-  resolveConfidentialGrievance,
-  cycleRoomCleaning,
-  resolveReclamation,
-  updateRoomStayState,
-  createRapidReclamation,
-  createHistoricalReclamation,
-  logoutRole,
-} from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { DonutChart } from "@/components/ui/donut-chart";
+import { BarChart } from "@/components/ui/bar-chart";
+import { Panel, PageStack, EmptyState } from "@/components/features/Panel";
+import { Kpi, KpiGrid } from "@/components/features/Kpi";
+import { FilterBar, PillGroup, SearchInput, SelectField } from "@/components/features/Filters";
+import { RoomGrid } from "@/components/features/RoomGrid";
+import { TicketTable } from "@/components/features/TicketTable";
+import { ProblemBars, RoomDetail, TicketCard } from "@/components/features/RoomDetail";
+import { NewTicketForm, Notice, PastIncidentForm, Segmented, type NewTicketInput, type PastIncidentInput } from "@/components/features/Forms";
+import { ToneBadge } from "@/components/features/StatusBadges";
+import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { countOpenTickets, countRoomsNeedingAttention, isOpenTicket } from "@/lib/tickets";
+import { CLEANING_LABEL, roomHeadline, ticketStatsByRoom } from "@/lib/rooms";
+import { departmentLabel, plural } from "@/lib/format";
+import { computeAllRoomsAnalytics } from "@/utils/roomAnalytics";
+import { createHistoricalReclamation, createRapidReclamation, cycleRoomCleaning, resolveReclamation } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
@@ -27,1696 +46,529 @@ interface Props {
   isLiveSupabase?: boolean;
 }
 
-export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupabase = false }: Props) {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"STATS" | "ROOMS" | "RECLAMATIONS" | "ANALYTICS">("STATS");
+type Tab = "STATS" | "ROOMS" | "RECLAMATIONS" | "ANALYTICS";
+type DateRange = "ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE";
+type RoomFilter = "ALL" | "ATTENTION" | "OCCUPIED" | "VACANT_CLEAN" | "DIRTY";
+type AnalyticsSort = "MOST_TICKETS" | "OPEN_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER";
 
-  // Synchronized Reactive Reclamations Store
-  const [localReclamations, setLocalReclamations] = useState<Reclamation[]>(reclamations);
-  useEffect(() => {
-    setLocalReclamations(reclamations);
-  }, [reclamations]);
+const NEXT_CLEANING: Record<HotelRoom["cleaning_status"], HotelRoom["cleaning_status"]> = {
+  DIRTY: "CLEANING",
+  CLEANING: "INSPECTING",
+  INSPECTING: "CLEAN",
+  CLEAN: "DIRTY",
+};
 
-  const [ticketFilter, setTicketFilter] = useState<string>("ALL");
-  const [ticketStatusFilter, setTicketStatusFilter] = useState<string>("ALL");
-  const [recDateFilter, setRecDateFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE">("ALL");
-  const [remedyNote, setRemedyNote] = useState("");
-  const [selectedRecId, setSelectedRecId] = useState<number | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+const DATE_RANGES = [
+  { value: "ALL", label: "All time" },
+  { value: "TODAY", label: "Today" },
+  { value: "WEEK", label: "7 days" },
+  { value: "MONTH", label: "30 days" },
+  { value: "ARCHIVE", label: "Older" },
+] as const;
 
-  // Analytics Filter States
-  const [analyticsSearch, setAnalyticsSearch] = useState("");
-  const [analyticsFloorFilter, setAnalyticsFloorFilter] = useState<number | "ALL">("ALL");
-  const [analyticsBlockFilter, setAnalyticsBlockFilter] = useState<string | "ALL">("ALL");
-  const [analyticsSort, setAnalyticsSort] = useState<"MOST_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER" | "OPEN_TICKETS">("MOST_TICKETS");
+const STATUS_OPTIONS = [
+  { value: "ALL", label: "All statuses" },
+  { value: "OPEN", label: "Open" },
+  { value: "ACKNOWLEDGED", label: "Acknowledged" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "RESOLVED", label: "Resolved" },
+];
 
-  // Real-time synchronization
-  useRealtimeRefresh("realtime-manager", ["rooms","reclamations"], isLiveSupabase);
+const DAY_MS = 864e5;
 
-  // Matrix Filter & Room Details Modal State
-  const [matrixSearch, setMatrixSearch] = useState("");
-  const [matrixFloorFilter, setMatrixFloorFilter] = useState<number | "ALL">("ALL");
-  const [matrixStatusFilter, setMatrixStatusFilter] = useState<string>("ALL");
-
-  // Room Pop-up Modal State
-  const [selectedRoomModal, setSelectedRoomModal] = useState<HotelRoom | null>(null);
-  const [modalTab, setModalTab] = useState<"RECLAMATIONS" | "ROOM_STAT">("ROOM_STAT");
-  const [roomModalSubTab, setRoomModalSubTab] = useState<"ACTIVE" | "MOST_REPORTED" | "HISTORY" | "TIMELINE">("ACTIVE");
-  const [modalDept, setModalDept] = useState<string>("TECHNICAL");
-  const [modalDesc, setModalDesc] = useState<string>("");
-
-  // In-Modal Past Log Backfill State
-  const [showInModalPastLog, setShowInModalPastLog] = useState(false);
-  const [inModalHistDate, setInModalHistDate] = useState<string>(
-    new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
-  );
-  const [inModalHistDept, setInModalHistDept] = useState<string>("TECHNICAL");
-  const [inModalHistCategory, setInModalHistCategory] = useState<string>("Executive Directive");
-  const [inModalHistDesc, setInModalHistDesc] = useState<string>("");
-  const [inModalHistStatus, setInModalHistStatus] = useState<"OPEN" | "IN_PROGRESS" | "RESOLVED">("RESOLVED");
-
+export default function ManagerPortal({ rooms, reclamations, isLiveSupabase = false }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>("STATS");
+  const [, startTabTransition] = useTransition();
   const [isPending, startTransition] = useTransition();
+  const [notice, setNotice] = useState<{ tone: "success" | "danger"; text: string } | null>(null);
 
-  // Live Room Statistics
-  const totalRooms = rooms.length;
-  const occupiedRoomsCount = useMemo(() => rooms.filter((r) => r.is_occupied).length, [rooms]);
-  const vacantCleanCount = useMemo(() => rooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length, [rooms]);
-  const dirtyRoomsCount = useMemo(() => rooms.filter((r) => r.cleaning_status === "DIRTY").length, [rooms]);
+  // Local copy so optimistic updates show instantly; server refreshes replace it.
+  const [tickets, setTickets] = useState<Reclamation[]>(reclamations);
+  useEffect(() => setTickets(reclamations), [reclamations]);
+  const [roomOverrides, setRoomOverrides] = useState<Record<number, Partial<HotelRoom>>>({});
+  useEffect(() => setRoomOverrides({}), [rooms]);
+  const liveRooms = useMemo(
+    () => (Object.keys(roomOverrides).length ? rooms.map((r) => (roomOverrides[r.id] ? { ...r, ...roomOverrides[r.id] } : r)) : rooms),
+    [rooms, roomOverrides]
+  );
 
-  // Rooms with active tickets (reactive to localReclamations)
-  const roomsWithActiveTickets = useMemo(() => {
-    const set = new Set<string>();
-    localReclamations.forEach((r) => {
-      if (r.status !== "RESOLVED") {
-        set.add(r.room?.room_number || String(r.room_id));
-      }
-    });
-    return set;
-  }, [localReclamations]);
+  useRealtimeRefresh("realtime-manager", ["rooms", "reclamations"], isLiveSupabase);
 
-  // Filter matrix rooms
-  const filteredMatrixRooms = useMemo(() => {
-    return rooms.filter((r) => {
-      if (matrixSearch && !r.room_number.includes(matrixSearch)) return false;
-      if (matrixFloorFilter !== "ALL" && r.floor !== matrixFloorFilter) return false;
-      if (matrixStatusFilter === "OCCUPIED" && !r.is_occupied) return false;
-      if (matrixStatusFilter === "VACANT_CLEAN" && (r.is_occupied || r.cleaning_status !== "CLEAN")) return false;
-      if (matrixStatusFilter === "DIRTY" && r.cleaning_status !== "DIRTY") return false;
-      if (matrixStatusFilter === "REPAIR_NEEDED" && !roomsWithActiveTickets.has(r.room_number)) return false;
-      return true;
-    });
-  }, [rooms, matrixSearch, matrixFloorFilter, matrixStatusFilter, roomsWithActiveTickets]);
+  const flash = useCallback((tone: "success" | "danger", text: string) => {
+    setNotice({ tone, text });
+    window.setTimeout(() => setNotice(null), 3500);
+  }, []);
 
-  // Room Analytics computation (instantly reflects new/historical tickets)
-  const roomAnalyticsMap = useMemo(() => {
-    return computeAllRoomsAnalytics(rooms, localReclamations);
-  }, [rooms, localReclamations]);
+  /* ───────────── derived data ───────────── */
+  const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
+  const attentionCount = useMemo(() => countRoomsNeedingAttention(liveRooms, tickets), [liveRooms, tickets]);
+  const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
 
-  const filteredAnalyticsRooms = useMemo(() => {
-    const list = rooms.filter((r) => {
-      if (analyticsSearch && !r.room_number.includes(analyticsSearch.trim())) return false;
-      if (analyticsFloorFilter !== "ALL" && r.floor !== analyticsFloorFilter) return false;
-      if (analyticsBlockFilter !== "ALL" && r.block !== analyticsBlockFilter) return false;
-      return true;
-    });
+  const occupied = useMemo(() => liveRooms.filter((r) => r.is_occupied).length, [liveRooms]);
+  const vacantClean = useMemo(() => liveRooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length, [liveRooms]);
+  const dirty = useMemo(() => liveRooms.filter((r) => r.cleaning_status === "DIRTY").length, [liveRooms]);
+  // Exact partition for the status donut: occupied, then vacant split by cleaning state.
+  const vacantDirty = useMemo(() => liveRooms.filter((r) => !r.is_occupied && r.cleaning_status === "DIRTY").length, [liveRooms]);
+  const inProgressCleaning = liveRooms.length - occupied - vacantClean - vacantDirty;
 
-    return list.sort((a, b) => {
-      const statsA = roomAnalyticsMap.get(a.id);
-      const statsB = roomAnalyticsMap.get(b.id);
-      if (analyticsSort === "MOST_TICKETS") {
-        return (statsB?.totalTickets || 0) - (statsA?.totalTickets || 0);
-      }
-      if (analyticsSort === "OPEN_TICKETS") {
-        return (statsB?.openTickets || 0) - (statsA?.openTickets || 0);
-      }
-      if (analyticsSort === "RUSH_HOUR") {
-        return (statsB?.rushHour?.count || 0) - (statsA?.rushHour?.count || 0);
-      }
-      return a.room_number.localeCompare(b.room_number, undefined, { numeric: true });
-    });
-  }, [rooms, roomAnalyticsMap, analyticsSearch, analyticsFloorFilter, analyticsBlockFilter, analyticsSort]);
+  const { mttr, resolvedShare } = useMemo(() => {
+    const resolved = tickets.filter((t) => t.status === "RESOLVED" && t.created_at && t.resolved_at);
+    const minutes = resolved.length
+      ? Math.round(resolved.reduce((acc, t) => acc + (new Date(t.resolved_at!).getTime() - new Date(t.created_at!).getTime()) / 60000, 0) / resolved.length)
+      : null;
+    const share = tickets.length ? Math.round(((tickets.length - countOpenTickets(tickets)) / tickets.length) * 100) : null;
+    return { mttr: minutes, resolvedShare: share };
+  }, [tickets]);
 
-  // Analytics Metrics Overview
-  const analyticsSummary = useMemo<{
-    roomsWithIssues: number;
-    roomsWithRush: number;
-    maxTicketsRoom: { roomNumber: string; count: number } | null;
-    totalAllTickets: number;
-  }>(() => {
-    let roomsWithIssues = 0;
-    let roomsWithRush = 0;
-    let maxTicketsRoom: { roomNumber: string; count: number } | null = null;
-    let totalAllTickets = 0;
-
-    roomAnalyticsMap.forEach((stats) => {
-      if (stats.totalTickets > 0) {
-        roomsWithIssues++;
-        totalAllTickets += stats.totalTickets;
-        if (!maxTicketsRoom || stats.totalTickets > maxTicketsRoom.count) {
-          maxTicketsRoom = { roomNumber: stats.roomNumber, count: stats.totalTickets };
-        }
-      }
-      if (stats.rushHour) {
-        roomsWithRush++;
-      }
-    });
-
-    return {
-      roomsWithIssues,
-      roomsWithRush,
-      maxTicketsRoom,
-      totalAllTickets,
-    };
-  }, [roomAnalyticsMap]);
-
-  // KPI Calculations (reactive to localReclamations)
-  const resolvedTasks = localReclamations.filter((r) => r.status === "RESOLVED" && r.created_at && r.resolved_at);
-  const mttrMinutes = resolvedTasks.length > 0
-    ? Math.round(
-        resolvedTasks.reduce((acc, r) => {
-          const diffMs = new Date(r.resolved_at!).getTime() - new Date(r.created_at!).getTime();
-          return acc + diffMs / (1000 * 60);
-        }, 0) / resolvedTasks.length
-      )
-    : 24;
-
-  const totalOpen = localReclamations.filter((r) => r.status === "OPEN" || r.status === "IN_PROGRESS").length;
-  const slaCompliance = localReclamations.length > 0
-    ? Math.round(((localReclamations.length - totalOpen) / localReclamations.length) * 100)
-    : 95;
-
-  const confidentialGrievances = localReclamations.filter((r) => r.is_confidential);
-
-  const filteredReclamations = useMemo(() => {
-    const now = new Date();
-    return localReclamations.filter((r) => {
-      if (ticketFilter !== "ALL" && r.department !== ticketFilter) return false;
-      if (ticketStatusFilter !== "ALL" && r.status !== ticketStatusFilter) return false;
-
-      if (recDateFilter !== "ALL" && r.created_at) {
-        const ticketDate = new Date(r.created_at);
-        const diffMs = now.getTime() - ticketDate.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-        if (recDateFilter === "TODAY" && diffDays > 1) return false;
-        if (recDateFilter === "WEEK" && diffDays > 7) return false;
-        if (recDateFilter === "MONTH" && diffDays > 30) return false;
-        if (recDateFilter === "ARCHIVE" && diffDays <= 30) return false;
-      }
-      return true;
-    });
-  }, [localReclamations, ticketFilter, ticketStatusFilter, recDateFilter]);
-
-  const incidentDepartments = useMemo(() => {
-    const set = new Set<string>();
-    localReclamations.forEach((r) => {
-      if (r.department) set.add(r.department);
-    });
-    return Array.from(set).sort();
-  }, [localReclamations]);
-
-  // Specific Room Reclamations
-  const roomModalReclamations = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    return localReclamations.filter(
-      (r) => r.room_id === selectedRoomModal.id || r.room?.room_number === selectedRoomModal.room_number
-    );
-  }, [localReclamations, selectedRoomModal]);
-
-  // Active Reclamations for Room Modal
-  const roomActiveReclamations = useMemo(() => {
-    return roomModalReclamations.filter(
-      (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
-    );
-  }, [roomModalReclamations]);
-
-  // Most Reported Problem Categories for Room Modal
-  const roomProblemStats = useMemo(() => {
-    if (!selectedRoomModal) return [];
-    const counts: Record<string, { count: number; department: string; lastDate?: string }> = {};
-    roomModalReclamations.forEach((rec) => {
-      const cat = rec.category || "General";
-      if (!counts[cat]) {
-        counts[cat] = { count: 0, department: rec.department, lastDate: rec.created_at };
-      }
-      counts[cat].count += 1;
-    });
-    const total = roomModalReclamations.length || 1;
-    return Object.entries(counts)
-      .map(([category, info]) => ({
-        category,
-        count: info.count,
-        department: info.department,
-        percentage: Math.round((info.count / total) * 100),
-        lastDate: info.lastDate,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [roomModalReclamations, selectedRoomModal]);
-
-  // Handlers
-  const handleResolveConfidential = (id: number) => {
-    if (!remedyNote.trim()) {
-      alert("Please enter executive resolution notes!");
-      return;
+  const byDepartment = useMemo(() => {
+    const counts = new Map<string, { open: number; resolved: number }>();
+    for (const t of tickets) {
+      const c = counts.get(t.department) ?? { open: 0, resolved: 0 };
+      if (isOpenTicket(t)) c.open++;
+      else c.resolved++;
+      counts.set(t.department, c);
     }
-    startTransition(async () => {
-      await resolveConfidentialGrievance(id, remedyNote);
-      setSelectedRecId(null);
-      setRemedyNote("");
-      alert("Confidential grievance marked as resolved by General Manager.");
-    });
-  };
+    return [...counts.entries()]
+      .sort((a, b) => b[1].open + b[1].resolved - (a[1].open + a[1].resolved))
+      .slice(0, 6)
+      .map(([dept, c]) => ({ label: departmentLabel(dept), open: c.open, resolved: c.resolved }));
+  }, [tickets]);
 
-  const handleResolveNormalTicket = (id: number) => {
-    startTransition(async () => {
-      await resolveReclamation(id, "Resolved by General Manager Oversight");
-      setLocalReclamations((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? { ...r, status: "RESOLVED", resolution_notes: "Resolved by General Manager Oversight", resolved_at: new Date().toISOString() }
-            : r
-        )
-      );
-    });
-  };
+  const urgentOpen = useMemo(
+    () => tickets.filter((t) => isOpenTicket(t) && (t.priority === "EMERGENCY" || t.priority === "HIGH")).slice(0, 5),
+    [tickets]
+  );
 
-  const handleStayState = (roomId: number, state: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED") => {
-    startTransition(async () => {
-      const res = await updateRoomStayState(roomId, state);
-      if (res.success) {
-        setMessage(`✅ Room state updated!`);
-        if (selectedRoomModal) {
-          setSelectedRoomModal((prev) => (prev ? { ...prev, is_occupied: state === "OCCUPIED" } : null));
-        }
-        setTimeout(() => setMessage(null), 3000);
+  /* ───────────── rooms tab ───────────── */
+  const [roomSearch, setRoomSearch] = useState("");
+  const [roomFloor, setRoomFloor] = useState<number | "ALL">("ALL");
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>("ALL");
+  const floors = useMemo(() => [...new Set(liveRooms.map((r) => r.floor))].sort((a, b) => a - b), [liveRooms]);
+  const filteredRooms = useMemo(
+    () =>
+      liveRooms.filter((r) => {
+        if (roomSearch && !r.room_number.includes(roomSearch.trim())) return false;
+        if (roomFloor !== "ALL" && r.floor !== roomFloor) return false;
+        const s = roomStats.get(r.id);
+        if (roomFilter === "ATTENTION" && !(r.cleaning_status === "DIRTY" || (s && s.open > 0))) return false;
+        if (roomFilter === "OCCUPIED" && !r.is_occupied) return false;
+        if (roomFilter === "VACANT_CLEAN" && (r.is_occupied || r.cleaning_status !== "CLEAN")) return false;
+        if (roomFilter === "DIRTY" && r.cleaning_status !== "DIRTY") return false;
+        return true;
+      }),
+    [liveRooms, roomSearch, roomFloor, roomFilter, roomStats]
+  );
+
+  /* ───────────── tickets tab ───────────── */
+  const [deptFilter, setDeptFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dateRange, setDateRange] = useState<DateRange>("ALL");
+  const departments = useMemo(() => [...new Set(tickets.map((t) => t.department).filter(Boolean))].sort(), [tickets]);
+  const filteredTickets = useMemo(() => {
+    const now = Date.now();
+    return tickets.filter((t) => {
+      if (deptFilter !== "ALL" && t.department !== deptFilter) return false;
+      if (statusFilter !== "ALL" && t.status !== statusFilter) return false;
+      if (dateRange !== "ALL" && t.created_at) {
+        const days = (now - new Date(t.created_at).getTime()) / DAY_MS;
+        if (dateRange === "TODAY" && days > 1) return false;
+        if (dateRange === "WEEK" && days > 7) return false;
+        if (dateRange === "MONTH" && days > 30) return false;
+        if (dateRange === "ARCHIVE" && days <= 30) return false;
       }
+      return true;
     });
-  };
+  }, [tickets, deptFilter, statusFilter, dateRange]);
 
-  const handleCleaningCycle = (room: HotelRoom) => {
-    const nextMap: Record<string, "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"> = {
-      DIRTY: "CLEANING",
-      CLEANING: "INSPECTING",
-      INSPECTING: "CLEAN",
-      CLEAN: "DIRTY",
-    };
-    const nextStatus = nextMap[room.cleaning_status] || "DIRTY";
-    startTransition(async () => {
-      const res = await cycleRoomCleaning(room.id, nextStatus);
-      if (res.success) {
-        setMessage(`🧹 Room ${room.room_number} set to ${nextStatus}!`);
-        if (selectedRoomModal && selectedRoomModal.id === room.id) {
-          setSelectedRoomModal((prev) => (prev ? { ...prev, cleaning_status: nextStatus } : null));
-        }
-        setTimeout(() => setMessage(null), 3000);
-      }
-    });
-  };
-
-  const handleModalCreateReclamation = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-
-    startTransition(async () => {
-      const res = await createRapidReclamation({
-        roomId: selectedRoomModal.id,
-        department: modalDept,
-        category: "Executive",
-        description: modalDesc.trim() || `GM Executive Ticket for Room ${selectedRoomModal.room_number}`,
+  /* ───────────── analytics tab ───────────── */
+  const [aSearch, setASearch] = useState("");
+  const [aFloor, setAFloor] = useState<number | "ALL">("ALL");
+  const [aBlock, setABlock] = useState<string>("ALL");
+  const [aSort, setASort] = useState<AnalyticsSort>("MOST_TICKETS");
+  const analytics = useMemo(
+    () => (activeTab === "ANALYTICS" ? computeAllRoomsAnalytics(liveRooms, tickets) : null),
+    [activeTab, liveRooms, tickets]
+  );
+  const analyticsRooms = useMemo(() => {
+    if (!analytics) return [];
+    return liveRooms
+      .filter((r) => (analytics.get(r.id)?.totalTickets ?? 0) > 0)
+      .filter((r) => !aSearch || r.room_number.includes(aSearch.trim()))
+      .filter((r) => aFloor === "ALL" || r.floor === aFloor)
+      .filter((r) => aBlock === "ALL" || r.block === aBlock)
+      .sort((a, b) => {
+        const A = analytics.get(a.id)!;
+        const B = analytics.get(b.id)!;
+        if (aSort === "MOST_TICKETS") return B.totalTickets - A.totalTickets;
+        if (aSort === "OPEN_TICKETS") return B.openTickets - A.openTickets;
+        if (aSort === "RUSH_HOUR") return (B.rushHour?.count ?? 0) - (A.rushHour?.count ?? 0);
+        return a.room_number.localeCompare(b.room_number, undefined, { numeric: true });
       });
-
-      if (res.success) {
-        setMessage(`✅ Ticket created for Room ${selectedRoomModal.room_number}!`);
-        if (res.data) {
-          setLocalReclamations((prev) => [res.data as Reclamation, ...prev]);
-        }
-        setModalDesc("");
-        setTimeout(() => setMessage(null), 3000);
+  }, [analytics, liveRooms, aSearch, aFloor, aBlock, aSort]);
+  const analyticsSummary = useMemo(() => {
+    if (!analytics) return null;
+    let withIssues = 0;
+    let withRush = 0;
+    let top: { room: string; count: number } | null = null;
+    analytics.forEach((s) => {
+      if (s.totalTickets > 0) {
+        withIssues++;
+        if (!top || s.totalTickets > top.count) top = { room: s.roomNumber, count: s.totalTickets };
       }
+      if (s.rushHour) withRush++;
     });
-  };
+    return { withIssues, withRush, top: top as { room: string; count: number } | null };
+  }, [analytics]);
 
-  const handleInModalHistoricalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedRoomModal) return;
-    if (!inModalHistDesc.trim()) {
-      alert("Please enter incident details");
-      return;
-    }
+  /* ───────────── room detail + actions ───────────── */
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const selectedRoom = useMemo(() => liveRooms.find((r) => r.id === selectedRoomId) ?? null, [liveRooms, selectedRoomId]);
+  const openRoom = useCallback((room: HotelRoom) => setSelectedRoomId(room.id), []);
+  const [logMode, setLogMode] = useState<"NEW" | "PAST">("NEW");
 
+  const resolveTicket = useCallback(
+    (id: number) =>
+      startTransition(async () => {
+        await resolveReclamation(id, "Resolved by General Manager Oversight");
+        setTickets((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, status: "RESOLVED", resolved_at: new Date().toISOString() } : t))
+        );
+        flash("success", "Ticket resolved.");
+      }),
+    [flash]
+  );
+
+  const cycleCleaning = (room: HotelRoom) => {
+    const next = NEXT_CLEANING[room.cleaning_status] ?? "DIRTY";
     startTransition(async () => {
-      const res = await createHistoricalReclamation({
-        roomId: selectedRoomModal.id,
-        department: inModalHistDept,
-        category: inModalHistCategory,
-        description: inModalHistDesc.trim(),
-        createdAt: inModalHistDate,
-        status: inModalHistStatus,
-      });
-
+      const res = await cycleRoomCleaning(room.id, next);
       if (res.success) {
-        setMessage(`📜 Past incident recorded for Room ${selectedRoomModal.room_number}!`);
-        if (res.data) {
-          setLocalReclamations((prev) => [res.data as Reclamation, ...prev]);
-        }
-        setInModalHistDesc("");
-        setShowInModalPastLog(false);
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        alert(res.error || "Failed to record past incident");
-      }
+        setRoomOverrides((prev) => ({ ...prev, [room.id]: { ...prev[room.id], cleaning_status: next } }));
+        flash("success", `Room ${room.room_number} set to ${CLEANING_LABEL[next].toLowerCase()}.`);
+      } else flash("danger", "Could not update the cleaning status.");
     });
   };
 
-  const deptCounts: Record<string, number> = {};
-  localReclamations.forEach((r) => {
-    deptCounts[r.department] = (deptCounts[r.department] || 0) + 1;
-  });
+  const createDirective = async (input: NewTicketInput) => {
+    if (!selectedRoom) return false;
+    return new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createRapidReclamation({
+          roomId: selectedRoom.id,
+          department: input.department,
+          category: input.category,
+          priority: input.priority,
+          description: input.description || `GM directive for room ${selectedRoom.room_number}`,
+        });
+        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Ticket created for room ${selectedRoom.room_number}.` : "Could not create the ticket.");
+        resolve(Boolean(res.success));
+      })
+    );
+  };
 
-  const openTicketsCount = countOpenTickets(localReclamations);
+  const recordPast = async (input: PastIncidentInput) => {
+    if (!selectedRoom) return false;
+    return new Promise<boolean>((resolve) =>
+      startTransition(async () => {
+        const res = await createHistoricalReclamation({
+          roomId: selectedRoom.id,
+          department: input.department,
+          category: input.category,
+          description: input.description,
+          createdAt: input.createdAt,
+          status: input.status,
+        });
+        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
+        flash(res.success ? "success" : "danger", res.success ? `Past incident recorded for room ${selectedRoom.room_number}.` : res.error || "Could not record the incident.");
+        resolve(Boolean(res.success));
+      })
+    );
+  };
 
-  const openTicketCount = countOpenTickets(localReclamations);
-  const roomsNeedingAttention = countRoomsNeedingAttention(rooms, localReclamations);
+  const resolveAction = useCallback(
+    (t: Reclamation) =>
+      isOpenTicket(t) ? (
+        <Button size="sm" variant="success" onClick={() => resolveTicket(t.id)} disabled={isPending} leftIcon={<CircleCheck className="size-3.5" aria-hidden />}>
+          Resolve
+        </Button>
+      ) : null,
+    [resolveTicket, isPending]
+  );
 
-  const navItems: NavTabItem[] = [
-    {
-      id: "STATS",
-      label: "Dashboard",
-      icon: <LayoutDashboard aria-hidden />,
-      isActive: activeTab === "STATS",
-      onClick: () => setActiveTab("STATS"),
-    },
-    {
-      id: "ROOMS",
-      label: "Rooms",
-      icon: <BedDouble aria-hidden />,
-      badge: roomsNeedingAttention,
-      badgeTone: "alert",
-      isActive: activeTab === "ROOMS",
-      onClick: () => setActiveTab("ROOMS"),
-    },
-    {
-      id: "RECLAMATIONS",
-      label: "Tickets",
-      icon: <ClipboardList aria-hidden />,
-      badge: openTicketCount,
-      badgeTone: "alert",
-      isActive: activeTab === "RECLAMATIONS",
-      onClick: () => setActiveTab("RECLAMATIONS"),
-    },
-    {
-      id: "ANALYTICS",
-      label: "Analytics",
-      icon: <ChartColumn aria-hidden />,
-      isActive: activeTab === "ANALYTICS",
-      onClick: () => setActiveTab("ANALYTICS"),
-    },
-  ];
+  /* ───────────── navigation ───────────── */
+  const go = useCallback((tab: Tab) => startTabTransition(() => setActiveTab(tab)), []);
+  const navItems = useMemo<NavTabItem[]>(
+    () => [
+      { id: "STATS", label: "Dashboard", icon: <LayoutDashboard aria-hidden />, isActive: activeTab === "STATS", onClick: () => go("STATS") },
+      { id: "ROOMS", label: "Rooms", icon: <BedDouble aria-hidden />, badge: attentionCount, badgeTone: "alert", isActive: activeTab === "ROOMS", onClick: () => go("ROOMS") },
+      { id: "RECLAMATIONS", label: "Tickets", icon: <ClipboardList aria-hidden />, badge: openCount, badgeTone: "alert", isActive: activeTab === "RECLAMATIONS", onClick: () => go("RECLAMATIONS") },
+      { id: "ANALYTICS", label: "Analytics", icon: <ChartColumn aria-hidden />, isActive: activeTab === "ANALYTICS", onClick: () => go("ANALYTICS") },
+    ],
+    [activeTab, attentionCount, openCount, go]
+  );
+
+  const occupancyPct = liveRooms.length ? Math.round((occupied / liveRooms.length) * 100) : 0;
 
   return (
-    <AppShell
-      items={navItems}
-      departmentName="Executive Management"
-      departmentCode="GM"
-      onSignOut={() => {
-        startTransition(async () => {
-          await logoutRole();
-          window.location.href = "/login";
-        });
-      }}
-    >
-      {message && (
-        <div style={{ marginBottom: "1rem", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--accent-amber-bg)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontSize: 14, fontWeight: 600 }}>
-          {message}
-        </div>
-      )}
+    <AppShell items={navItems} departmentName="Executive Management" departmentCode="GM">
+      <PageStack>
+        {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
 
-        {/* TAB 1: STATS & GRAPHS */}
         {activeTab === "STATS" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 16 }}>
-            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--warning)" }}>
-                🟡 Hotel Occupancy Distribution Graph
-              </h4>
-              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="var(--warning)"
-                    strokeWidth="3.8"
-                    strokeDasharray={`${Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}, 100`}
-                  />
-                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
-                    {Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%
-                  </text>
-                </svg>
+          <>
+            <KpiGrid>
+              <Kpi label="Occupancy" value={`${occupancyPct}%`} hint={`${occupied} of ${liveRooms.length} rooms`} icon={<Hotel />} />
+              <Kpi label="Ready to sell" value={vacantClean} hint="Vacant and clean" tone="success" icon={<Sparkles />} onClick={() => { setRoomFilter("VACANT_CLEAN"); go("ROOMS"); }} />
+              <Kpi label="Needs attention" value={attentionCount} hint="Dirty or open issue" tone={attentionCount ? "warning" : "neutral"} icon={<TriangleAlert />} onClick={() => { setRoomFilter("ATTENTION"); go("ROOMS"); }} />
+              <Kpi label="Open tickets" value={openCount} hint={mttr != null ? `Avg fix ${mttr} min` : "No resolved tickets yet"} tone={openCount ? "danger" : "neutral"} icon={<ClipboardList />} onClick={() => go("RECLAMATIONS")} />
+            </KpiGrid>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--warning)", fontWeight: 700 }}>Occupied:</span><strong style={{ color: "var(--text-primary)" }}>{occupiedRoomsCount}</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--success)", fontWeight: 700 }}>Vacant Clean:</span><strong style={{ color: "var(--text-primary)" }}>{vacantCleanCount}</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--danger)", fontWeight: 700 }}>Dirty Rooms:</span><strong style={{ color: "var(--text-primary)" }}>{dirtyRoomsCount}</strong></div>
+            <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
+              <Panel title="Room status" description="Where all rooms stand right now" icon={<BedDouble />}>
+                <DonutChart
+                  data={[
+                    { label: "Occupied", value: occupied, color: "var(--text-primary)" },
+                    { label: "Ready", value: vacantClean, color: "var(--success)" },
+                    { label: "Dirty", value: vacantDirty, color: "var(--danger)" },
+                    { label: "In cleaning", value: Math.max(0, inProgressCleaning), color: "var(--warning)" },
+                  ]}
+                  centerLabel="Rooms"
+                  size={200}
+                  ariaLabel="Room status breakdown"
+                />
+              </Panel>
+              <Panel title="Resolution" description="Tickets closed and time to fix" icon={<Timer />}>
+                <div className="grid grid-cols-2 gap-3">
+                  <Kpi label="Resolved" value={resolvedShare != null ? `${resolvedShare}%` : "–"} hint={plural(tickets.length, "ticket")} tone="success" />
+                  <Kpi label="Avg time to fix" value={mttr != null ? `${mttr} min` : "–"} hint="Resolved tickets" />
                 </div>
-              </div>
-            </div>
-
-            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
-                ⏱️ SLA Compliance & Resolution Speed Graph
-              </h4>
-              <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="var(--success)"
-                    strokeWidth="3.8"
-                    strokeDasharray={`${slaCompliance}, 100`}
-                  />
-                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
-                    {slaCompliance}%
-                  </text>
-                </svg>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--success)", fontWeight: 700 }}>SLA Compliance:</span><strong style={{ color: "var(--text-primary)" }}>{slaCompliance}%</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--info)", fontWeight: 700 }}>Average MTTR:</span><strong style={{ color: "var(--text-primary)" }}>{mttrMinutes} min</strong></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: ROOMS MAP */}
-        {activeTab === "ROOMS" && (
-          <div className="ses-card">
-            <h3 style={{ margin: "0 0 14px", fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-              Executive Rooms Matrix ({filteredMatrixRooms.length} rooms)
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(130px, 100%), 1fr))", gap: 10, maxHeight: 600, overflowY: "auto" }}>
-              {filteredMatrixRooms.map((room) => (
-                <div
-                  key={room.id}
-                  onClick={() => {
-                    setSelectedRoomModal(room);
-                    setModalTab("ROOM_STAT");
-                  }}
-                  className="room-matrix-card"
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 800, color: "var(--text-primary)" }}>
-                    <span>
-                      Room {room.room_number}
-                      {roomsWithActiveTickets.has(room.room_number) && (
-                        <span title="Active incident reported" style={{ marginLeft: 5, fontSize: 12 }}>⚠️</span>
-                      )}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: "2px 7px",
-                        borderRadius: "var(--radius-sm)",
-                        background: room.is_occupied ? "var(--status-amber-bg)" : "var(--status-emerald-bg)",
-                        color: room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)",
-                        border: `1px solid ${room.is_occupied ? "var(--status-amber)" : "var(--status-emerald)"}`,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {room.is_occupied ? "Occupied" : "Vacant"}
-                    </span>
+                {byDepartment.length > 0 ? (
+                  <div className="mt-5">
+                    <BarChart
+                      data={byDepartment}
+                      series={[
+                        { key: "open", label: "Open", color: "var(--danger)" },
+                        { key: "resolved", label: "Resolved", color: "var(--success)" },
+                      ]}
+                      variant="stacked"
+                      height={200}
+                      ariaLabel="Tickets by department"
+                    />
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Floor {room.floor}</div>
-                </div>
-              ))}
+                ) : (
+                  <EmptyState icon={<ClipboardList />} title="No tickets yet" />
+                )}
+              </Panel>
             </div>
-          </div>
+
+            <Panel title="Urgent open tickets" description="Emergency and high priority" icon={<Siren />} actions={<Button size="sm" variant="ghost" onClick={() => go("RECLAMATIONS")}>View all</Button>}>
+              {urgentOpen.length === 0 ? (
+                <EmptyState icon={<CircleCheck />} title="Nothing urgent" description="No emergency or high-priority tickets are open." />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {urgentOpen.map((t) => (
+                    <TicketCard key={t.id} ticket={t} actions={resolveAction(t)} />
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </>
         )}
 
-        {/* TAB 3: RECLAMATIONS */}
-        {activeTab === "RECLAMATIONS" && (
-          <div className="ses-card">
-            {/* Sticky Filter Header with Title, Status & Departments Pills + Dropdown */}
-            <div className="tab-sticky-filter-bar">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                    Executive Incident Log ({filteredReclamations.length} tickets)
-                  </h3>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                    Operational incidents overview with immediate management resolution.
-                  </p>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <select
-                    value={ticketStatusFilter}
-                    onChange={(e) => setTicketStatusFilter(e.target.value)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="OPEN">Open Only</option>
-                    <option value="IN_PROGRESS">In Progress Only</option>
-                    <option value="RESOLVED">Resolved Only</option>
-                  </select>
-
-                  <select
-                    value={ticketFilter}
-                    onChange={(e) => setTicketFilter(e.target.value)}
-                    style={{ padding: "7px 12px", borderRadius: "var(--radius-md)", background: "var(--surface-2)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13 }}
-                  >
-                    <option value="ALL">All Departments</option>
-                    {incidentDepartments.map((dept) => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Fixed / Sticky Horizontal Department Pills Row */}
-              <div className="filter-pills-row">
-                <button
-                  type="button"
-                  onClick={() => setTicketFilter("ALL")}
-                  className={`filter-pill-btn ${ticketFilter === "ALL" ? "active" : ""}`}
-                >
-                  All ({localReclamations.length})
-                </button>
-                {incidentDepartments.map((dept) => {
-                  const deptCount = localReclamations.filter((r: Reclamation) => r.department === dept).length;
-                  return (
-                    <button
-                      key={dept}
-                      type="button"
-                      onClick={() => setTicketFilter(dept)}
-                      className={`filter-pill-btn ${ticketFilter === dept ? "active" : ""}`}
-                    >
-                      {dept} ({deptCount})
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Date Filter Pills Row */}
-              <div className="filter-pills-row" style={{ marginTop: 6 }}>
-                {(["ALL", "TODAY", "WEEK", "MONTH", "ARCHIVE"] as const).map((period) => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setRecDateFilter(period)}
-                    className={`filter-pill-btn ${recDateFilter === period ? "active" : ""}`}
-                    style={{ fontSize: 11, padding: "4px 10px" }}
-                  >
-                    📅 {period === "ALL" ? "All Time" : period.charAt(0) + period.slice(1).toLowerCase()}
-                  </button>
-                ))}
-              </div>
+        {activeTab === "ROOMS" && (
+          <Panel title="Rooms" description={`${filteredRooms.length} of ${liveRooms.length} rooms`} icon={<BedDouble />}>
+            <div className="mb-5 flex flex-col gap-3">
+              <FilterBar>
+                <SearchInput label="Search rooms" placeholder="Room number" value={roomSearch} onChange={setRoomSearch} />
+                <SelectField
+                  label="Floor"
+                  icon={<Layers />}
+                  value={roomFloor}
+                  onChange={setRoomFloor}
+                  options={[{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))]}
+                />
+              </FilterBar>
+              <PillGroup
+                label="Room status"
+                value={roomFilter}
+                onChange={setRoomFilter}
+                options={[
+                  { value: "ALL", label: "All" },
+                  { value: "ATTENTION", label: "Needs attention", count: attentionCount },
+                  { value: "OCCUPIED", label: "Occupied", count: occupied },
+                  { value: "VACANT_CLEAN", label: "Ready", count: vacantClean },
+                  { value: "DIRTY", label: "Dirty", count: dirty },
+                ]}
+              />
             </div>
+            <RoomGrid rooms={filteredRooms} tickets={tickets} onSelect={openRoom} />
+          </Panel>
+        )}
 
-            {/* Desktop Table View (>= 768px) */}
-            <div className="responsive-table-view">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
-                <thead>
-                  <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border-subtle)", color: "var(--text-muted)" }}>
-                    <th style={{ padding: "10px" }}>ID / Room</th>
-                    <th style={{ padding: "10px" }}>Date & Time</th>
-                    <th style={{ padding: "10px" }}>Department</th>
-                    <th style={{ padding: "10px" }}>Category / Description</th>
-                    <th style={{ padding: "10px" }}>Status</th>
-                    <th style={{ padding: "10px", textAlign: "right" }}>GM Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReclamations.map((rec) => {
-                    const dateInfo = formatIncidentDate(rec.created_at);
+        {activeTab === "RECLAMATIONS" && (
+          <Panel title="Tickets" description={`${plural(filteredTickets.length, "ticket")} · ${openCount} open`} icon={<ClipboardList />}>
+            <div className="mb-4 flex flex-col gap-3">
+              <FilterBar>
+                <SelectField
+                  label="Department"
+                  icon={<Building2 />}
+                  value={deptFilter}
+                  onChange={setDeptFilter}
+                  options={[{ value: "ALL", label: "All departments" }, ...departments.map((d) => ({ value: d, label: departmentLabel(d) }))]}
+                />
+                <SelectField label="Status" icon={<ListFilter />} value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+              </FilterBar>
+              <PillGroup label="Date range" value={dateRange} onChange={setDateRange} options={DATE_RANGES} />
+            </div>
+            <TicketTable tickets={filteredTickets} actions={resolveAction} />
+          </Panel>
+        )}
+
+        {activeTab === "ANALYTICS" && analyticsSummary && (
+          <>
+            <KpiGrid>
+              <Kpi label="Rooms with tickets" value={analyticsSummary.withIssues} hint={`of ${liveRooms.length} rooms`} icon={<BedDouble />} />
+              <Kpi label="Rush hours found" value={analyticsSummary.withRush} hint="Rooms with a peak hour" icon={<Clock />} />
+              <Kpi
+                label="Most reported room"
+                value={analyticsSummary.top ? analyticsSummary.top.room : "–"}
+                hint={analyticsSummary.top ? plural(analyticsSummary.top.count, "ticket") : "No tickets yet"}
+                tone={analyticsSummary.top ? "warning" : "neutral"}
+                icon={<Repeat />}
+              />
+              <Kpi label="Total tickets" value={tickets.length} hint={`${openCount} open`} icon={<ClipboardList />} />
+            </KpiGrid>
+
+            <Panel title="Room patterns" description="Peak complaint hours and repeated problems per room" icon={<ChartColumn />}>
+              <div className="mb-5">
+                <FilterBar>
+                  <SearchInput label="Search rooms" placeholder="Room number" value={aSearch} onChange={setASearch} />
+                  <SelectField label="Floor" icon={<Layers />} value={aFloor} onChange={setAFloor} options={[{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))]} />
+                  <SelectField
+                    label="Block"
+                    icon={<Building2 />}
+                    value={aBlock}
+                    onChange={setABlock}
+                    options={[
+                      { value: "ALL", label: "All blocks" },
+                      { value: "BLOCK_A", label: "Block A" },
+                      { value: "BLOCK_B", label: "Block B" },
+                    ]}
+                  />
+                  <SelectField
+                    label="Sort"
+                    icon={<ListFilter />}
+                    value={aSort}
+                    onChange={setASort}
+                    options={[
+                      { value: "MOST_TICKETS", label: "Most tickets" },
+                      { value: "OPEN_TICKETS", label: "Most open" },
+                      { value: "RUSH_HOUR", label: "Biggest rush" },
+                      { value: "ROOM_NUMBER", label: "Room number" },
+                    ]}
+                  />
+                </FilterBar>
+              </div>
+
+              {analyticsRooms.length === 0 ? (
+                <EmptyState icon={<ChartColumn />} title="No rooms with tickets" description="Patterns appear once rooms have reported issues." />
+              ) : (
+                <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {analyticsRooms.map((room) => {
+                    const s = analytics!.get(room.id)!;
+                    const head = roomHeadline(room, roomStats.get(room.id));
                     return (
-                      <tr key={rec.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px", fontWeight: 700, color: "var(--accent-amber)" }}>#{rec.id} • Room {rec.room?.room_number || rec.room_id}</td>
-                        <td style={{ padding: "10px", color: "var(--text-muted)", fontSize: 12, whiteSpace: "nowrap" }}>
-                          <div>{dateInfo.formatted}</div>
-                          <div style={{ fontSize: 11, opacity: 0.8 }}>{dateInfo.time}</div>
-                        </td>
-                        <td style={{ padding: "10px", color: "var(--text-secondary)" }}>{rec.department}</td>
-                        <td style={{ padding: "10px" }}>
-                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{rec.category}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rec.description}</div>
-                        </td>
-                        <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)" }}>
-                            {rec.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: "10px", textAlign: "right" }}>
-                          {rec.status !== "RESOLVED" && (
-                            <button onClick={() => handleResolveNormalTicket(rec.id)} style={{ padding: "6px 12px", borderRadius: "var(--radius-sm)", background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                              Resolve
-                            </button>
+                      <li key={room.id} className="flex flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-semibold tabular-nums tracking-tight">Room {room.room_number}</p>
+                            <p className="text-xs text-fg-muted">Floor {room.floor} · {room.block?.replace("BLOCK_", "Block ") ?? "Main"}</p>
+                          </div>
+                          <ToneBadge tone={head.tone}>{head.label}</ToneBadge>
+                        </div>
+
+                        <div className="rounded-lg border border-border bg-surface p-3">
+                          <p className="flex items-center gap-1.5 text-xs text-fg-muted">
+                            <Clock className="size-3.5" aria-hidden /> Rush hour
+                          </p>
+                          {s.rushHour ? (
+                            <p className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3">
+                              <span className="font-semibold tabular-nums">{s.rushHour.hourRange}</span>
+                              <span className="text-xs text-fg-muted">{s.rushHour.date}</span>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-sm text-fg-muted">No peak yet</p>
                           )}
-                        </td>
-                      </tr>
+                        </div>
+
+                        <ProblemBars problems={s.topProblems.slice(0, 3)} />
+
+                        <dl className="grid grid-cols-4 gap-2 border-t border-border pt-3 text-center">
+                          {[
+                            ["Total", s.totalTickets],
+                            ["Resolved", s.resolvedTickets],
+                            ["Open", s.openTickets],
+                            ["Avg fix", s.avgResolutionMinutes != null ? `${Math.round(s.avgResolutionMinutes)}m` : "–"],
+                          ].map(([k, v]) => (
+                            <div key={k as string}>
+                              <dt className="text-xs text-fg-muted">{k}</dt>
+                              <dd className="mt-0.5 font-semibold tabular-nums">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+
+                        <Button variant="secondary" onClick={() => openRoom(room)} className="w-full justify-center">
+                          Open room
+                        </Button>
+                      </li>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Stacked Card View (< 768px) - NO horizontal scroll */}
-            <div className="responsive-cards-view">
-              {filteredReclamations.length === 0 ? (
-                <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                  No executive incidents found.
-                </div>
-              ) : (
-                filteredReclamations.map((rec) => {
-                  const roomNum = rec.room?.room_number || `Room ${rec.room_id}`;
-                  const isResolved = rec.status === "RESOLVED";
-                  const dateInfo = formatIncidentDate(rec.created_at);
-
-                  return (
-                    <div key={rec.id} className="mobile-ticket-card">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--accent-amber)" }}>
-                            #{rec.id} • {roomNum}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: "var(--radius-sm)",
-                              background: "var(--surface-2)",
-                              border: "1px solid var(--border-subtle)",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {rec.department}
-                          </span>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
-                            🕒 {dateInfo.relative}
-                          </span>
-                        </div>
-
-                        <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
-                          {rec.status}
-                        </span>
-                      </div>
-
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
-                          {rec.category}
-                        </div>
-                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2, lineHeight: 1.4 }}>
-                          {rec.description}
-                        </div>
-                      </div>
-
-                      {!isResolved && (
-                        <div style={{ marginTop: 4, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
-                          <button
-                            type="button"
-                            disabled={isPending}
-                            onClick={() => handleResolveNormalTicket(rec.id)}
-                            style={{
-                              width: "100%",
-                              minHeight: 44,
-                              padding: "8px 12px",
-                              borderRadius: "var(--radius-md)",
-                              background: "var(--success-subtle)",
-                              border: "none",
-                              color: "var(--success)",
-                              fontSize: 13,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Resolve Incident
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                </ul>
               )}
-            </div>
-          </div>
+            </Panel>
+          </>
         )}
+      </PageStack>
 
-        {/* TAB 4: ROOM ANALYTICS, RUSH HOUR & REPEATED PROBLEMS */}
-        {activeTab === "ANALYTICS" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* TOP HEADER & CONTROLS */}
-            <div
-              style={{
-                background: "var(--surface-hover)",
-                borderRadius: 16,
-                padding: "1.5rem",
-                border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: "1.25rem" }}>
-                <div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
-                    <span>📈 INCIDENT INTELLIGENCE & PATTERNS</span>
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                    Room Rush Hour & Pattern Analytics
-                  </h3>
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-                    Detailed breakdown of each room: current status, peak complaint hours with exact dates, and top repeated complaints.
-                  </p>
-                </div>
-
-                {/* SUMMARY CHIPS */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--accent-subtle)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Active Rooms with Issues</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--warning)" }}>{analyticsSummary.roomsWithIssues} / {totalRooms}</div>
-                  </div>
-                  <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--accent-subtle)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Identified Rush Hours</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--info)" }}>{analyticsSummary.roomsWithRush} rooms</div>
-                  </div>
-                  {analyticsSummary.maxTicketsRoom && (
-                    <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--danger-subtle)" }}>
-                      <div style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>Highest Incident Room</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--danger)" }}>
-                        Room {analyticsSummary.maxTicketsRoom.roomNumber} ({analyticsSummary.maxTicketsRoom.count} tickets)
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* SEARCH & FILTERS BAR */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
-                {/* Search */}
-                <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-                  <input
-                    type="text"
-                    placeholder="Search by room number (e.g. 101, 204)..."
-                    value={analyticsSearch}
-                    onChange={(e) => setAnalyticsSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      borderRadius: 10,
-                      background: "var(--surface-hover)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text-primary)",
-                      fontSize: 13,
-                      outline: "none",
-                    }}
-                  />
-                  {analyticsSearch && (
-                    <button
-                      onClick={() => setAnalyticsSearch("")}
-                      style={{
-                        position: "absolute",
-                        right: 10,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Floor Filter */}
-                <select
-                  value={analyticsFloorFilter}
-                  onChange={(e) => setAnalyticsFloorFilter(e.target.value === "ALL" ? "ALL" : Number(e.target.value))}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 10,
-                    background: "var(--surface-hover)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-primary)",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  <option value="ALL">🏢 All Floors</option>
-                  <option value="1">Floor 1</option>
-                  <option value="2">Floor 2</option>
-                  <option value="3">Floor 3</option>
-                </select>
-
-                {/* Block Filter */}
-                <select
-                  value={analyticsBlockFilter}
-                  onChange={(e) => setAnalyticsBlockFilter(e.target.value)}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 10,
-                    background: "var(--surface-hover)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-primary)",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  <option value="ALL">🏛️ All Blocks</option>
-                  <option value="BLOCK_A">Block A</option>
-                  <option value="BLOCK_B">Block B</option>
-                </select>
-
-                {/* Sort Order */}
-                <select
-                  value={analyticsSort}
-                  onChange={(e) => setAnalyticsSort(e.target.value as any)}
-                  style={{
-                    padding: "9px 12px",
-                    borderRadius: 10,
-                    background: "var(--warning-subtle)",
-                    border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
-                    color: "var(--warning)",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  <option value="MOST_TICKETS">Sort: 📉 Most Incidents First</option>
-                  <option value="OPEN_TICKETS">Sort: ⚠️ Most Open Issues</option>
-                  <option value="RUSH_HOUR">Sort: ⏰ Highest Rush Hour Spike</option>
-                  <option value="ROOM_NUMBER">Sort: 🔢 Room Number</option>
-                </select>
-              </div>
+      <RoomDetail
+        room={selectedRoom}
+        tickets={tickets}
+        onClose={() => setSelectedRoomId(null)}
+        ticketActions={resolveAction}
+        controls={
+          selectedRoom && (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+              <p className="text-sm font-medium">Housekeeping</p>
+              <p className="text-sm text-fg-muted">
+                Currently {CLEANING_LABEL[selectedRoom.cleaning_status].toLowerCase()}. Next step:{" "}
+                {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}.
+              </p>
+              <Button variant="secondary" onClick={() => cycleCleaning(selectedRoom)} isLoading={isPending} loadingText="Updating" className="mt-1 w-full justify-center sm:w-auto">
+                Mark as {CLEANING_LABEL[NEXT_CLEANING[selectedRoom.cleaning_status]].toLowerCase()}
+              </Button>
             </div>
-
-            {/* ROOM CARDS GRID */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))",
-                gap: 16,
-              }}
-            >
-              {filteredAnalyticsRooms.map((room) => {
-                const stats = roomAnalyticsMap.get(room.id) || {
-                  roomId: room.id,
-                  roomNumber: room.room_number,
-                  totalTickets: 0,
-                  resolvedTickets: 0,
-                  openTickets: 0,
-                  hasEmergency: false,
-                  hasHighPriority: false,
-                  rushHour: null,
-                  topProblems: [],
-                  avgResolutionMinutes: null,
-                  lastReclamationDate: null,
-                };
-
-                // Determine border and accent styling based on severity
-                let borderColor = "var(--border)";
-                let glowShadow = "none";
-                let statusHeaderBadge = null;
-
-                if (stats.hasEmergency || stats.hasHighPriority) {
-                  borderColor = "color-mix(in srgb, var(--danger) 45%, transparent)";
-                  glowShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
-                  statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--danger-subtle)", border: "1px solid color-mix(in srgb, var(--danger) 45%, transparent)", color: "var(--danger)", fontSize: 10, fontWeight: 800 }}>
-                      🔥 CRITICAL OPEN
-                    </span>
-                  );
-                } else if (stats.openTickets > 0) {
-                  borderColor = "color-mix(in srgb, var(--warning) 45%, transparent)";
-                  glowShadow = "0 0 15px rgba(245, 158, 11, 0.15)";
-                  statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--warning-subtle)", border: "1px solid color-mix(in srgb, var(--warning) 45%, transparent)", color: "var(--warning)", fontSize: 10, fontWeight: 800 }}>
-                      ⚠️ {stats.openTickets} OPEN
-                    </span>
-                  );
-                } else if (stats.totalTickets > 0) {
-                  borderColor = "color-mix(in srgb, var(--info) 45%, transparent)";
-                  statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--info-subtle)", border: "1px solid var(--info-subtle)", color: "var(--info)", fontSize: 10, fontWeight: 700 }}>
-                      ✅ ALL RESOLVED
-                    </span>
-                  );
-                } else {
-                  statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--success-subtle)", border: "1px solid var(--success-subtle)", color: "var(--success)", fontSize: 10, fontWeight: 700 }}>
-                      ✨ CLEAN RECORD
-                    </span>
-                  );
-                }
-
-                return (
-                  <div
-                    key={room.id}
-                    style={{
-                      background: "var(--surface-hover)",
-                      border: `1.5px solid ${borderColor}`,
-                      borderRadius: 16,
-                      padding: "1.25rem",
-                      boxShadow: glowShadow,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      gap: 14,
-                      transition: "transform 0.2s ease, border-color 0.2s ease",
-                    }}
-                  >
-                    <div>
-                      {/* CARD HEADER */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <h4 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                              Room {room.room_number}
-                            </h4>
-                            {statusHeaderBadge}
-                          </div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
-                            Floor {room.floor} • {room.block === "BLOCK_A" ? "Block A" : "Block B"}
-                          </div>
-                        </div>
-
-                        {/* Occupancy & Cleaning Pills */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                          <span
-                            style={{
-                              padding: "2px 8px",
-                              borderRadius: 6,
-                              fontSize: 11,
-                              fontWeight: 800,
-                              background: room.is_occupied ? "var(--warning-subtle)" : "var(--success-subtle)",
-                              color: room.is_occupied ? "var(--warning)" : "var(--success)",
-                              border: `1px solid ${room.is_occupied ? "color-mix(in srgb, var(--warning) 35%, transparent)" : "color-mix(in srgb, var(--success) 35%, transparent)"}`,
-                            }}
-                          >
-                            {room.is_occupied ? "🔴 Occupied" : "🟢 Vacant"}
-                          </span>
-                          <span
-                            style={{
-                              padding: "2px 8px",
-                              borderRadius: 6,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              background:
-                                room.cleaning_status === "CLEAN"
-                                  ? "var(--success-subtle)"
-                                  : room.cleaning_status === "DIRTY"
-                                  ? "var(--danger-subtle)"
-                                  : "var(--info-subtle)",
-                              color:
-                                room.cleaning_status === "CLEAN"
-                                  ? "var(--success)"
-                                  : room.cleaning_status === "DIRTY"
-                                  ? "var(--danger)"
-                                  : "var(--info)",
-                            }}
-                          >
-                            🧹 {room.cleaning_status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* RUSH HOUR PANEL */}
-                      <div
-                        style={{
-                          background: stats.rushHour ? "var(--warning-subtle)" : "var(--surface-hover)",
-                          border: `1px solid ${stats.rushHour ? "color-mix(in srgb, var(--warning) 35%, transparent)" : "var(--border)"}`,
-                          borderRadius: 12,
-                          padding: "10px 12px",
-                          marginBottom: 12,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: stats.rushHour ? "var(--warning)" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
-                            <span>⏰ RUSH HOUR & PEAK TIME</span>
-                          </span>
-                          {stats.rushHour && (
-                            <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "var(--warning-subtle)", color: "var(--warning)" }}>
-                              {stats.rushHour.count} in 1 hr
-                            </span>
-                          )}
-                        </div>
-
-                        {stats.rushHour ? (
-                          <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>
-                                {stats.rushHour.hourRange}
-                              </span>
-                              <span style={{ fontSize: 11, color: "var(--warning)", fontWeight: 700 }}>
-                                Date: {stats.rushHour.date}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                              Spike of {stats.rushHour.count} reclamation(s) on {stats.rushHour.date} ({stats.rushHour.totalForHourOfDay} total occurrences during this hour slot across all history).
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-                            No rush hour pattern recorded yet (0 historical incidents).
-                          </div>
-                        )}
-                      </div>
-
-                      {/* MOST REPEATED PROBLEMS PANEL */}
-                      <div
-                        style={{
-                          background: "var(--surface-hover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 12,
-                          padding: "10px 12px",
-                          marginBottom: 12,
-                        }}
-                      >
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--special)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                          <span>🔁 MOST REPEATED PROBLEMS</span>
-                        </div>
-
-                        {stats.topProblems.length > 0 ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {stats.topProblems.map((prob, idx) => (
-                              <div key={prob.category}>
-                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                                  <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
-                                    <span style={{ color: "var(--text-muted)", marginRight: 4 }}>#{idx + 1}</span>
-                                    {prob.category}
-                                  </span>
-                                  <span style={{ color: "var(--special)", fontWeight: 800 }}>
-                                    {prob.count}× <span style={{ color: "var(--text-muted)", fontSize: 11 }}>({prob.percentage}%)</span>
-                                  </span>
-                                </div>
-                                {/* Bar indicator */}
-                                <div style={{ height: 5, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden" }}>
-                                  <div
-                                    style={{
-                                      height: "100%",
-                                      width: `${prob.percentage}%`,
-                                      borderRadius: 999,
-                                      background:
-                                        idx === 0
-                                          ? "var(--danger)"
-                                          : idx === 1
-                                          ? "var(--info)"
-                                          : "var(--text-muted)",
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
-                            No complaints reported for this room.
-                          </div>
-                        )}
-                      </div>
-
-                      {/* STATS SUMMARY ROW */}
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(4, 1fr)",
-                          gap: 6,
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          background: "var(--surface-hover)",
-                          border: "1px solid var(--border)",
-                          fontSize: 11,
-                          textAlign: "center",
-                        }}
-                      >
-                        <div>
-                          <div style={{ color: "var(--text-muted)" }}>Total</div>
-                          <div style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stats.totalTickets}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: "var(--text-muted)" }}>Resolved</div>
-                          <div style={{ fontWeight: 800, color: "var(--success)", fontSize: 13 }}>{stats.resolvedTickets}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: "var(--text-muted)" }}>Open</div>
-                          <div style={{ fontWeight: 800, color: stats.openTickets > 0 ? "var(--danger)" : "var(--text-muted)", fontSize: 13 }}>{stats.openTickets}</div>
-                        </div>
-                        <div>
-                          <div style={{ color: "var(--text-muted)" }}>Avg Fix</div>
-                          <div style={{ fontWeight: 800, color: "var(--info)", fontSize: 13 }}>
-                            {stats.avgResolutionMinutes !== null ? `${stats.avgResolutionMinutes}m` : "—"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* CARD ACTION BUTTON */}
-                    <button
-                      onClick={() => {
-                        setSelectedRoomModal(room);
-                        setModalTab("ROOM_STAT");
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "9px",
-                        borderRadius: 10,
-                        background: "var(--warning-subtle)",
-                        border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
-                        color: "var(--warning)",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <span>🔍 Inspect Room History & Actions &rarr;</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+          )
+        }
+        logForm={
+          <div className="flex flex-col gap-4">
+            <Segmented
+              label="Type"
+              value={logMode}
+              onChange={setLogMode}
+              options={[
+                { value: "NEW", label: "New directive" },
+                { value: "PAST", label: "Past incident" },
+              ]}
+            />
+            {logMode === "NEW" ? (
+              <NewTicketForm onSubmit={createDirective} pending={isPending} submitLabel="Create ticket" />
+            ) : (
+              <PastIncidentForm onSubmit={recordPast} pending={isPending} />
+            )}
           </div>
-        )}
-
-      {/* ROOM POP-UP MODAL */}
-      {selectedRoomModal && (
-        <div className="room-modal-overlay">
-          <div className="room-modal-panel">
-            {/* Modal Top Bar */}
-            <div className="room-modal-topbar">
-              <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
-                  Room {selectedRoomModal.room_number} Executive Inspection
-                </h3>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Floor {selectedRoomModal.floor} • Block {selectedRoomModal.block}</span>
-              </div>
-              <button
-                onClick={() => setSelectedRoomModal(null)}
-                style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1, padding: "4px 8px", borderRadius: "var(--radius-sm)" }}
-                aria-label="Close room modal"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body: Sidebar (desktop left / mobile top) + Main Content */}
-            <div className="room-modal-body">
-              {/* MODAL NAV: left sidebar on desktop, top tab bar on mobile */}
-              <div className="room-modal-sidebar">
-                <button
-                  onClick={() => setModalTab("ROOM_STAT")}
-                  className={`room-modal-nav-btn ${modalTab === "ROOM_STAT" ? "active-amber" : ""}`}
-                >
-                  📊 Room Stat
-                </button>
-                <button
-                  onClick={() => setModalTab("RECLAMATIONS")}
-                  className={`room-modal-nav-btn ${modalTab === "RECLAMATIONS" ? "active-purple" : ""}`}
-                >
-                  <span>🛎️ Reclamations</span>
-                  {roomModalReclamations.length > 0 && (
-                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "var(--special-subtle)", color: "var(--special)", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
-                      {roomModalReclamations.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              {/* MODAL CONTENT */}
-              <div className="room-modal-content" style={{ background: "var(--surface-0)" }}>
-                {modalTab === "ROOM_STAT" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, color: "var(--accent-amber)", fontWeight: 800 }}>📊 Executive Room Overview</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      <div className="ses-card" style={{ padding: 12 }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Occupancy State</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{selectedRoomModal.is_occupied ? "Occupied" : "Vacant"}</div>
-                      </div>
-                      <div className="ses-card" style={{ padding: 12 }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Housekeeping State</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>{selectedRoomModal.cleaning_status}</div>
-                      </div>
-                    </div>
-
-                    <button onClick={() => handleCleaningCycle(selectedRoomModal)} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "var(--warning-subtle)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontWeight: 800, cursor: "pointer" }}>
-                      🧹 Cycle Cleaning Status &rarr;
-                    </button>
-
-                    {/* Rush Hour & Analytics Highlights in Modal */}
-                    {(() => {
-                      const stats = roomAnalyticsMap.get(selectedRoomModal.id);
-                      if (!stats) return null;
-                      return (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
-                          <div style={{ background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", borderRadius: 10, padding: "10px" }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--accent-amber)" }}>⏰ RUSH HOUR & PEAK INCIDENT TIME</div>
-                            {stats.rushHour ? (
-                              <div style={{ marginTop: 4 }}>
-                                <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{stats.rushHour.hourRange}</div>
-                                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Busiest Date: {stats.rushHour.date} ({stats.rushHour.count} complaints in that hour)</div>
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginTop: 4 }}>No incidents recorded</div>
-                            )}
-                          </div>
-
-                          <div style={{ background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 10, padding: "10px" }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--brand-primary)" }}>🔁 TOP REPEATED PROBLEMS</div>
-                            {stats.topProblems.length > 0 ? (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                                {stats.topProblems.map((prob, idx) => (
-                                  <div key={prob.category} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                                    <span style={{ color: "var(--text-secondary)" }}>#{idx + 1} {prob.category}</span>
-                                    <strong style={{ color: "var(--brand-primary)" }}>{prob.count}× ({prob.percentage}%)</strong>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginTop: 4 }}>No problems recorded</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* MODAL TAB 2: RECLAMATIONS WITH 4 SUB-TABS */}
-                {modalTab === "RECLAMATIONS" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {/* 4 SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS */}
-                    <div style={{ display: "flex", gap: 6, padding: "4px", background: "var(--surface-1)", borderRadius: 10, border: "1px solid var(--border-subtle)", overflowX: "auto" }}>
-                      <button
-                        onClick={() => setRoomModalSubTab("ACTIVE")}
-                        style={{
-                          flex: 1,
-                          padding: "7px 8px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-secondary)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 5,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>⚡ Active</span>
-                        {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--status-rose)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
-                            {roomActiveReclamations.length}
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => setRoomModalSubTab("MOST_REPORTED")}
-                        style={{
-                          flex: 1,
-                          padding: "7px 8px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 5,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "var(--accent-subtle)", fontSize: 10, fontWeight: 800 }}>
-                          {roomProblemStats.length}
-                        </span>
-                      </button>
-
-                      <button
-                        onClick={() => setRoomModalSubTab("HISTORY")}
-                        style={{
-                          flex: 1,
-                          padding: "7px 8px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 5,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "var(--accent-subtle)", fontSize: 10, fontWeight: 800 }}>
-                          {roomModalReclamations.length}
-                        </span>
-                      </button>
-
-                      <button
-                        onClick={() => setRoomModalSubTab("TIMELINE")}
-                        style={{
-                          flex: 1,
-                          padding: "7px 8px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
-                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
-                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-secondary)",
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 5,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span>📅 Timeline</span>
-                      </button>
-                    </div>
-
-                    {/* SUB-CATEGORY 1: ACTIVE PROBLEMS */}
-                    {roomModalSubTab === "ACTIVE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--accent-amber)", fontWeight: 800 }}>
-                          ⚡ Active Executive Reclamations ({roomActiveReclamations.length})
-                        </h4>
-
-                        {roomActiveReclamations.length === 0 ? (
-                          <div style={{ padding: "12px", borderRadius: 10, background: "var(--status-emerald-bg)", border: "1px solid var(--status-emerald)", color: "var(--status-emerald)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>✅</span>
-                            <span>No active problems recorded for Room {selectedRoomModal.room_number}. Operations normal.</span>
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {roomActiveReclamations.map((rec) => {
-                              const dateInfo = formatIncidentDate(rec.created_at);
-                              return (
-                                <div key={rec.id} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                                    <div>
-                                      <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
-                                      <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "var(--warning-subtle)", color: "var(--accent-amber)" }}>{rec.department}</span>
-                                      <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>🕒 {dateInfo.relative}</span>
-                                    </div>
-                                    <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "var(--status-rose-bg)" : "var(--status-amber-bg)", color: rec.status === "OPEN" ? "var(--status-rose)" : "var(--status-amber)", fontWeight: 800 }}>
-                                      {rec.status}
-                                    </span>
-                                  </div>
-                                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{rec.description}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* CREATE EXECUTIVE DIRECTIVE FORM */}
-                        <form onSubmit={handleModalCreateReclamation} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 12, border: "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--accent-amber)" }}>➕ Log Executive Dispatch for Room {selectedRoomModal.room_number}</div>
-                          <select
-                            value={modalDept}
-                            onChange={(e) => setModalDept(e.target.value)}
-                            className="ses-select"
-                            style={{ fontSize: 12 }}
-                          >
-                            <option value="TECHNICAL">Technical Maintenance</option>
-                            <option value="HOUSEKEEPING">Housekeeping</option>
-                            <option value="FOOD_AND_BEVERAGE">Food & Beverage</option>
-                            <option value="CONCIERGE">Concierge</option>
-                            <option value="SECURITY">Security</option>
-                          </select>
-                          <input
-                            type="text"
-                            placeholder="Executive directive note..."
-                            value={modalDesc}
-                            onChange={(e) => setModalDesc(e.target.value)}
-                            className="ses-input"
-                            style={{ fontSize: 12 }}
-                          />
-                          <button
-                            type="submit"
-                            disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "var(--accent-amber)", border: "none", color: "var(--brand-foreground)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
-                          >
-                            Dispatch Directive &rarr;
-                          </button>
-                        </form>
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 2: MOST REPORTED PROBLEMS */}
-                    {roomModalSubTab === "MOST_REPORTED" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--brand-primary)", fontWeight: 800 }}>
-                          💥 Most Reported Problem Categories
-                        </h4>
-
-                        {roomProblemStats.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No problem patterns recorded for Room {selectedRoomModal.room_number} yet.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {roomProblemStats.map((stat) => (
-                              <div key={stat.category} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 10, border: "1px solid var(--border-subtle)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                  <div>
-                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stat.category}</span>
-                                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({stat.department})</span>
-                                    {stat.lastDate && (
-                                      <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: 8 }}>
-                                        Last: {formatIncidentDate(stat.lastDate).relative}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span style={{ fontWeight: 800, color: "var(--brand-primary)", fontSize: 13 }}>{stat.count} Reports</span>
-                                </div>
-                                <div style={{ height: 6, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden" }}>
-                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "var(--brand-primary)" }} />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 3: FULL HISTORY WITH PAST LOG BACKFILL FORM */}
-                    {roomModalSubTab === "HISTORY" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-purple)", fontWeight: 800 }}>
-                            📜 Ticket History ({roomModalReclamations.length})
-                          </h4>
-                          <button
-                            type="button"
-                            onClick={() => setShowInModalPastLog(!showInModalPastLog)}
-                            style={{
-                              padding: "5px 10px",
-                              borderRadius: "var(--radius-sm)",
-                              background: showInModalPastLog ? "var(--status-rose-bg)" : "var(--special-subtle)",
-                              border: `1px solid ${showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)"}`,
-                              color: showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)",
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {showInModalPastLog ? "✕ Cancel Backfill" : "➕ Log Past Incident"}
-                          </button>
-                        </div>
-
-                        {/* INLINE PAST LOG FORM */}
-                        {showInModalPastLog && (
-                          <form onSubmit={handleInModalHistoricalSubmit} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 12, border: "1.5px dashed var(--status-purple)", display: "flex", flexDirection: "column", gap: 10 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--status-purple)" }}>
-                              📅 Backfill Historical Record for Room {selectedRoomModal.room_number}
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Date & Time</label>
-                                <input
-                                  type="datetime-local"
-                                  value={inModalHistDate}
-                                  onChange={(e) => setInModalHistDate(e.target.value)}
-                                  required
-                                  className="ses-input"
-                                  style={{ fontSize: 12, padding: "6px" }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Department</label>
-                                <select
-                                  value={inModalHistDept}
-                                  onChange={(e) => setInModalHistDept(e.target.value)}
-                                  className="ses-select"
-                                  style={{ fontSize: 12, padding: "6px" }}
-                                >
-                                  <option value="TECHNICAL">Technical Maintenance</option>
-                                  <option value="HOUSEKEEPING">Housekeeping</option>
-                                  <option value="FOOD_AND_BEVERAGE">Food & Beverage</option>
-                                  <option value="CONCIERGE">Concierge</option>
-                                  <option value="SECURITY">Security</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              <div>
-                                <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Category / Issue</label>
-                                <input
-                                  type="text"
-                                  value={inModalHistCategory}
-                                  onChange={(e) => setInModalHistCategory(e.target.value)}
-                                  placeholder="e.g. AC Maintenance, Keycard..."
-                                  required
-                                  className="ses-input"
-                                  style={{ fontSize: 12, padding: "6px" }}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Initial Status</label>
-                                <select
-                                  value={inModalHistStatus}
-                                  onChange={(e) => setInModalHistStatus(e.target.value as any)}
-                                  className="ses-select"
-                                  style={{ fontSize: 12, padding: "6px" }}
-                                >
-                                  <option value="RESOLVED">Resolved (Historical Archive)</option>
-                                  <option value="IN_PROGRESS">In Progress</option>
-                                  <option value="OPEN">Still Open</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label style={{ fontSize: 11, color: "var(--text-muted)", display: "block", marginBottom: 3 }}>Incident Details</label>
-                              <textarea
-                                value={inModalHistDesc}
-                                onChange={(e) => setInModalHistDesc(e.target.value)}
-                                placeholder="Describe what happened, remediation steps taken, etc."
-                                required
-                                rows={2}
-                                className="ses-input"
-                                style={{ fontSize: 12, width: "100%", resize: "none" }}
-                              />
-                            </div>
-
-                            <button
-                              type="submit"
-                              disabled={isPending}
-                              style={{
-                                padding: "8px",
-                                borderRadius: 8,
-                                background: "var(--status-purple)",
-                                border: "none",
-                                color: "var(--text-primary)",
-                                fontWeight: 800,
-                                cursor: "pointer",
-                                fontSize: 12,
-                              }}
-                            >
-                              {isPending ? "Saving Record..." : "💾 Save Historical Incident &rarr;"}
-                            </button>
-                          </form>
-                        )}
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No past or historical tickets logged for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 340, overflowY: "auto" }}>
-                            {roomModalReclamations.map((rec) => {
-                              const dateInfo = formatIncidentDate(rec.created_at);
-                              return (
-                                <div key={rec.id} style={{ background: "var(--surface-1)", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
-                                      #{rec.id} • {rec.category} <span style={{ color: "var(--accent-amber)", fontWeight: 600 }}>({rec.department})</span>
-                                      <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>• {dateInfo.full}</span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{rec.description}</div>
-                                  </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: rec.status === "RESOLVED" ? "var(--status-emerald)" : "var(--status-rose)", fontWeight: 800 }}>
-                                    {rec.status}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* SUB-CATEGORY 4: CHRONOLOGICAL DATE TIMELINE */}
-                    {roomModalSubTab === "TIMELINE" && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-emerald)", fontWeight: 800 }}>
-                          📅 Chronological Incident Timeline ({roomModalReclamations.length})
-                        </h4>
-
-                        {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
-                            No timeline incidents recorded for Room {selectedRoomModal.room_number}.
-                          </div>
-                        ) : (
-                          <div style={{ position: "relative", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 16, maxHeight: 340, overflowY: "auto" }}>
-                            <div style={{ position: "absolute", left: 7, top: 8, bottom: 8, width: 2, background: "var(--border-default)" }} />
-                            {roomModalReclamations
-                              .slice()
-                              .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-                              .map((rec) => {
-                                const dateInfo = formatIncidentDate(rec.created_at);
-                                const isResolved = rec.status === "RESOLVED";
-                                return (
-                                  <div key={rec.id} style={{ position: "relative" }}>
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        left: -17,
-                                        top: 4,
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: "50%",
-                                        background: isResolved ? "var(--status-emerald)" : "var(--status-rose)",
-                                        border: "2px solid var(--surface-0)",
-                                      }}
-                                    />
-                                    <div style={{ background: "var(--surface-1)", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-subtle)" }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ fontWeight: 800, fontSize: 12, color: "var(--text-primary)" }}>#{rec.id} {rec.category}</span>
-                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--surface-2)", color: "var(--text-secondary)" }}>{rec.department}</span>
-                                        </div>
-                                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)" }}>
-                                          {dateInfo.full}
-                                        </span>
-                                      </div>
-                                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{rec.description}</div>
-                                      <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
-                                        <span style={{ color: "var(--text-muted)" }}>Logged: {dateInfo.relative}</span>
-                                        <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 999, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)", fontWeight: 700 }}>
-                                          {rec.status}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        }
+      />
     </AppShell>
   );
 }

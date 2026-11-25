@@ -2,7 +2,7 @@
 
 import React, { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { logoutRole } from "@/app/actions";
+import { signOutToLogin } from "@/lib/session";
 
 interface Props {
   requiredRole: "reception" | "rh" | "gm";
@@ -20,11 +20,7 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const handleLogout = () => {
-    startTransition(async () => {
-      await logoutRole();
-      router.push("/login");
-      router.refresh();
-    });
+    startTransition(() => signOutToLogin());
   };
 
   const requiredRoleName = ROLE_NAMES[requiredRole] || requiredRole;

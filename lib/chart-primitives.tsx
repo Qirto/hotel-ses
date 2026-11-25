@@ -168,7 +168,7 @@ export function ChartCard({
 }) {
   return (
     <section
-      className={`min-w-0 rounded-[20px] bg-white p-4 text-neutral-700 dark:bg-[#0b0b0c] dark:text-neutral-300 sm:p-5 ${ring} ${className}`}
+      className={`min-w-0 rounded-[20px] bg-white p-4 text-neutral-700 dark:bg-surface dark:text-neutral-300 sm:p-5 ${ring} ${className}`}
       style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.18)" }}
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">

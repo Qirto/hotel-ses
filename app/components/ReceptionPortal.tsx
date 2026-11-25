@@ -21,8 +21,7 @@ import {
   resolveReclamation,
   cycleRoomCleaning,
   updateRoomHeadcount,
-  logoutRole,
-} from "@/app/actions";
+  } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
@@ -529,19 +528,13 @@ export default function ReceptionPortal({
       items={navItems}
       departmentName="Reception Operations"
       departmentCode="Reception"
-      onSignOut={() => {
-        startTransition(async () => {
-          await logoutRole();
-          window.location.href = "/login";
-        });
-      }}
       headerActions={
         <Button
           variant="outline"
           onClick={() => setShowHistoryModal(true)}
           aria-label="Backfill a past incident"
           leftIcon={<History className="size-4" aria-hidden />}
-          className="h-11 px-3 sm:px-4"
+          className="h-10 px-3"
         >
           <span className="hidden sm:inline">Backfill</span>
         </Button>

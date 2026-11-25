@@ -162,7 +162,7 @@ export function StatCard({
       onPointerLeave={(e) => e.pointerType === "mouse" && setActive(null)}
       onKeyDown={onKey}
       onBlur={() => setActive(null)}
-      className={`group relative min-w-0 select-none overflow-hidden rounded-2xl bg-white pt-4 text-neutral-700 transition-[box-shadow] duration-200 dark:bg-[#0b0b0c] dark:text-neutral-300 ${ring} ${focus} [@media(hover:hover)]:hover:ring-black/15 dark:[@media(hover:hover)]:hover:ring-white/15 ${className}`}
+      className={`group relative min-w-0 select-none overflow-hidden rounded-2xl bg-white pt-4 text-neutral-700 transition-[box-shadow] duration-200 dark:bg-surface dark:text-neutral-300 ${ring} ${focus} [@media(hover:hover)]:hover:ring-black/15 dark:[@media(hover:hover)]:hover:ring-white/15 ${className}`}
       style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 18px 36px -28px rgba(0,0,0,0.2)" }}
     >
       <div className="flex items-start justify-between gap-3 px-4">
@@ -241,7 +241,7 @@ export function StatCard({
             {/* scrubber */}
             <motion.g initial={false} animate={{ opacity: active === null ? 0 : 1 }} transition={{ duration: 0.12 }}>
               <motion.line y1={0} y2={H} x1={curX} x2={curX} className="stroke-black/15 dark:stroke-white/20" strokeDasharray="2 3" />
-              <motion.circle cx={curX} cy={curY} r={4.5} fill={color} className="stroke-white dark:stroke-[#0b0b0c]" strokeWidth={2} />
+              <motion.circle cx={curX} cy={curY} r={4.5} fill={color} className="stroke-white dark:stroke-[var(--surface)]" strokeWidth={2} />
             </motion.g>
           </svg>
         )}

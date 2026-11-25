@@ -36,3 +36,32 @@ export function formatIncidentDate(dateStr?: string | null): IncidentDate {
 export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : pluralForm}`;
 }
+
+const DEPARTMENT_LABELS: Record<string, string> = {
+  TECHNICAL: "Technical",
+  MAINTENANCE: "Maintenance",
+  HOUSEKEEPING: "Housekeeping",
+  GOVERNANCE: "Housekeeping",
+  FOOD_AND_BEVERAGE: "Food & Beverage",
+  CONCIERGE: "Concierge",
+  SECURITY: "Security",
+  RECEPTION: "Reception",
+  MANAGEMENT: "Management",
+  SPA_AND_WELLNESS: "Spa & Wellness",
+  SALES_AND_MARKETING: "Sales & Marketing",
+  FINANCE_AND_ACCOUNTING: "Finance",
+  HUMAN_RESOURCES: "Human Resources",
+};
+
+/** "FOOD_AND_BEVERAGE" -> "Food & Beverage"; unknown codes are title-cased. */
+export function departmentLabel(code?: string | null): string {
+  if (!code) return "Unassigned";
+  return (
+    DEPARTMENT_LABELS[code.toUpperCase()] ??
+    code
+      .toLowerCase()
+      .split("_")
+      .map((w) => (w === "and" ? "&" : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join(" ")
+  );
+}

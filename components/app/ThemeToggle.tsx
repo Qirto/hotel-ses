@@ -1,16 +1,17 @@
 "use client";
 
+import { memo } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 interface ThemeToggleProps {
-  /** "icon" = square icon button; "full" = full-width row with a label (sidebar). */
+  /** "icon" = borderless icon button (top bar); "full" = labelled row (sidebar). */
   variant?: "icon" | "full";
   className?: string;
 }
 
-export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
+export const ThemeToggle = memo(function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";
@@ -28,7 +29,7 @@ export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
         )}
       >
         <span className="grid size-5 shrink-0 place-items-center">
-          <Icon className="size-[18px] text-brand" aria-hidden />
+          <Icon className="size-[18px]" aria-hidden />
         </span>
         <span className="flex-1 truncate text-left">{isDark ? "Light mode" : "Dark mode"}</span>
       </button>
@@ -42,11 +43,12 @@ export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
       aria-label={label}
       title={label}
       className={cn(
-        "focus-ring grid size-11 place-items-center rounded-lg border border-border text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg",
+        "focus-ring relative grid size-10 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg",
+        "after:absolute after:-inset-0.5 after:content-['']",
         className
       )}
     >
-      <Icon className="size-[18px] text-brand" aria-hidden />
+      <Icon className="size-5" aria-hidden />
     </button>
   );
-}
+});

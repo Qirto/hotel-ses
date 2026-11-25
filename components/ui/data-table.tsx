@@ -80,7 +80,8 @@ export interface DataTableProps<T extends { id: Id }> {
   /** Rows shown at first; "Show more" reveals this many each time (default 20, Infinity = all) */
   pageSize?: number;
   /** Table scroll height in px before the header sticks (default 520) */
-  maxHeight?: number;
+  /** Hotel SES: null = no internal scroll (the page scrolls; sticky header off) */
+  maxHeight?: number | null;
   density?: "comfortable" | "compact";
   /** Width below which rows become cards (default 640) */
   cardBreakpoint?: number;
@@ -98,7 +99,7 @@ const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const cx = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(" ");
 const ring = "ring-1 ring-black/[0.07] dark:ring-white/[0.07]";
 const hairline = "border-black/[0.06] dark:border-white/[0.07]";
-const muted = "text-neutral-500";
+const muted = "text-neutral-500 dark:text-neutral-400"; // Hotel SES: >= 4.5:1 on dark surfaces
 const focus =
   "outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/70 dark:focus-visible:ring-white/40";
 
@@ -561,7 +562,7 @@ export function DataTable<T extends { id: Id }>({
     <div
       role="row"
       className={cx(
-        "sticky top-0 z-10 grid items-center border-b bg-white/90 text-[12px] font-medium backdrop-blur dark:bg-[#0b0b0c]/90",
+        "sticky top-0 z-10 grid items-center border-b bg-white/90 text-[12px] font-medium backdrop-blur dark:bg-surface/90",
         hairline,
         scrolled && "shadow-[0_8px_16px_-12px_rgba(0,0,0,0.25)]",
       )}
@@ -641,7 +642,7 @@ export function DataTable<T extends { id: Id }>({
           {...common}
           {...interactive}
           className={cx(
-            "rounded-2xl bg-white p-4 dark:bg-[#0b0b0c]",
+            "rounded-2xl bg-white p-4 dark:bg-surface",
             ring,
             isSel && "bg-neutral-50 ring-neutral-900/25 dark:bg-white/[0.04] dark:ring-white/25",
             onRowClick && cx("cursor-pointer", focus),
@@ -659,12 +660,18 @@ export function DataTable<T extends { id: Id }>({
           </div>
           {rest.length > 0 && (
             <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3.5 pl-0 sm:pl-0">
-              {rest.map((c) => (
-                <div key={c.key} role="cell" className={cx("min-w-0", c.fullWidthOnMobile && "col-span-2")}>
-                  <p className={`mb-1 text-[11.5px] ${muted}`}>{c.mobileLabel ?? c.header}</p>
-                  <div className="text-[13.5px] text-neutral-800 dark:text-neutral-200">{renderCell(row, c)}</div>
-                </div>
-              ))}
+              {rest.map((c) => {
+                // Hotel SES: skip empty cells (e.g. no actions) and empty labels on cards
+                const value = renderCell(row, c);
+                if (value == null || value === false) return null;
+                const label = c.mobileLabel ?? c.header;
+                return (
+                  <div key={c.key} role="cell" className={cx("min-w-0", c.fullWidthOnMobile && "col-span-2")}>
+                    {label && <p className={`mb-1 text-[11.5px] ${muted}`}>{label}</p>}
+                    <div className="text-[13.5px] text-neutral-800 dark:text-neutral-200">{value}</div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </motion.div>
@@ -681,7 +688,7 @@ export function DataTable<T extends { id: Id }>({
         {...common}
         {...interactive}
         className={cx(
-          "grid items-center border-b bg-white transition-colors duration-150 last:border-b-0 dark:bg-[#0b0b0c]",
+          "grid items-center border-b bg-white transition-colors duration-150 last:border-b-0 dark:bg-surface",
           hairline,
           rowMin,
           isSel ? "bg-neutral-50 dark:bg-white/[0.045]" : "[@media(hover:hover)]:hover:bg-neutral-50/70 dark:[@media(hover:hover)]:hover:bg-white/[0.025]",
@@ -742,7 +749,7 @@ export function DataTable<T extends { id: Id }>({
       </div>
 
       <div
-        className={cx(!cards && "overflow-hidden rounded-2xl bg-white dark:bg-[#0b0b0c]", !cards && ring)}
+        className={cx(!cards && "overflow-hidden rounded-2xl bg-white dark:bg-surface", !cards && ring)}
         style={!cards ? { boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.2)" } : undefined}
       >
         {cards && header}
@@ -750,7 +757,7 @@ export function DataTable<T extends { id: Id }>({
           layoutScroll
           onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
           className={cx(!cards && "overflow-auto overscroll-contain")}
-          style={!cards ? { maxHeight } : undefined}
+          style={!cards && maxHeight != null ? { maxHeight } : undefined}
           tabIndex={!cards ? 0 : undefined}
           aria-label={!cards ? `${ariaLabel} (scrollable)` : undefined}
         >

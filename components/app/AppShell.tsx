@@ -1,20 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { memo, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { LogOut, RefreshCw } from "lucide-react";
-import { Sidebar, useSidebar, type SidebarItem } from "@/components/ui/sidebar";
+import { Sidebar, useSidebar, type SidebarItem, type SidebarSection } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { clearCachesAndReload, forgetPersistedRole } from "@/lib/pwa";
+import { clearCachesAndReload } from "@/lib/pwa";
+import { signOutToLogin } from "@/lib/session";
 import { BottomNav } from "./BottomNav";
 import { ThemeToggle } from "./ThemeToggle";
 import type { DepartmentTone, NavTabItem } from "./nav";
 
 const HOTEL_NAME = "Hôtel Méditerranée Thalasso Golf Hammamet";
 
-const TONE_CHIP: Record<DepartmentTone, string> = {
-  brand: "border-brand/30 bg-brand-subtle text-brand",
-  success: "border-success/30 bg-success-subtle text-success",
-  special: "border-special/30 bg-special-subtle text-special",
+const TONE_TEXT: Record<DepartmentTone, string> = {
+  brand: "text-fg-muted",
+  success: "text-success",
+  special: "text-special",
 };
 
 interface AppShellProps {
@@ -24,7 +25,6 @@ interface AppShellProps {
   tone?: DepartmentTone;
   /** Extra actions shown in the top bar on every screen size. */
   headerActions?: ReactNode;
-  onSignOut?: () => void;
   children: ReactNode;
 }
 
@@ -32,6 +32,10 @@ interface AppShellProps {
  * Portal layout. Desktop (md+): collapsible easyui Sidebar + top bar.
  * Mobile: top bar + fixed bottom tab bar. The page itself scrolls; the
  * sidebar is sticky, so there is never a nested scroll container.
+ *
+ * Re-renders: the sidebar, bottom nav and brand are memoised and receive
+ * stable props, so typing or filtering inside a portal only re-renders
+ * the portal content, not the shell.
  */
 export default function AppShell({
   items,
@@ -39,65 +43,67 @@ export default function AppShell({
   departmentCode,
   tone = "brand",
   headerActions,
-  onSignOut,
   children,
 }: AppShellProps) {
-  const active = items.find((i) => i.isActive);
-  const signOut = onSignOut
-    ? () => {
-        forgetPersistedRole();
-        onSignOut();
-      }
-    : undefined;
+  // Latest values behind refs so the callbacks below never change identity.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
-  const sections: { items: SidebarItem[] }[] = [
-    {
-      items: items.map((i) => ({
-        id: i.id,
-        label: i.label,
-        icon: i.icon,
-        badge: i.badge ? i.badge : undefined,
-        badgeTone: i.badgeTone,
-      })),
-    },
-  ];
+  const activeId = items.find((i) => i.isActive)?.id ?? "";
+  const activeLabel = items.find((i) => i.isActive)?.label ?? departmentName;
+
+  const onActiveChange = useCallback((id: string) => {
+    itemsRef.current.find((i) => i.id === id)?.onClick();
+  }, []);
+  const signOut = useCallback(() => void signOutToLogin(), []);
+
+  // Rebuild sidebar data only when what it displays changes.
+  const navKey = items.map((i) => `${i.id}:${i.label}:${i.badge ?? ""}:${i.badgeTone ?? ""}`).join("|");
+  const sections = useMemo<SidebarSection[]>(
+    () => [
+      {
+        items: itemsRef.current.map<SidebarItem>((i) => ({
+          id: i.id,
+          label: i.label,
+          icon: i.icon,
+          badge: i.badge ? i.badge : undefined,
+          badgeTone: i.badgeTone,
+        })),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navKey]
+  );
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar
-        className="sticky top-0 h-dvh"
+      <ShellSidebar
         sections={sections}
-        activeId={active?.id ?? ""}
-        onActiveChange={(id) => items.find((i) => i.id === id)?.onClick()}
-        header={<Brand code={departmentCode} name={departmentName} tone={tone} />}
-        footer={<SidebarFooter onSignOut={signOut} />}
+        activeId={activeId}
+        onActiveChange={onActiveChange}
+        departmentCode={departmentCode}
+        departmentName={departmentName}
+        tone={tone}
+        onSignOut={signOut}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="glass-surface sticky top-0 z-30 border-x-0 border-t-0 pt-[var(--safe-top)]">
+        <header className="sticky top-0 z-30 border-b border-border bg-bg/85 pt-[var(--safe-top)] backdrop-blur-md">
           <div className="mx-auto flex h-14 w-full max-w-screen-2xl items-center gap-3 px-4 md:px-6 lg:px-8">
-            {/* Mobile: brand. Desktop: the sidebar carries the brand, show the section title. */}
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 md:hidden">
-              <img src="/hotel-logo.png" alt={HOTEL_NAME} className="size-8 shrink-0 rounded-lg object-cover" />
-              {/* Phones: logo + department chip identify the portal; the name needs sm+ width. */}
-              <span className="hidden truncate text-[15px] font-bold tracking-tight sm:inline">Hotel SES</span>
-              <DeptChip code={departmentCode} tone={tone} />
-            </div>
-            <h1 className="hidden min-w-0 flex-1 truncate text-lg font-semibold tracking-tight md:block">
-              {active?.label ?? departmentName}
+            <MobileBrand name={departmentName} code={departmentCode} tone={tone} />
+            <h1 className="hidden min-w-0 flex-1 truncate text-base font-semibold tracking-tight md:block">
+              {activeLabel}
             </h1>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
               {headerActions}
-              <IconButton label="Clear cache and reload" onClick={() => void clearCachesAndReload()}>
+              <GhostIconButton label="Clear cache and reload" onClick={clearCachesAndReload}>
                 <RefreshCw aria-hidden />
-              </IconButton>
+              </GhostIconButton>
               <ThemeToggle className="md:hidden" />
-              {signOut && (
-                <IconButton label="Sign out" onClick={signOut} className="text-danger hover:text-danger md:hidden">
-                  <LogOut aria-hidden />
-                </IconButton>
-              )}
+              <GhostIconButton label="Sign out" onClick={signOut} className="hover:bg-danger-subtle hover:text-danger md:hidden">
+                <LogOut aria-hidden />
+              </GhostIconButton>
             </div>
           </div>
         </header>
@@ -115,29 +121,69 @@ export default function AppShell({
   );
 }
 
-function DeptChip({ code, tone }: { code: string; tone: DepartmentTone }) {
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-        TONE_CHIP[tone]
-      )}
-    >
-      {code}
-    </span>
-  );
-}
+/* ───────────── memoised shell parts ───────────── */
 
-function Brand({ code, name, tone }: { code: string; name: string; tone: DepartmentTone }) {
+const ShellSidebar = memo(function ShellSidebar({
+  sections,
+  activeId,
+  onActiveChange,
+  departmentCode,
+  departmentName,
+  tone,
+  onSignOut,
+}: {
+  sections: SidebarSection[];
+  activeId: string;
+  onActiveChange: (id: string) => void;
+  departmentCode: string;
+  departmentName: string;
+  tone: DepartmentTone;
+  onSignOut?: () => void;
+}) {
+  const header = useMemo(
+    () => <SidebarBrand code={departmentCode} name={departmentName} tone={tone} />,
+    [departmentCode, departmentName, tone]
+  );
+  const footer = useMemo(() => <SidebarFooter onSignOut={onSignOut} />, [onSignOut]);
+  return (
+    <Sidebar
+      className="sticky top-0 h-dvh"
+      sections={sections}
+      activeId={activeId}
+      onActiveChange={onActiveChange}
+      header={header}
+      footer={footer}
+    />
+  );
+});
+
+const MobileBrand = memo(function MobileBrand({ name, code, tone }: { name: string; code: string; tone: DepartmentTone }) {
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2.5 md:hidden">
+      <img src="/hotel-logo.png" alt={HOTEL_NAME} className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-border" />
+      <div className="min-w-0 leading-tight">
+        <p className="truncate text-sm font-semibold tracking-tight">Hotel SES</p>
+        <p className="truncate text-xs text-fg-muted">
+          <span className={cn("font-semibold uppercase tracking-wide", TONE_TEXT[tone])}>{code}</span>
+          <span aria-hidden> · </span>
+          {name}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+function SidebarBrand({ code, name, tone }: { code: string; name: string; tone: DepartmentTone }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <img src="/hotel-logo.png" alt={HOTEL_NAME} className="size-8 shrink-0 rounded-lg border border-border object-cover" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate text-[15px] font-bold tracking-tight">Hotel SES</span>
-          <DeptChip code={code} tone={tone} />
-        </div>
-        <p className="truncate text-xs text-fg-muted">{name}</p>
+      <img src="/hotel-logo.png" alt={HOTEL_NAME} className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-border" />
+      <div className="min-w-0 leading-tight">
+        <p className="truncate text-sm font-semibold tracking-tight">Hotel SES</p>
+        <p className="truncate text-xs text-fg-muted">
+          <span className={cn("font-semibold uppercase tracking-wide", TONE_TEXT[tone])}>{code}</span>
+          <span aria-hidden> · </span>
+          {name}
+        </p>
       </div>
     </div>
   );
@@ -147,13 +193,13 @@ function SidebarFooter({ onSignOut }: { onSignOut?: () => void }) {
   const { collapsed } = useSidebar();
   return (
     <>
-      {collapsed ? <ThemeToggle className="size-9 border-0" /> : <ThemeToggle variant="full" />}
+      {collapsed ? <ThemeToggle className="size-9" /> : <ThemeToggle variant="full" />}
       {onSignOut && (
         <button
           type="button"
           onClick={onSignOut}
           aria-label={collapsed ? "Sign out" : undefined}
-          className="focus-ring flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-danger transition-colors hover:bg-danger-subtle"
+          className="focus-ring flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-fg-muted transition-colors hover:bg-danger-subtle hover:text-danger"
         >
           <span className="grid size-5 shrink-0 place-items-center">
             <LogOut className="size-[18px]" aria-hidden />
@@ -165,7 +211,8 @@ function SidebarFooter({ onSignOut }: { onSignOut?: () => void }) {
   );
 }
 
-function IconButton({
+/** Borderless icon button: 40px visual, 44px hit area. */
+export function GhostIconButton({
   label,
   onClick,
   className,
@@ -183,7 +230,8 @@ function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "focus-ring grid size-11 place-items-center rounded-lg border border-border text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg [&>svg]:size-[18px]",
+        "focus-ring relative grid size-10 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg",
+        "after:absolute after:-inset-0.5 after:content-[''] [&>svg]:size-5",
         className
       )}
     >

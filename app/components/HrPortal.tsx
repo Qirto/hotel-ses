@@ -18,8 +18,7 @@ import {
   cycleRoomCleaning,
   createRapidReclamation,
   createHistoricalReclamation,
-  logoutRole,
-} from "@/app/actions";
+  } from "@/app/actions";
 import AppShell from "@/components/app/AppShell";
 import type { NavTabItem } from "@/components/app/nav";
 import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
@@ -497,19 +496,13 @@ export default function HrPortal({
       departmentName="Human Resources & Roster"
       departmentCode="HR"
       tone="success"
-      onSignOut={() => {
-        startTransition(async () => {
-          await logoutRole();
-          window.location.href = "/login";
-        });
-      }}
       headerActions={
         <Button
           variant="primary"
           onClick={() => setShowCreateModal(true)}
           aria-label="Add staff member"
           leftIcon={<UserPlus className="size-4" aria-hidden />}
-          className="h-11 px-3 sm:px-4"
+          className="h-10 px-3"
         >
           <span className="hidden sm:inline">Add staff</span>
         </Button>
@@ -555,7 +548,7 @@ export default function HrPortal({
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  transition: "all 0.2s ease-in-out",
+                  transition: "all 0.2s ease-in-out",
                 }}
               >
                 <span>👥 1. Employees Directory</span>
@@ -588,7 +581,7 @@ export default function HrPortal({
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  transition: "all 0.2s ease-in-out",
+                  transition: "all 0.2s ease-in-out",
                 }}
               >
                 <span>🗓️ 2. Weekly Shift Roster & Schedules</span>
