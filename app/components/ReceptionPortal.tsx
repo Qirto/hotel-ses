@@ -5,10 +5,14 @@ import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { HotelRoom, Resident, Department, Reclamation, Staff } from "@/utils/roomsData";
-import AppShell from "@/app/components/AppShell";
-import { NavTabItem } from "@/app/components/BottomNav";
-import FAB from "@/app/components/FAB";
-import BottomSheet from "@/app/components/BottomSheet";
+import AppShell from "@/components/app/AppShell";
+import type { NavTabItem } from "@/components/app/nav";
+import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
+import { BedDouble, ChartColumn, ClipboardList, History, LayoutDashboard, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Fab } from "@/components/app/Fab";
+import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
+import { cn } from "@/lib/utils";
 import {
   createRapidReclamation,
   createHistoricalReclamation,
@@ -471,7 +475,7 @@ export default function ReceptionPortal({
   const occupiedCount = rooms.filter((r) => r.is_occupied).length;
   const dirtyCount = rooms.filter((r) => r.cleaning_status === "DIRTY").length;
   const vacantCleanCount = rooms.filter((r) => !r.is_occupied && r.cleaning_status === "CLEAN").length;
-  const openReclamationsCount = localReclamations.filter((r) => r.status === "OPEN" || r.status === "IN_PROGRESS").length;
+  const openReclamationsCount = countOpenTickets(localReclamations);
 
   const deptCounts: Record<string, number> = {};
   localReclamations.forEach((rec) => {
@@ -482,58 +486,39 @@ export default function ReceptionPortal({
     (r) => (r.status === "OPEN" || r.status === "IN_PROGRESS") && (r.priority === "HIGH" || r.priority === "EMERGENCY")
   );
 
+  const openTicketCount = countOpenTickets(localReclamations);
+  const roomsNeedingAttention = countRoomsNeedingAttention(rooms, localReclamations);
+
   const navItems: NavTabItem[] = [
     {
       id: "OVERVIEW",
       label: "Overview",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      ),
+      icon: <LayoutDashboard aria-hidden />,
       isActive: activeTab === "OVERVIEW",
       onClick: () => setActiveTab("OVERVIEW"),
     },
     {
       id: "ROOMS",
       label: "Rooms",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z" />
-          <path d="M8 7h.01" />
-          <path d="M16 7h.01" />
-          <path d="M12 7h.01" />
-          <path d="M12 11h.01" />
-        </svg>
-      ),
-      badge: totalRooms,
+      icon: <BedDouble aria-hidden />,
+      badge: roomsNeedingAttention,
+      badgeTone: "alert",
       isActive: activeTab === "ROOMS",
       onClick: () => setActiveTab("ROOMS"),
     },
     {
       id: "RECLAMATIONS",
       label: "Tickets",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-        </svg>
-      ),
-      badge: openReclamationsCount > 0 ? openReclamationsCount : undefined,
+      icon: <ClipboardList aria-hidden />,
+      badge: openTicketCount,
+      badgeTone: "alert",
       isActive: activeTab === "RECLAMATIONS",
       onClick: () => setActiveTab("RECLAMATIONS"),
     },
     {
       id: "STATS",
       label: "Stats",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="14" />
-        </svg>
-      ),
+      icon: <ChartColumn aria-hidden />,
       isActive: activeTab === "STATS",
       onClick: () => setActiveTab("STATS"),
     },
@@ -544,7 +529,6 @@ export default function ReceptionPortal({
       items={navItems}
       departmentName="Reception Operations"
       departmentCode="Reception"
-      departmentColor="var(--accent-amber)"
       onSignOut={() => {
         startTransition(async () => {
           await logoutRole();
@@ -552,25 +536,15 @@ export default function ReceptionPortal({
         });
       }}
       headerActions={
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={() => setShowHistoryModal(true)}
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
-            padding: "6px 10px",
-            color: "var(--accent-amber)",
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
+          aria-label="Backfill a past incident"
+          leftIcon={<History className="size-4" aria-hidden />}
+          className="h-11 px-3 sm:px-4"
         >
-          <span>+ Backfill</span>
-        </button>
+          <span className="hidden sm:inline">Backfill</span>
+        </Button>
       }
     >
       {message && (
@@ -1977,39 +1951,39 @@ export default function ReceptionPortal({
         </div>
       )}
       {/* FLOATING ACTION BUTTON FOR RAPID DISPATCH */}
-      <FAB
-        onClick={() => setShowNewTicketSheet(true)}
-        label="Quick Incident Dispatch"
-      />
+      <Fab onClick={() => setShowNewTicketSheet(true)} label="Quick incident dispatch" />
 
-      {/* RAPID INCIDENT DISPATCH BOTTOM SHEET */}
-      <BottomSheet
-        isOpen={showNewTicketSheet}
-        onClose={() => setShowNewTicketSheet(false)}
-        title="Quick Incident Dispatch"
-        subtitle="Log and route guest service requests immediately"
+      {/* RAPID INCIDENT DISPATCH SHEET (bottom on phones, side panel on desktop) */}
+      <ResponsiveSheet
+        open={showNewTicketSheet}
+        onOpenChange={setShowNewTicketSheet}
+        title="Quick incident dispatch"
+        description="Log and route a guest request immediately."
       >
-        <form onSubmit={handleQuickTicketSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-              Room Number
+        <form onSubmit={handleQuickTicketSubmit} className="flex flex-col gap-4">
+          <div className="space-y-1.5">
+            <label htmlFor="quick-room" className="block text-xs font-semibold text-fg-secondary">
+              Room number
             </label>
             <input
+              id="quick-room"
               type="text"
+              inputMode="numeric"
               required
-              placeholder="e.g. 101, 204..."
+              placeholder="e.g. 101, 204"
               value={quickRoom}
               onChange={(e) => setQuickRoom(e.target.value)}
               className="ses-input"
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="quick-dept" className="block text-xs font-semibold text-fg-secondary">
                 Department
               </label>
               <select
+                id="quick-dept"
                 value={quickDept}
                 onChange={(e) => {
                   setQuickDept(e.target.value);
@@ -2028,11 +2002,12 @@ export default function ReceptionPortal({
               </select>
             </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
+            <div className="space-y-1.5">
+              <label htmlFor="quick-category" className="block text-xs font-semibold text-fg-secondary">
                 Category
               </label>
               <select
+                id="quick-category"
                 value={quickCategory}
                 onChange={(e) => setQuickCategory(e.target.value)}
                 className="ses-select"
@@ -2046,67 +2021,57 @@ export default function ReceptionPortal({
             </div>
           </div>
 
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-              Priority Level
-            </label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          <fieldset className="space-y-1.5">
+            <legend className="mb-1.5 block text-xs font-semibold text-fg-secondary">Priority</legend>
+            <div className="grid grid-cols-3 gap-2">
               {(["STANDARD", "HIGH", "EMERGENCY"] as const).map((pr) => (
                 <button
                   key={pr}
                   type="button"
                   onClick={() => setQuickPriority(pr)}
-                  style={{
-                    padding: "8px 4px",
-                    borderRadius: "var(--radius-md)",
-                    border: "1px solid",
-                    borderColor: quickPriority === pr ? "var(--accent-amber)" : "var(--border-subtle)",
-                    background: quickPriority === pr ? "var(--accent-amber-bg)" : "var(--surface-2)",
-                    color: quickPriority === pr ? "var(--accent-amber)" : "var(--text-muted)",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
+                  aria-pressed={quickPriority === pr}
+                  className={cn(
+                    "focus-ring min-h-11 rounded-lg border px-2 text-xs font-semibold capitalize transition-colors",
+                    quickPriority === pr
+                      ? pr === "EMERGENCY"
+                        ? "border-danger bg-danger-subtle text-danger"
+                        : "border-brand bg-brand-subtle text-brand"
+                      : "border-border bg-surface-hover text-fg-muted hover:text-fg"
+                  )}
                 >
-                  {pr}
+                  {pr.toLowerCase()}
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>
-              Incident Details
+          <div className="space-y-1.5">
+            <label htmlFor="quick-desc" className="block text-xs font-semibold text-fg-secondary">
+              Incident details
             </label>
             <textarea
+              id="quick-desc"
               rows={3}
-              placeholder="Describe guest request or observation..."
+              placeholder="Describe the guest request or observation"
               value={quickDesc}
               onChange={(e) => setQuickDesc(e.target.value)}
               className="ses-textarea"
             />
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={isPending}
-            className="btn-primary"
-            style={{
-              padding: "11px",
-              borderRadius: "var(--radius-md)",
-              background: "var(--accent-amber)",
-              color: "#ffffff",
-              border: "none",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              marginTop: 6,
-            }}
+            variant="primary"
+            size="lg"
+            isLoading={isPending}
+            loadingText="Dispatching"
+            leftIcon={<Send className="size-4" aria-hidden />}
+            className="mt-1 w-full justify-center"
           >
-            {isPending ? "Dispatching..." : "Dispatch Incident Now"}
-          </button>
+            Dispatch incident
+          </Button>
         </form>
-      </BottomSheet>
+      </ResponsiveSheet>
     </AppShell>
   );
 }

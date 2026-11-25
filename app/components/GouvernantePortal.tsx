@@ -17,8 +17,8 @@ import {
   acknowledgeReclamation,
   resolveReclamation,
 } from "@/app/actions";
-import AppShell from "@/app/components/AppShell";
-import { NavTabItem } from "@/app/components/BottomNav";
+import AppShell from "@/components/app/AppShell";
+import type { NavTabItem } from "@/components/app/nav";
 
 interface Props {
   rooms: HotelRoom[];
@@ -185,7 +185,7 @@ export default function GouvernantePortal({ rooms, reclamations = [], staff = []
       items={navItems}
       departmentName="Housekeeping & Governance"
       departmentCode="HK"
-      departmentColor="var(--status-purple)"
+      tone="special"
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
         {/* Top Banner */}

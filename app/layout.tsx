@@ -25,10 +25,12 @@ const plexMono = IBM_Plex_Mono({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays enabled (WCAG 1.4.4 Resize Text).
   viewportFit: "cover",
-  themeColor: "#070a0f",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#070a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+  ],
 };
 
 export const metadata: Metadata = {

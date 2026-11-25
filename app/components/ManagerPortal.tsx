@@ -5,8 +5,10 @@ import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
 import React, { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
-import AppShell from "@/app/components/AppShell";
-import { NavTabItem } from "@/app/components/BottomNav";
+import AppShell from "@/components/app/AppShell";
+import type { NavTabItem } from "@/components/app/nav";
+import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
+import { BedDouble, ChartColumn, ClipboardList, LayoutDashboard } from "lucide-react";
 import { computeAllRoomsAnalytics, RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 import {
   resolveConfidentialGrievance,
@@ -371,64 +373,41 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
     deptCounts[r.department] = (deptCounts[r.department] || 0) + 1;
   });
 
-  const openTicketsCount = localReclamations.filter(
-    (r) => r.status === "OPEN" || r.status === "IN_PROGRESS"
-  ).length;
+  const openTicketsCount = countOpenTickets(localReclamations);
+
+  const openTicketCount = countOpenTickets(localReclamations);
+  const roomsNeedingAttention = countRoomsNeedingAttention(rooms, localReclamations);
 
   const navItems: NavTabItem[] = [
     {
       id: "STATS",
       label: "Dashboard",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="9" />
-          <rect x="14" y="3" width="7" height="5" />
-          <rect x="14" y="12" width="7" height="9" />
-          <rect x="3" y="16" width="7" height="5" />
-        </svg>
-      ),
+      icon: <LayoutDashboard aria-hidden />,
       isActive: activeTab === "STATS",
       onClick: () => setActiveTab("STATS"),
     },
     {
       id: "ROOMS",
       label: "Rooms",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z" />
-          <path d="M8 7h.01" />
-          <path d="M16 7h.01" />
-          <path d="M12 7h.01" />
-          <path d="M12 11h.01" />
-        </svg>
-      ),
-      badge: totalRooms,
+      icon: <BedDouble aria-hidden />,
+      badge: roomsNeedingAttention,
+      badgeTone: "alert",
       isActive: activeTab === "ROOMS",
       onClick: () => setActiveTab("ROOMS"),
     },
     {
       id: "RECLAMATIONS",
       label: "Tickets",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-        </svg>
-      ),
-      badge: openTicketsCount > 0 ? openTicketsCount : undefined,
+      icon: <ClipboardList aria-hidden />,
+      badge: openTicketCount,
+      badgeTone: "alert",
       isActive: activeTab === "RECLAMATIONS",
       onClick: () => setActiveTab("RECLAMATIONS"),
     },
     {
       id: "ANALYTICS",
       label: "Analytics",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="14" />
-        </svg>
-      ),
+      icon: <ChartColumn aria-hidden />,
       isActive: activeTab === "ANALYTICS",
       onClick: () => setActiveTab("ANALYTICS"),
     },
@@ -439,7 +418,6 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
       items={navItems}
       departmentName="Executive Management"
       departmentCode="GM"
-      departmentColor="var(--accent-amber)"
       onSignOut={() => {
         startTransition(async () => {
           await logoutRole();

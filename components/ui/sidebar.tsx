@@ -40,6 +40,8 @@ export type SidebarItem = {
   label: string;
   icon?: React.ReactNode;
   badge?: string | number;
+  /** Hotel SES: "alert" renders the badge in the danger colour (actionable counts). */
+  badgeTone?: "neutral" | "alert";
   children?: SidebarChild[];
 };
 export type SidebarSection = { title?: string; items: SidebarItem[] };
@@ -270,7 +272,12 @@ function Panel({
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="relative rounded-md bg-neutral-200/70 px-1.5 text-[11px] tabular-nums text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+              className={cn(
+                "relative rounded-md px-1.5 text-[11px] tabular-nums",
+                item.badgeTone === "alert"
+                  ? "bg-danger font-semibold text-white"
+                  : "bg-neutral-200/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+              )}
             >
               {item.badge}
             </motion.span>

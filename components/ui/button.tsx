@@ -42,8 +42,9 @@ export interface ButtonProps
 const variantStyles: Record<ButtonVariant, string> = {
   default:
     'bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 shadow-xs border border-transparent font-medium cursor-pointer',
+  // Hotel SES: primary actions use the amber brand colour.
   primary:
-    'bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 shadow-xs border border-transparent font-medium cursor-pointer',
+    'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-xs border border-transparent font-semibold cursor-pointer',
   secondary:
     'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--surface-hover)] hover:border-[var(--border-hover)] cursor-pointer',
   outline:
