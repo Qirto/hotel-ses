@@ -546,16 +546,16 @@ export default function HrPortal({
                   padding: "10px 20px",
                   borderRadius: 10,
                   border: "none",
-                  background: empSubTab === "DIRECTORY" ? "linear-gradient(135deg, #059669, #34d399)" : "transparent",
-                  color: empSubTab === "DIRECTORY" ? "#000000" : "#94a3b8",
+                  background: empSubTab === "DIRECTORY" ? "var(--surface)" : "transparent",
+                  boxShadow: empSubTab === "DIRECTORY" ? "var(--shadow-subtle)" : "none",
+                  color: empSubTab === "DIRECTORY" ? "var(--text-primary)" : "var(--text-muted)",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  transition: "all 0.2s ease-in-out",
-                  boxShadow: empSubTab === "DIRECTORY" ? "0 4px 12px rgba(52, 211, 153, 0.3)" : "none",
+                  transition: "all 0.2s ease-in-out",
                 }}
               >
                 <span>👥 1. Employees Directory</span>
@@ -563,8 +563,8 @@ export default function HrPortal({
                   style={{
                     padding: "2px 8px",
                     borderRadius: 999,
-                    background: empSubTab === "DIRECTORY" ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
-                    color: empSubTab === "DIRECTORY" ? "#000" : "var(--text-primary)",
+                    background: empSubTab === "DIRECTORY" ? "var(--surface-hover)" : "var(--surface-2)",
+                    color: empSubTab === "DIRECTORY" ? "var(--text-primary)" : "var(--text-primary)",
                     fontSize: 11,
                     fontWeight: 800,
                   }}
@@ -579,16 +579,16 @@ export default function HrPortal({
                   padding: "10px 20px",
                   borderRadius: 10,
                   border: "none",
-                  background: empSubTab === "SHIFTS" ? "linear-gradient(135deg, #0284c7, #38bdf8)" : "transparent",
-                  color: empSubTab === "SHIFTS" ? "#000000" : "#94a3b8",
+                  background: empSubTab === "SHIFTS" ? "var(--surface)" : "transparent",
+                  boxShadow: empSubTab === "SHIFTS" ? "var(--shadow-subtle)" : "none",
+                  color: empSubTab === "SHIFTS" ? "var(--text-primary)" : "var(--text-muted)",
                   fontSize: 13,
                   fontWeight: 800,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  transition: "all 0.2s ease-in-out",
-                  boxShadow: empSubTab === "SHIFTS" ? "0 4px 12px rgba(56, 189, 248, 0.3)" : "none",
+                  transition: "all 0.2s ease-in-out",
                 }}
               >
                 <span>🗓️ 2. Weekly Shift Roster & Schedules</span>
@@ -596,8 +596,8 @@ export default function HrPortal({
                   style={{
                     padding: "2px 8px",
                     borderRadius: 999,
-                    background: empSubTab === "SHIFTS" ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
-                    color: empSubTab === "SHIFTS" ? "#000" : "var(--text-primary)",
+                    background: empSubTab === "SHIFTS" ? "var(--surface-hover)" : "var(--surface-2)",
+                    color: empSubTab === "SHIFTS" ? "var(--text-primary)" : "var(--text-primary)",
                     fontSize: 11,
                     fontWeight: 800,
                   }}
@@ -666,7 +666,7 @@ export default function HrPortal({
 
                       <button
                         onClick={() => setShowCreateModal(true)}
-                        style={{ padding: "8px 16px", borderRadius: "var(--radius-md)", background: "var(--status-emerald)", border: "none", color: "#ffffff", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px var(--accent-amber-glow)" }}
+                        style={{ padding: "8px 16px", borderRadius: "var(--radius-md)", background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px var(--accent-amber-glow)" }}
                       >
                         ➕ Add New Employee
                       </button>
@@ -1289,7 +1289,7 @@ export default function HrPortal({
                       <strong style={{ color: "var(--status-emerald)" }}>{count} employees</strong>
                     </div>
                     <div style={{ height: 8, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
-                      <div style={{ width: `${Math.round((count / Math.max(...Object.values(deptStaffCounts), 1)) * 100)}%`, height: "100%", background: "linear-gradient(90deg, #059669, #34d399)" }} />
+                      <div style={{ width: `${Math.round((count / Math.max(...Object.values(deptStaffCounts), 1)) * 100)}%`, height: "100%", background: "var(--success)" }} />
                     </div>
                   </div>
                 ))}
@@ -1356,8 +1356,9 @@ export default function HrPortal({
                           padding: "8px 4px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "var(--status-emerald)" : "transparent",
-                          color: roomModalSubTab === "ACTIVE" ? "#000000" : "var(--text-muted)",
+                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1370,7 +1371,7 @@ export default function HrPortal({
                       >
                         <span>⚡ Active</span>
                         {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "var(--status-rose)", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--status-rose)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
                             {roomActiveReclamations.length}
                           </span>
                         )}
@@ -1383,8 +1384,9 @@ export default function HrPortal({
                           padding: "8px 4px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--accent-amber)" : "transparent",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "#000000" : "var(--text-muted)",
+                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1396,7 +1398,7 @@ export default function HrPortal({
                         }}
                       >
                         <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "rgba(0,0,0,0.2)" : "var(--surface-card)", color: roomModalSubTab === "MOST_REPORTED" ? "#000" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface-hover)" : "var(--surface-card)", color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
                           {roomProblemStats.length}
                         </span>
                       </button>
@@ -1408,8 +1410,9 @@ export default function HrPortal({
                           padding: "8px 4px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "var(--status-purple)" : "transparent",
-                          color: roomModalSubTab === "HISTORY" ? "#000000" : "var(--text-muted)",
+                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1421,7 +1424,7 @@ export default function HrPortal({
                         }}
                       >
                         <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "rgba(0,0,0,0.2)" : "var(--surface-card)", color: roomModalSubTab === "HISTORY" ? "#000" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "var(--surface-hover)" : "var(--surface-card)", color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
                           {roomModalReclamations.length}
                         </span>
                       </button>
@@ -1433,8 +1436,9 @@ export default function HrPortal({
                           padding: "8px 4px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "var(--status-cyan)" : "transparent",
-                          color: roomModalSubTab === "TIMELINE" ? "#000000" : "var(--text-muted)",
+                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1508,7 +1512,7 @@ export default function HrPortal({
                           <button
                             type="submit"
                             disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "var(--status-emerald)", border: "none", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
+                            style={{ padding: "8px", borderRadius: 8, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
                           >
                             Dispatch Reclamation &rarr;
                           </button>
@@ -1539,7 +1543,7 @@ export default function HrPortal({
                                   <span style={{ fontWeight: 800, color: "var(--accent-amber)", fontSize: 13 }}>{stat.count} Reports</span>
                                 </div>
                                 <div style={{ height: 6, borderRadius: 999, background: "var(--surface-card)", overflow: "hidden" }}>
-                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "linear-gradient(90deg, #059669, #34d399)" }} />
+                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "var(--success)" }} />
                                 </div>
                               </div>
                             ))}
@@ -1672,9 +1676,9 @@ export default function HrPortal({
                               style={{
                                 padding: "8px 12px",
                                 borderRadius: 8,
-                                background: "var(--status-purple)",
+                                background: "var(--special-subtle)",
                                 border: "none",
-                                color: "#000",
+                                color: "var(--special)",
                                 fontWeight: 800,
                                 cursor: "pointer",
                                 fontSize: 11,
@@ -1803,31 +1807,31 @@ export default function HrPortal({
         <div className="portal-modal-overlay">
           <div className="portal-modal-content" style={{ maxWidth: 500, width: "100%", padding: "1.5rem", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#34d399" }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--success)" }}>
                 ➕ Add New Employee
               </h3>
-              <button onClick={() => setShowCreateModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 20, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setShowCreateModal(false)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 20, cursor: "pointer" }}>✕</button>
             </div>
 
             <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Full Name *</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Full Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Marc Vance"
                   value={newFullName}
                   onChange={(e) => setNewFullName(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 13 }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Role Position *</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Role Position *</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#38bdf8", fontSize: 13, fontWeight: 700 }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--info)", fontSize: 13, fontWeight: 700 }}
                 >
                   {STANDARD_ROLES.map((r) => (
                     <option key={r} value={r}>
@@ -1838,11 +1842,11 @@ export default function HrPortal({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Department *</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Department *</label>
                 <select
                   value={newDept}
                   onChange={(e) => setNewDept(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#e879f9", fontSize: 13, fontWeight: 700 }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--special)", fontSize: 13, fontWeight: 700 }}
                 >
                   {activeDepartments.map((d) => (
                     <option key={d.code} value={d.code}>
@@ -1853,13 +1857,13 @@ export default function HrPortal({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#cbd5e1", marginBottom: 6 }}>Phone Number (Optional)</label>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 6 }}>Phone Number (Optional)</label>
                 <input
                   type="text"
                   placeholder="+33 6 12 34 56 78"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 13 }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 13 }}
                 />
               </div>
 
@@ -1867,14 +1871,14 @@ export default function HrPortal({
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{ padding: "10px 16px", borderRadius: 8, background: "transparent", border: "1px solid #334155", color: "#cbd5e1", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  style={{ padding: "10px 16px", borderRadius: 8, background: "transparent", border: "1px solid var(--border-strong)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  style={{ padding: "10px 20px", borderRadius: 8, background: "#34d399", border: "none", color: "#000", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+                  style={{ padding: "10px 20px", borderRadius: 8, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
                 >
                   Create Staff Profile
                 </button>

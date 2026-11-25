@@ -42,7 +42,7 @@ export interface ButtonProps
 const variantStyles: Record<ButtonVariant, string> = {
   default:
     'bg-[var(--text-primary)] text-[var(--bg)] hover:opacity-90 shadow-xs border border-transparent font-medium cursor-pointer',
-  // Hotel SES: primary actions use the amber brand colour.
+  // Hotel SES: primary actions use the brand tokens (easyui monochrome: black/white).
   primary:
     'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-xs border border-transparent font-semibold cursor-pointer',
   secondary:

@@ -40,7 +40,7 @@ export function BottomNav({ items }: { items: NavTabItem[] }) {
                   <span
                     className={cn(
                       "absolute -right-2.5 -top-1.5 min-w-[1.125rem] rounded-full px-1 text-center text-[10px] font-semibold leading-[1.125rem] tabular-nums",
-                      item.badgeTone === "alert" ? "bg-danger text-white" : "bg-surface-hover text-fg-secondary"
+                      item.badgeTone === "alert" ? "bg-danger-solid text-white" : "bg-surface-hover text-fg-secondary"
                     )}
                   >
                     {item.badge > 99 ? "99+" : item.badge}

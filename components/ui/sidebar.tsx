@@ -275,7 +275,7 @@ function Panel({
               className={cn(
                 "relative rounded-md px-1.5 text-[11px] tabular-nums",
                 item.badgeTone === "alert"
-                  ? "bg-danger font-semibold text-white"
+                  ? "bg-danger-solid font-semibold text-white"
                   : "bg-neutral-200/70 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
               )}
             >

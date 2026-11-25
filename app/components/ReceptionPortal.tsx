@@ -585,7 +585,7 @@ export default function ReceptionPortal({
                 className="btn-primary"
                 style={{
                   background: "var(--accent-amber)",
-                  color: "#ffffff",
+                  color: "var(--brand-foreground)",
                   border: "none",
                   borderRadius: "var(--radius-md)",
                   padding: "9px 16px",
@@ -737,8 +737,8 @@ export default function ReceptionPortal({
                         type="button"
                         onClick={() => handleResolveTicket(rec.id)}
                         style={{
-                          background: "var(--status-emerald)",
-                          color: "#ffffff",
+                          background: "var(--success-subtle)",
+                          color: "var(--success)",
                           border: "none",
                           borderRadius: "var(--radius-sm)",
                           padding: "6px 12px",
@@ -993,7 +993,7 @@ export default function ReceptionPortal({
                           <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{dt.time} ({dt.relative})</div>
                         </td>
                         <td style={{ padding: "10px" }}>
-                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--status-rose)" : rec.priority === "HIGH" ? "var(--status-amber)" : "var(--accent-amber-bg)", color: rec.priority === "EMERGENCY" || rec.priority === "HIGH" ? "#fff" : "var(--text-primary)" }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--danger-subtle)" : rec.priority === "HIGH" ? "var(--warning-subtle)" : "var(--accent-subtle)", color: rec.priority === "EMERGENCY" ? "var(--danger)" : rec.priority === "HIGH" ? "var(--warning)" : "var(--text-secondary)" }}>
                             {rec.priority || "STANDARD"}
                           </span>
                         </td>
@@ -1010,7 +1010,7 @@ export default function ReceptionPortal({
                                   In Progress
                                 </button>
                               )}
-                              <button disabled={isPending} onClick={() => handleResolveTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--status-emerald)", border: "none", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                              <button disabled={isPending} onClick={() => handleResolveTicket(rec.id)} style={{ padding: "4px 8px", borderRadius: 6, background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                                 Resolve
                               </button>
                             </div>
@@ -1060,7 +1060,7 @@ export default function ReceptionPortal({
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--status-rose)" : rec.priority === "HIGH" ? "var(--status-amber)" : "var(--accent-amber-bg)", color: rec.priority === "EMERGENCY" || rec.priority === "HIGH" ? "#fff" : "var(--text-primary)" }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 800, background: rec.priority === "EMERGENCY" ? "var(--danger-subtle)" : rec.priority === "HIGH" ? "var(--warning-subtle)" : "var(--accent-subtle)", color: rec.priority === "EMERGENCY" ? "var(--danger)" : rec.priority === "HIGH" ? "var(--warning)" : "var(--text-secondary)" }}>
                             {rec.priority || "STANDARD"}
                           </span>
                           <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, background: isResolved ? "var(--status-emerald-bg)" : "var(--status-rose-bg)", color: isResolved ? "var(--status-emerald)" : "var(--status-rose)" }}>
@@ -1120,9 +1120,9 @@ export default function ReceptionPortal({
                               minHeight: 44,
                               padding: "8px 12px",
                               borderRadius: "var(--radius-md)",
-                              background: "var(--status-emerald)",
+                              background: "var(--success-subtle)",
                               border: "none",
-                              color: "#ffffff",
+                              color: "var(--success)",
                               fontSize: 13,
                               fontWeight: 700,
                               cursor: "pointer",
@@ -1146,43 +1146,43 @@ export default function ReceptionPortal({
         {activeTab === "STATS" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
             <div className="ses-card">
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#38bdf8" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
                 📊 Room State Distribution Graph
               </h4>
               <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3.8" />
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#fbbf24"
+                    stroke="var(--warning)"
                     strokeWidth="3.8"
                     strokeDasharray={`${Math.round((occupiedCount / (totalRooms || 1)) * 100)}, 100`}
                   />
-                  <text x="18" y="20.35" fill="#ffffff" fontSize="8" fontWeight="800" textAnchor="middle">
+                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
                     {Math.round((occupiedCount / (totalRooms || 1)) * 100)}%
                   </text>
                 </svg>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#fbbf24", fontWeight: 700 }}>Occupied:</span>
-                    <strong style={{ color: "#fff" }}>{occupiedCount}</strong>
+                    <span style={{ color: "var(--warning)", fontWeight: 700 }}>Occupied:</span>
+                    <strong style={{ color: "var(--text-primary)" }}>{occupiedCount}</strong>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#4ade80", fontWeight: 700 }}>Vacant Clean:</span>
-                    <strong style={{ color: "#fff" }}>{vacantCleanCount}</strong>
+                    <span style={{ color: "var(--success)", fontWeight: 700 }}>Vacant Clean:</span>
+                    <strong style={{ color: "var(--text-primary)" }}>{vacantCleanCount}</strong>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#f87171", fontWeight: 700 }}>Dirty Rooms:</span>
-                    <strong style={{ color: "#fff" }}>{dirtyCount}</strong>
+                    <span style={{ color: "var(--danger)", fontWeight: 700 }}>Dirty Rooms:</span>
+                    <strong style={{ color: "var(--text-primary)" }}>{dirtyCount}</strong>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#38bdf8" }}>
+            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
                 Department Ticket Demand Graph
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1191,12 +1191,12 @@ export default function ReceptionPortal({
                   const pct = Math.round((count / maxCount) * 100);
                   return (
                     <div key={dept}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "#cbd5e1" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4, color: "var(--text-secondary)" }}>
                         <span>{dept}</span>
-                        <strong className="font-mono" style={{ color: "#38bdf8" }}>{count} tickets</strong>
+                        <strong className="font-mono" style={{ color: "var(--info)" }}>{count} tickets</strong>
                       </div>
-                      <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: "#38bdf8", borderRadius: 999 }} />
+                      <div style={{ height: 8, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: "var(--info)", borderRadius: 999 }} />
                       </div>
                     </div>
                   );
@@ -1251,7 +1251,7 @@ export default function ReceptionPortal({
                 >
                   <span>🛎️ Reclamations</span>
                   {roomModalReclamations.length > 0 && (
-                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "rgba(232, 121, 249, 0.3)", color: "#e879f9", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "var(--special-subtle)", color: "var(--special)", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
                       {roomModalReclamations.length}
                     </span>
                   )}
@@ -1263,21 +1263,21 @@ export default function ReceptionPortal({
                 {/* MODAL TAB 1: ROOM STAT */}
                 {modalTab === "ROOM_STAT" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    <h4 style={{ margin: 0, fontSize: 15, color: "#38bdf8", fontWeight: 800 }}>
+                    <h4 style={{ margin: 0, fontSize: 15, color: "var(--info)", fontWeight: 800 }}>
                       📊 Room Status & Live Parameters
                     </h4>
 
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-                      <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8" }}>Occupancy State</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.is_occupied ? "#fbbf24" : "#4ade80", marginTop: 2 }}>
+                      <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Occupancy State</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.is_occupied ? "var(--warning)" : "var(--success)", marginTop: 2 }}>
                           {selectedRoomModal.is_occupied ? "Occupied (Guest In-House)" : "Vacant Room"}
                         </div>
                       </div>
 
-                      <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-                        <div style={{ fontSize: 11, color: "#94a3b8" }}>Cleaning Status</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.cleaning_status === "DIRTY" ? "#f87171" : "#4ade80", marginTop: 2 }}>
+                      <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Cleaning Status</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: selectedRoomModal.cleaning_status === "DIRTY" ? "var(--danger)" : "var(--success)", marginTop: 2 }}>
                           {selectedRoomModal.cleaning_status}
                         </div>
                       </div>
@@ -1285,19 +1285,19 @@ export default function ReceptionPortal({
 
                     {/* Stay State Quick Actions */}
                     <div>
-                      <div style={{ fontSize: 12, color: "#94a3b8", fontWeight: 700, marginBottom: 6 }}>Stay Actions:</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6 }}>Stay Actions:</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
                           disabled={isPending}
                           onClick={() => handleStayState(selectedRoomModal.id, "OCCUPIED")}
-                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "rgba(245, 158, 11, 0.2)", border: "1px solid rgba(245, 158, 11, 0.4)", color: "#fbbf24", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                         >
                           🛎️ Check-In Guest
                         </button>
                         <button
                           disabled={isPending}
                           onClick={() => handleStayState(selectedRoomModal.id, "VACANT_DIRTY")}
-                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "rgba(239, 68, 68, 0.2)", border: "1px solid rgba(239, 68, 68, 0.4)", color: "#f87171", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                          style={{ flex: 1, padding: "8px", borderRadius: 8, background: "var(--danger-subtle)", border: "1px solid var(--danger-subtle)", color: "var(--danger)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                         >
                           🚪 Check-Out (Dirty)
                         </button>
@@ -1309,7 +1309,7 @@ export default function ReceptionPortal({
                       <button
                         disabled={isPending}
                         onClick={() => handleCleaningCycle(selectedRoomModal)}
-                        style={{ width: "100%", padding: "10px", borderRadius: 10, background: "rgba(56, 189, 248, 0.2)", border: "1px solid #38bdf8", color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+                        style={{ width: "100%", padding: "10px", borderRadius: 10, background: "var(--info-subtle)", border: "1px solid color-mix(in srgb, var(--info) 45%, transparent)", color: "var(--text-primary)", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
                       >
                         🧹 Cycle Cleaning Status (Current: {selectedRoomModal.cleaning_status}) &rarr;
                       </button>
@@ -1321,7 +1321,7 @@ export default function ReceptionPortal({
                 {modalTab === "RECLAMATIONS" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     {/* SUB-CATEGORY TAB SWITCHER FOR ROOM RECLAMATIONS (4 TABS) */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "4px", background: "rgba(15, 23, 42, 0.8)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, padding: "4px", background: "var(--surface-hover)", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
                       <button
                         type="button"
                         onClick={() => setRoomModalSubTab("ACTIVE")}
@@ -1329,8 +1329,9 @@ export default function ReceptionPortal({
                           padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "#38bdf8" : "transparent",
-                          color: roomModalSubTab === "ACTIVE" ? "#000000" : "#94a3b8",
+                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1343,7 +1344,7 @@ export default function ReceptionPortal({
                       >
                         <span>⚡ Active</span>
                         {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--danger)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
                             {roomActiveReclamations.length}
                           </span>
                         )}
@@ -1356,8 +1357,9 @@ export default function ReceptionPortal({
                           padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "#fbbf24" : "transparent",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "#000000" : "#94a3b8",
+                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1369,7 +1371,7 @@ export default function ReceptionPortal({
                         }}
                       >
                         <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "MOST_REPORTED" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface-hover)" : "var(--accent-subtle)", color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
                           {roomProblemStats.length}
                         </span>
                       </button>
@@ -1381,8 +1383,9 @@ export default function ReceptionPortal({
                           padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "#e879f9" : "transparent",
-                          color: roomModalSubTab === "HISTORY" ? "#000000" : "#94a3b8",
+                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1394,7 +1397,7 @@ export default function ReceptionPortal({
                         }}
                       >
                         <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", color: roomModalSubTab === "HISTORY" ? "#000" : "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "HISTORY" ? "var(--surface-hover)" : "var(--accent-subtle)", color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)", fontSize: 10, fontWeight: 800 }}>
                           {roomModalReclamations.length}
                         </span>
                       </button>
@@ -1406,8 +1409,9 @@ export default function ReceptionPortal({
                           padding: "8px 6px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "#10b981" : "transparent",
-                          color: roomModalSubTab === "TIMELINE" ? "#000000" : "#94a3b8",
+                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-muted)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1426,46 +1430,46 @@ export default function ReceptionPortal({
                     {roomModalSubTab === "ACTIVE" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "#38bdf8", fontWeight: 800 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--info)", fontWeight: 800 }}>
                             ⚡ Active Reclamations ({roomActiveReclamations.length})
                           </h4>
                         </div>
 
                         {roomActiveReclamations.length === 0 ? (
-                          <div style={{ padding: "12px", borderRadius: 10, background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", color: "#4ade80", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ padding: "12px", borderRadius: 10, background: "var(--success-subtle)", border: "1px solid var(--success-subtle)", color: "var(--success)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
                             <span>✅</span>
                             <span>No active problems recorded for Room {selectedRoomModal.room_number}. Operations normal.</span>
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {roomActiveReclamations.map((rec) => (
-                              <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.7)", padding: "12px", borderRadius: 10, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                              <div key={rec.id} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 10, border: "1px solid var(--info-subtle)" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                                   <div>
-                                    <span style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
-                                    <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8" }}>{rec.department}</span>
+                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
+                                    <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "var(--info-subtle)", color: "var(--info)" }}>{rec.department}</span>
                                   </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)", color: rec.status === "OPEN" ? "#f87171" : "#fbbf24", fontWeight: 800, border: "1px solid currentColor" }}>
+                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "var(--danger-subtle)" : "var(--warning-subtle)", color: rec.status === "OPEN" ? "var(--danger)" : "var(--warning)", fontWeight: 800, border: "1px solid currentColor" }}>
                                     {rec.status}
                                   </span>
                                 </div>
-                                <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>{rec.description}</div>
+                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{rec.description}</div>
                                 {rec.created_at && (
-                                  <div style={{ fontSize: 11, color: "var(--text-muted, #94a3b8)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
                                     <span>🕒 Logged: {formatIncidentDate(rec.created_at).full}</span>
-                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>{formatIncidentDate(rec.created_at).relative}</span>
+                                    <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--accent-subtle)" }}>{formatIncidentDate(rec.created_at).relative}</span>
                                   </div>
                                 )}
                                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
                                   <button
                                     onClick={() => handleAcknowledgeTicket(rec.id)}
-                                    style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(251, 191, 36, 0.2)", border: "1px solid #fbbf24", color: "#fbbf24", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                    style={{ padding: "4px 8px", borderRadius: 6, background: "var(--warning-subtle)", border: "1px solid color-mix(in srgb, var(--warning) 45%, transparent)", color: "var(--warning)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                                   >
                                     Acknowledge
                                   </button>
                                   <button
                                     onClick={() => handleResolveTicket(rec.id)}
-                                    style={{ padding: "4px 8px", borderRadius: 6, background: "rgba(34, 197, 94, 0.2)", border: "1px solid #4ade80", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                                    style={{ padding: "4px 8px", borderRadius: 6, background: "var(--success-subtle)", border: "1px solid color-mix(in srgb, var(--success) 45%, transparent)", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                                   >
                                     Mark Resolved ✓
                                   </button>
@@ -1476,13 +1480,13 @@ export default function ReceptionPortal({
                         )}
 
                         {/* LOG NEW RECLAMATION FORM */}
-                        <form onSubmit={handleModalCreateReclamation} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>➕ Log New Reclamation for Room {selectedRoomModal.room_number}</div>
+                        <form onSubmit={handleModalCreateReclamation} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 12, border: "1px solid var(--accent-subtle)", display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--info)" }}>➕ Log New Reclamation for Room {selectedRoomModal.room_number}</div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <select
                               value={modalDept}
                               onChange={(e) => setModalDept(e.target.value)}
-                              style={{ flex: 1, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                              style={{ flex: 1, padding: "6px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
                             >
                               {allDepartments.map((d) => (
                                 <option key={d.code} value={d.code}>{d.name}</option>
@@ -1491,7 +1495,7 @@ export default function ReceptionPortal({
                             <select
                               value={modalPriority}
                               onChange={(e) => setModalPriority(e.target.value as any)}
-                              style={{ width: 110, padding: "6px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                              style={{ width: 110, padding: "6px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
                             >
                               <option value="STANDARD">STANDARD</option>
                               <option value="HIGH">HIGH</option>
@@ -1503,12 +1507,12 @@ export default function ReceptionPortal({
                             placeholder="Description of issue..."
                             value={modalDesc}
                             onChange={(e) => setModalDesc(e.target.value)}
-                            style={{ padding: "8px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 12 }}
+                            style={{ padding: "8px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 12 }}
                           />
                           <button
                             type="submit"
                             disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "#38bdf8", border: "none", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
+                            style={{ padding: "8px", borderRadius: 8, background: "var(--info-subtle)", border: "none", color: "var(--info)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
                           >
                             Dispatch Reclamation &rarr;
                           </button>
@@ -1519,38 +1523,38 @@ export default function ReceptionPortal({
                     {/* SUB-CATEGORY 2: MOST REPORTED PROBLEMS */}
                     {roomModalSubTab === "MOST_REPORTED" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <h4 style={{ margin: 0, fontSize: 14, color: "#fbbf24", fontWeight: 800 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, color: "var(--warning)", fontWeight: 800 }}>
                           💥 Most Reported Problem Categories
                         </h4>
 
                         {roomProblemStats.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
                             No problem patterns recorded for Room {selectedRoomModal.room_number} yet.
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {roomProblemStats.map((stat) => (
-                              <div key={stat.category} style={{ background: "rgba(30, 41, 59, 0.6)", padding: "12px", borderRadius: 10, border: "1px solid rgba(251, 191, 36, 0.25)" }}>
+                              <div key={stat.category} style={{ background: "var(--surface-hover)", padding: "12px", borderRadius: 10, border: "1px solid var(--warning-subtle)" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                                   <div>
-                                    <span style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>{stat.category}</span>
-                                    <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 8 }}>({stat.department})</span>
+                                    <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stat.category}</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({stat.department})</span>
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     {stat.count >= 2 && (
-                                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(239, 68, 68, 0.2)", color: "#f87171", fontWeight: 800 }}>
+                                      <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "var(--danger-subtle)", color: "var(--danger)", fontWeight: 800 }}>
                                         ⚠️ Frequent Issue
                                       </span>
                                     )}
-                                    <span style={{ fontWeight: 800, color: "#fbbf24", fontSize: 13 }}>{stat.count} Reports</span>
+                                    <span style={{ fontWeight: 800, color: "var(--warning)", fontSize: 13 }}>{stat.count} Reports</span>
                                   </div>
                                 </div>
 
-                                <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 8 }}>
-                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "linear-gradient(90deg, #d97706, #fbbf24)" }} />
+                                <div style={{ height: 6, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden", marginBottom: 8 }}>
+                                  <div style={{ width: `${stat.percentage}%`, height: "100%", background: "var(--warning)" }} />
                                 </div>
 
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#94a3b8" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-muted)" }}>
                                   <span>{stat.percentage}% of total issues in Room {selectedRoomModal.room_number}</span>
                                   <button
                                     onClick={() => {
@@ -1558,7 +1562,7 @@ export default function ReceptionPortal({
                                       setModalDept(stat.department);
                                       setRoomModalSubTab("ACTIVE");
                                     }}
-                                    style={{ padding: "3px 8px", borderRadius: 4, background: "rgba(251, 191, 36, 0.15)", border: "1px solid rgba(251, 191, 36, 0.4)", color: "#fbbf24", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
+                                    style={{ padding: "3px 8px", borderRadius: 4, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
                                   >
                                     ➕ Log {stat.category} Ticket
                                   </button>
@@ -1574,7 +1578,7 @@ export default function ReceptionPortal({
                     {roomModalSubTab === "HISTORY" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "#e879f9", fontWeight: 800 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--special)", fontWeight: 800 }}>
                             📜 Room {selectedRoomModal.room_number} Ticket History ({roomModalReclamations.length})
                           </h4>
                           <button
@@ -1583,9 +1587,9 @@ export default function ReceptionPortal({
                             style={{
                               padding: "5px 10px",
                               borderRadius: 8,
-                              background: showInModalPastLog ? "rgba(239, 68, 68, 0.2)" : "rgba(232, 121, 249, 0.2)",
-                              border: `1px solid ${showInModalPastLog ? "#ef4444" : "#e879f9"}`,
-                              color: showInModalPastLog ? "#f87171" : "#e879f9",
+                              background: showInModalPastLog ? "var(--danger-subtle)" : "var(--special-subtle)",
+                              border: `1px solid ${showInModalPastLog ? "var(--danger)" : "var(--special)"}`,
+                              color: showInModalPastLog ? "var(--danger)" : "var(--special)",
                               fontSize: 11,
                               fontWeight: 800,
                               cursor: "pointer",
@@ -1600,21 +1604,21 @@ export default function ReceptionPortal({
                           <form
                             onSubmit={handleInModalHistoricalSubmit}
                             style={{
-                              background: "rgba(232, 121, 249, 0.08)",
+                              background: "var(--special-subtle)",
                               padding: 12,
                               borderRadius: 12,
-                              border: "1px dashed rgba(232, 121, 249, 0.4)",
+                              border: "1px dashed color-mix(in srgb, var(--special) 35%, transparent)",
                               display: "flex",
                               flexDirection: "column",
                               gap: 10,
                             }}
                           >
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "#e879f9" }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--special)" }}>
                               📝 Backfill Past Incident for Room {selectedRoomModal.room_number}
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
                                   Incident Date & Time
                                 </label>
                                 <input
@@ -1622,17 +1626,17 @@ export default function ReceptionPortal({
                                   required
                                   value={inModalHistDate}
                                   onChange={(e) => setInModalHistDate(e.target.value)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
                                 />
                               </div>
                               <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
                                   Status
                                 </label>
                                 <select
                                   value={inModalHistStatus}
                                   onChange={(e) => setInModalHistStatus(e.target.value as any)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
                                 >
                                   <option value="RESOLVED">RESOLVED (Past Solved)</option>
                                   <option value="OPEN">OPEN (Needs Attention)</option>
@@ -1643,7 +1647,7 @@ export default function ReceptionPortal({
 
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
                                   Department
                                 </label>
                                 <select
@@ -1655,7 +1659,7 @@ export default function ReceptionPortal({
                                       setInModalHistCategory(presets[0].category);
                                     }
                                   }}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
                                 >
                                   {allDepartments.map((d) => (
                                     <option key={d.code} value={d.code}>{d.name}</option>
@@ -1663,13 +1667,13 @@ export default function ReceptionPortal({
                                 </select>
                               </div>
                               <div>
-                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                                <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
                                   Category
                                 </label>
                                 <select
                                   value={inModalHistCategory}
                                   onChange={(e) => setInModalHistCategory(e.target.value)}
-                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                  style={{ width: "100%", padding: 6, borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
                                 >
                                   {(PRESET_ISSUES[inModalHistDept] || DEFAULT_PRESETS).map((p) => (
                                     <option key={p.category} value={p.category}>{p.category}</option>
@@ -1679,7 +1683,7 @@ export default function ReceptionPortal({
                             </div>
 
                             <div>
-                              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#cbd5e1", marginBottom: 3 }}>
+                              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 3 }}>
                                 Description / Notes
                               </label>
                               <input
@@ -1687,7 +1691,7 @@ export default function ReceptionPortal({
                                 placeholder="What happened and how was it addressed..."
                                 value={inModalHistDesc}
                                 onChange={(e) => setInModalHistDesc(e.target.value)}
-                                style={{ width: "100%", padding: "7px 8px", borderRadius: 6, background: "#1e293b", border: "1px solid #334155", color: "#fff", fontSize: 11 }}
+                                style={{ width: "100%", padding: "7px 8px", borderRadius: 6, background: "var(--surface-hover)", border: "1px solid var(--border-strong)", color: "var(--text-primary)", fontSize: 11 }}
                               />
                             </div>
 
@@ -1697,9 +1701,9 @@ export default function ReceptionPortal({
                               style={{
                                 padding: "8px 12px",
                                 borderRadius: 8,
-                                background: "#e879f9",
+                                background: "var(--special-subtle)",
                                 border: "none",
-                                color: "#000",
+                                color: "var(--special)",
                                 fontWeight: 800,
                                 cursor: "pointer",
                                 fontSize: 11,
@@ -1711,7 +1715,7 @@ export default function ReceptionPortal({
                         )}
 
                         {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                          <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
                             No past or historical tickets logged for Room {selectedRoomModal.room_number}.
                           </div>
                         ) : (
@@ -1719,21 +1723,21 @@ export default function ReceptionPortal({
                             {roomModalReclamations.map((rec) => {
                               const dateInfo = formatIncidentDate(rec.created_at);
                               return (
-                                <div key={rec.id} style={{ background: "rgba(30, 41, 59, 0.5)", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                <div key={rec.id} style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--accent-subtle)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                   <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
                                       <span>#{rec.id} • {rec.category}</span>
-                                      <span style={{ color: "#e879f9", fontWeight: 600, fontSize: 11 }}>({rec.department})</span>
+                                      <span style={{ color: "var(--special)", fontWeight: 600, fontSize: 11 }}>({rec.department})</span>
                                     </div>
-                                    <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 2 }}>{rec.description}</div>
+                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{rec.description}</div>
                                     {rec.created_at && (
-                                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                                      <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
                                         <span>📅 {dateInfo.full}</span>
-                                        <span style={{ padding: "1px 5px", borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>{dateInfo.relative}</span>
+                                        <span style={{ padding: "1px 5px", borderRadius: 4, background: "var(--accent-subtle)" }}>{dateInfo.relative}</span>
                                       </div>
                                     )}
                                   </div>
-                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)", color: rec.status === "RESOLVED" ? "#4ade80" : "#f87171", fontWeight: 800, whiteSpace: "nowrap" }}>
+                                  <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "RESOLVED" ? "var(--success-subtle)" : "var(--danger-subtle)", color: rec.status === "RESOLVED" ? "var(--success)" : "var(--danger)", fontWeight: 800, whiteSpace: "nowrap" }}>
                                     {rec.status}
                                   </span>
                                 </div>
@@ -1748,22 +1752,22 @@ export default function ReceptionPortal({
                     {roomModalSubTab === "TIMELINE" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "#10b981", fontWeight: 800 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--success)", fontWeight: 800 }}>
                             📅 Chronological Event Timeline (Room {selectedRoomModal.room_number})
                           </h4>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                             {roomModalReclamations.length} recorded events
                           </span>
                         </div>
 
                         {roomModalReclamations.length === 0 ? (
-                          <div style={{ padding: "2rem", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>
                             No events in timeline for Room {selectedRoomModal.room_number}.
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 0, position: "relative", paddingLeft: 20, maxHeight: 360, overflowY: "auto" }}>
                             {/* Vertical connector guide line */}
-                            <div style={{ position: "absolute", left: 7, top: 10, bottom: 10, width: 2, background: "rgba(16, 185, 129, 0.25)" }} />
+                            <div style={{ position: "absolute", left: 7, top: 10, bottom: 10, width: 2, background: "var(--success-subtle)" }} />
 
                             {[...roomModalReclamations]
                               .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
@@ -1781,30 +1785,30 @@ export default function ReceptionPortal({
                                         width: 16,
                                         height: 16,
                                         borderRadius: "50%",
-                                        background: isResolved ? "#10b981" : "#f59e0b",
-                                        border: "2px solid #0f172a",
+                                        background: isResolved ? "var(--success)" : "var(--warning)",
+                                        border: "2px solid var(--surface)",
                                         boxShadow: isResolved ? "0 0 8px rgba(16, 185, 129, 0.5)" : "0 0 8px rgba(245, 158, 11, 0.5)",
                                       }}
                                     />
 
-                                    <div style={{ background: "rgba(30, 41, 59, 0.6)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                                    <div style={{ background: "var(--surface-hover)", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--accent-subtle)" }}>
                                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 4 }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ fontWeight: 800, color: "#fff", fontSize: 12 }}>{rec.category}</span>
-                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(16, 185, 129, 0.2)", color: "#34d399", fontWeight: 700 }}>
+                                          <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 12 }}>{rec.category}</span>
+                                          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--success-subtle)", color: "var(--success)", fontWeight: 700 }}>
                                             {rec.department}
                                           </span>
                                         </div>
-                                        <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600 }}>
+                                        <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>
                                           {dateInfo.relative}
                                         </span>
                                       </div>
 
-                                      <div style={{ fontSize: 11, color: "#cbd5e1" }}>{rec.description}</div>
+                                      <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{rec.description}</div>
 
-                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "#94a3b8" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, fontSize: 10, color: "var(--text-muted)" }}>
                                         <span>📅 {dateInfo.full}</span>
-                                        <span style={{ fontWeight: 800, color: isResolved ? "#34d399" : "#fbbf24" }}>
+                                        <span style={{ fontWeight: 800, color: isResolved ? "var(--success)" : "var(--warning)" }}>
                                           {rec.status}
                                         </span>
                                       </div>
@@ -1826,14 +1830,14 @@ export default function ReceptionPortal({
 
       {/* HISTORICAL RECLAMATION MODAL (GLOBAL) */}
       {showHistoryModal && (
-        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
+        <div className="portal-modal-overlay" style={{ position: "fixed", inset: 0, background: "var(--surface-hover)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 }}>
           <div className="portal-modal-content ses-card" style={{ maxWidth: 520, width: "100%", padding: "1.5rem", borderRadius: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18, color: "#fbbf24", fontWeight: 800 }}>➕ Add Historical Incident Log</h3>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted, #94a3b8)" }}>Backfill past room reclamations with exact dates</p>
+                <h3 style={{ margin: 0, fontSize: 18, color: "var(--warning)", fontWeight: 800 }}>➕ Add Historical Incident Log</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>Backfill past room reclamations with exact dates</p>
               </div>
-              <button onClick={() => setShowHistoryModal(false)} style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setShowHistoryModal(false)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
             <form onSubmit={handleHistoricalSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1936,9 +1940,9 @@ export default function ReceptionPortal({
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,
-                  background: "#f59e0b",
+                  background: "var(--warning-subtle)",
                   border: "none",
-                  color: "#000",
+                  color: "var(--warning)",
                   fontWeight: 800,
                   cursor: "pointer",
                   fontSize: 12,

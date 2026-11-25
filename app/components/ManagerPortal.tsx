@@ -434,55 +434,55 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
         {/* TAB 1: STATS & GRAPHS */}
         {activeTab === "STATS" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 16 }}>
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>
+            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--warning)" }}>
                 🟡 Hotel Occupancy Distribution Graph
               </h4>
               <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3.8" />
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#fbbf24"
+                    stroke="var(--warning)"
                     strokeWidth="3.8"
                     strokeDasharray={`${Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}, 100`}
                   />
-                  <text x="18" y="20.35" fill="#ffffff" fontSize="8" fontWeight="800" textAnchor="middle">
+                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
                     {Math.round((occupiedRoomsCount / (totalRooms || 1)) * 100)}%
                   </text>
                 </svg>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#fbbf24", fontWeight: 700 }}>Occupied:</span><strong style={{ color: "#fff" }}>{occupiedRoomsCount}</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#4ade80", fontWeight: 700 }}>Vacant Clean:</span><strong style={{ color: "#fff" }}>{vacantCleanCount}</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#f87171", fontWeight: 700 }}>Dirty Rooms:</span><strong style={{ color: "#fff" }}>{dirtyRoomsCount}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--warning)", fontWeight: 700 }}>Occupied:</span><strong style={{ color: "var(--text-primary)" }}>{occupiedRoomsCount}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--success)", fontWeight: 700 }}>Vacant Clean:</span><strong style={{ color: "var(--text-primary)" }}>{vacantCleanCount}</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--danger)", fontWeight: 700 }}>Dirty Rooms:</span><strong style={{ color: "var(--text-primary)" }}>{dirtyRoomsCount}</strong></div>
                 </div>
               </div>
             </div>
 
-            <div style={{ background: "rgba(15, 23, 42, 0.75)", padding: "1.5rem", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "#38bdf8" }}>
+            <div style={{ background: "var(--surface-hover)", padding: "1.5rem", borderRadius: 16, border: "1px solid var(--accent-subtle)" }}>
+              <h4 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 800, color: "var(--info)" }}>
                 ⏱️ SLA Compliance & Resolution Speed Graph
               </h4>
               <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <svg width="120" height="120" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3.8" />
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="3.8" />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#4ade80"
+                    stroke="var(--success)"
                     strokeWidth="3.8"
                     strokeDasharray={`${slaCompliance}, 100`}
                   />
-                  <text x="18" y="20.35" fill="#ffffff" fontSize="8" fontWeight="800" textAnchor="middle">
+                  <text x="18" y="20.35" fill="var(--text-primary)" fontSize="8" fontWeight="800" textAnchor="middle">
                     {slaCompliance}%
                   </text>
                 </svg>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, fontSize: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#4ade80", fontWeight: 700 }}>SLA Compliance:</span><strong style={{ color: "#fff" }}>{slaCompliance}%</strong></div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#38bdf8", fontWeight: 700 }}>Average MTTR:</span><strong style={{ color: "#fff" }}>{mttrMinutes} min</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--success)", fontWeight: 700 }}>SLA Compliance:</span><strong style={{ color: "var(--text-primary)" }}>{slaCompliance}%</strong></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--info)", fontWeight: 700 }}>Average MTTR:</span><strong style={{ color: "var(--text-primary)" }}>{mttrMinutes} min</strong></div>
                 </div>
               </div>
             </div>
@@ -648,7 +648,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         </td>
                         <td style={{ padding: "10px", textAlign: "right" }}>
                           {rec.status !== "RESOLVED" && (
-                            <button onClick={() => handleResolveNormalTicket(rec.id)} style={{ padding: "6px 12px", borderRadius: "var(--radius-sm)", background: "var(--status-emerald)", border: "none", color: "#ffffff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            <button onClick={() => handleResolveNormalTicket(rec.id)} style={{ padding: "6px 12px", borderRadius: "var(--radius-sm)", background: "var(--success-subtle)", border: "none", color: "var(--success)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                               Resolve
                             </button>
                           )}
@@ -722,9 +722,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                               minHeight: 44,
                               padding: "8px 12px",
                               borderRadius: "var(--radius-md)",
-                              background: "var(--status-emerald)",
+                              background: "var(--success-subtle)",
                               border: "none",
-                              color: "#ffffff",
+                              color: "var(--success)",
                               fontSize: 13,
                               fontWeight: 700,
                               cursor: "pointer",
@@ -748,40 +748,40 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
             {/* TOP HEADER & CONTROLS */}
             <div
               style={{
-                background: "rgba(15, 23, 42, 0.85)",
+                background: "var(--surface-hover)",
                 borderRadius: 16,
                 padding: "1.5rem",
-                border: "1px solid rgba(245, 158, 11, 0.3)",
+                border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
                 boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: "1.25rem" }}>
                 <div>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "#f59e0b", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", color: "var(--warning)", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
                     <span>📈 INCIDENT INTELLIGENCE & PATTERNS</span>
                   </div>
-                  <h3 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "#ffffff" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, color: "var(--text-primary)" }}>
                     Room Rush Hour & Pattern Analytics
                   </h3>
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
                     Detailed breakdown of each room: current status, peak complaint hours with exact dates, and top repeated complaints.
                   </p>
                 </div>
 
                 {/* SUMMARY CHIPS */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Active Rooms with Issues</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#f59e0b" }}>{analyticsSummary.roomsWithIssues} / {totalRooms}</div>
+                  <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--accent-subtle)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Active Rooms with Issues</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--warning)" }}>{analyticsSummary.roomsWithIssues} / {totalRooms}</div>
                   </div>
-                  <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Identified Rush Hours</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "#38bdf8" }}>{analyticsSummary.roomsWithRush} rooms</div>
+                  <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--accent-subtle)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Identified Rush Hours</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--info)" }}>{analyticsSummary.roomsWithRush} rooms</div>
                   </div>
                   {analyticsSummary.maxTicketsRoom && (
-                    <div style={{ background: "rgba(30, 41, 59, 0.8)", padding: "8px 14px", borderRadius: 12, border: "1px solid rgba(239, 68, 68, 0.3)" }}>
-                      <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>Highest Incident Room</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#f87171" }}>
+                    <div style={{ background: "var(--surface-hover)", padding: "8px 14px", borderRadius: 12, border: "1px solid var(--danger-subtle)" }}>
+                      <div style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>Highest Incident Room</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--danger)" }}>
                         Room {analyticsSummary.maxTicketsRoom.roomNumber} ({analyticsSummary.maxTicketsRoom.count} tickets)
                       </div>
                     </div>
@@ -790,7 +790,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
               </div>
 
               {/* SEARCH & FILTERS BAR */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingTop: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
                 {/* Search */}
                 <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
                   <input
@@ -802,9 +802,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       width: "100%",
                       padding: "9px 12px",
                       borderRadius: 10,
-                      background: "rgba(30, 41, 59, 0.6)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      color: "#fff",
+                      background: "var(--surface-hover)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-primary)",
                       fontSize: 13,
                       outline: "none",
                     }}
@@ -819,7 +819,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         transform: "translateY(-50%)",
                         background: "transparent",
                         border: "none",
-                        color: "#94a3b8",
+                        color: "var(--text-muted)",
                         cursor: "pointer",
                       }}
                     >
@@ -835,9 +835,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                   style={{
                     padding: "9px 12px",
                     borderRadius: 10,
-                    background: "rgba(30, 41, 59, 0.8)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#fff",
+                    background: "var(--surface-hover)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-primary)",
                     fontSize: 13,
                     cursor: "pointer",
                     outline: "none",
@@ -856,9 +856,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                   style={{
                     padding: "9px 12px",
                     borderRadius: 10,
-                    background: "rgba(30, 41, 59, 0.8)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#fff",
+                    background: "var(--surface-hover)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-primary)",
                     fontSize: 13,
                     cursor: "pointer",
                     outline: "none",
@@ -876,9 +876,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                   style={{
                     padding: "9px 12px",
                     borderRadius: 10,
-                    background: "rgba(245, 158, 11, 0.15)",
-                    border: "1px solid rgba(245, 158, 11, 0.4)",
-                    color: "#fbbf24",
+                    background: "var(--warning-subtle)",
+                    border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
+                    color: "var(--warning)",
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -917,36 +917,36 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                 };
 
                 // Determine border and accent styling based on severity
-                let borderColor = "rgba(255, 255, 255, 0.08)";
+                let borderColor = "var(--border)";
                 let glowShadow = "none";
                 let statusHeaderBadge = null;
 
                 if (stats.hasEmergency || stats.hasHighPriority) {
-                  borderColor = "rgba(239, 68, 68, 0.6)";
+                  borderColor = "color-mix(in srgb, var(--danger) 45%, transparent)";
                   glowShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
                   statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(239, 68, 68, 0.2)", border: "1px solid #ef4444", color: "#f87171", fontSize: 10, fontWeight: 800 }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--danger-subtle)", border: "1px solid color-mix(in srgb, var(--danger) 45%, transparent)", color: "var(--danger)", fontSize: 10, fontWeight: 800 }}>
                       🔥 CRITICAL OPEN
                     </span>
                   );
                 } else if (stats.openTickets > 0) {
-                  borderColor = "rgba(245, 158, 11, 0.5)";
+                  borderColor = "color-mix(in srgb, var(--warning) 45%, transparent)";
                   glowShadow = "0 0 15px rgba(245, 158, 11, 0.15)";
                   statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(245, 158, 11, 0.2)", border: "1px solid #f59e0b", color: "#fbbf24", fontSize: 10, fontWeight: 800 }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--warning-subtle)", border: "1px solid color-mix(in srgb, var(--warning) 45%, transparent)", color: "var(--warning)", fontSize: 10, fontWeight: 800 }}>
                       ⚠️ {stats.openTickets} OPEN
                     </span>
                   );
                 } else if (stats.totalTickets > 0) {
-                  borderColor = "rgba(56, 189, 248, 0.3)";
+                  borderColor = "color-mix(in srgb, var(--info) 45%, transparent)";
                   statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(56, 189, 248, 0.15)", border: "1px solid rgba(56, 189, 248, 0.3)", color: "#38bdf8", fontSize: 10, fontWeight: 700 }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--info-subtle)", border: "1px solid var(--info-subtle)", color: "var(--info)", fontSize: 10, fontWeight: 700 }}>
                       ✅ ALL RESOLVED
                     </span>
                   );
                 } else {
                   statusHeaderBadge = (
-                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "rgba(74, 222, 128, 0.1)", border: "1px solid rgba(74, 222, 128, 0.2)", color: "#4ade80", fontSize: 10, fontWeight: 700 }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--success-subtle)", border: "1px solid var(--success-subtle)", color: "var(--success)", fontSize: 10, fontWeight: 700 }}>
                       ✨ CLEAN RECORD
                     </span>
                   );
@@ -956,7 +956,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                   <div
                     key={room.id}
                     style={{
-                      background: "rgba(15, 23, 42, 0.8)",
+                      background: "var(--surface-hover)",
                       border: `1.5px solid ${borderColor}`,
                       borderRadius: 16,
                       padding: "1.25rem",
@@ -973,12 +973,12 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <h4 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#ffffff" }}>
+                            <h4 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
                               Room {room.room_number}
                             </h4>
                             {statusHeaderBadge}
                           </div>
-                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                             Floor {room.floor} • {room.block === "BLOCK_A" ? "Block A" : "Block B"}
                           </div>
                         </div>
@@ -991,9 +991,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                               borderRadius: 6,
                               fontSize: 11,
                               fontWeight: 800,
-                              background: room.is_occupied ? "rgba(251, 191, 36, 0.2)" : "rgba(74, 222, 128, 0.15)",
-                              color: room.is_occupied ? "#fbbf24" : "#4ade80",
-                              border: `1px solid ${room.is_occupied ? "rgba(251, 191, 36, 0.4)" : "rgba(74, 222, 128, 0.3)"}`,
+                              background: room.is_occupied ? "var(--warning-subtle)" : "var(--success-subtle)",
+                              color: room.is_occupied ? "var(--warning)" : "var(--success)",
+                              border: `1px solid ${room.is_occupied ? "color-mix(in srgb, var(--warning) 35%, transparent)" : "color-mix(in srgb, var(--success) 35%, transparent)"}`,
                             }}
                           >
                             {room.is_occupied ? "🔴 Occupied" : "🟢 Vacant"}
@@ -1006,16 +1006,16 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                               fontWeight: 700,
                               background:
                                 room.cleaning_status === "CLEAN"
-                                  ? "rgba(74, 222, 128, 0.15)"
+                                  ? "var(--success-subtle)"
                                   : room.cleaning_status === "DIRTY"
-                                  ? "rgba(239, 68, 68, 0.15)"
-                                  : "rgba(56, 189, 248, 0.15)",
+                                  ? "var(--danger-subtle)"
+                                  : "var(--info-subtle)",
                               color:
                                 room.cleaning_status === "CLEAN"
-                                  ? "#4ade80"
+                                  ? "var(--success)"
                                   : room.cleaning_status === "DIRTY"
-                                  ? "#f87171"
-                                  : "#38bdf8",
+                                  ? "var(--danger)"
+                                  : "var(--info)",
                             }}
                           >
                             🧹 {room.cleaning_status}
@@ -1026,19 +1026,19 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       {/* RUSH HOUR PANEL */}
                       <div
                         style={{
-                          background: stats.rushHour ? "rgba(245, 158, 11, 0.08)" : "rgba(30, 41, 59, 0.4)",
-                          border: `1px solid ${stats.rushHour ? "rgba(245, 158, 11, 0.25)" : "rgba(255, 255, 255, 0.05)"}`,
+                          background: stats.rushHour ? "var(--warning-subtle)" : "var(--surface-hover)",
+                          border: `1px solid ${stats.rushHour ? "color-mix(in srgb, var(--warning) 35%, transparent)" : "var(--border)"}`,
                           borderRadius: 12,
                           padding: "10px 12px",
                           marginBottom: 12,
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: stats.rushHour ? "#fbbf24" : "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: stats.rushHour ? "var(--warning)" : "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
                             <span>⏰ RUSH HOUR & PEAK TIME</span>
                           </span>
                           {stats.rushHour && (
-                            <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "#f59e0b", color: "#000" }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "var(--warning-subtle)", color: "var(--warning)" }}>
                               {stats.rushHour.count} in 1 hr
                             </span>
                           )}
@@ -1047,19 +1047,19 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         {stats.rushHour ? (
                           <div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: "#ffffff" }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>
                                 {stats.rushHour.hourRange}
                               </span>
-                              <span style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700 }}>
+                              <span style={{ fontSize: 11, color: "var(--warning)", fontWeight: 700 }}>
                                 Date: {stats.rushHour.date}
                               </span>
                             </div>
-                            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
                               Spike of {stats.rushHour.count} reclamation(s) on {stats.rushHour.date} ({stats.rushHour.totalForHourOfDay} total occurrences during this hour slot across all history).
                             </div>
                           </div>
                         ) : (
-                          <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
                             No rush hour pattern recorded yet (0 historical incidents).
                           </div>
                         )}
@@ -1068,14 +1068,14 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       {/* MOST REPEATED PROBLEMS PANEL */}
                       <div
                         style={{
-                          background: "rgba(30, 41, 59, 0.4)",
-                          border: "1px solid rgba(255, 255, 255, 0.05)",
+                          background: "var(--surface-hover)",
+                          border: "1px solid var(--border)",
                           borderRadius: 12,
                           padding: "10px 12px",
                           marginBottom: 12,
                         }}
                       >
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "#e879f9", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--special)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
                           <span>🔁 MOST REPEATED PROBLEMS</span>
                         </div>
 
@@ -1084,16 +1084,16 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                             {stats.topProblems.map((prob, idx) => (
                               <div key={prob.category}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                                  <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
-                                    <span style={{ color: "#94a3b8", marginRight: 4 }}>#{idx + 1}</span>
+                                  <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
+                                    <span style={{ color: "var(--text-muted)", marginRight: 4 }}>#{idx + 1}</span>
                                     {prob.category}
                                   </span>
-                                  <span style={{ color: "#e879f9", fontWeight: 800 }}>
-                                    {prob.count}× <span style={{ color: "#94a3b8", fontSize: 11 }}>({prob.percentage}%)</span>
+                                  <span style={{ color: "var(--special)", fontWeight: 800 }}>
+                                    {prob.count}× <span style={{ color: "var(--text-muted)", fontSize: 11 }}>({prob.percentage}%)</span>
                                   </span>
                                 </div>
                                 {/* Bar indicator */}
-                                <div style={{ height: 5, borderRadius: 999, background: "rgba(255, 255, 255, 0.08)", overflow: "hidden" }}>
+                                <div style={{ height: 5, borderRadius: 999, background: "var(--accent-subtle)", overflow: "hidden" }}>
                                   <div
                                     style={{
                                       height: "100%",
@@ -1101,10 +1101,10 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                                       borderRadius: 999,
                                       background:
                                         idx === 0
-                                          ? "linear-gradient(90deg, #f59e0b, #ef4444)"
+                                          ? "var(--danger)"
                                           : idx === 1
-                                          ? "linear-gradient(90deg, #38bdf8, #818cf8)"
-                                          : "#94a3b8",
+                                          ? "var(--info)"
+                                          : "var(--text-muted)",
                                     }}
                                   />
                                 </div>
@@ -1112,7 +1112,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                             ))}
                           </div>
                         ) : (
-                          <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
                             No complaints reported for this room.
                           </div>
                         )}
@@ -1126,27 +1126,27 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           gap: 6,
                           padding: "8px 10px",
                           borderRadius: 10,
-                          background: "rgba(15, 23, 42, 0.6)",
-                          border: "1px solid rgba(255, 255, 255, 0.04)",
+                          background: "var(--surface-hover)",
+                          border: "1px solid var(--border)",
                           fontSize: 11,
                           textAlign: "center",
                         }}
                       >
                         <div>
-                          <div style={{ color: "#94a3b8" }}>Total</div>
-                          <div style={{ fontWeight: 800, color: "#fff", fontSize: 13 }}>{stats.totalTickets}</div>
+                          <div style={{ color: "var(--text-muted)" }}>Total</div>
+                          <div style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>{stats.totalTickets}</div>
                         </div>
                         <div>
-                          <div style={{ color: "#94a3b8" }}>Resolved</div>
-                          <div style={{ fontWeight: 800, color: "#4ade80", fontSize: 13 }}>{stats.resolvedTickets}</div>
+                          <div style={{ color: "var(--text-muted)" }}>Resolved</div>
+                          <div style={{ fontWeight: 800, color: "var(--success)", fontSize: 13 }}>{stats.resolvedTickets}</div>
                         </div>
                         <div>
-                          <div style={{ color: "#94a3b8" }}>Open</div>
-                          <div style={{ fontWeight: 800, color: stats.openTickets > 0 ? "#f87171" : "#94a3b8", fontSize: 13 }}>{stats.openTickets}</div>
+                          <div style={{ color: "var(--text-muted)" }}>Open</div>
+                          <div style={{ fontWeight: 800, color: stats.openTickets > 0 ? "var(--danger)" : "var(--text-muted)", fontSize: 13 }}>{stats.openTickets}</div>
                         </div>
                         <div>
-                          <div style={{ color: "#94a3b8" }}>Avg Fix</div>
-                          <div style={{ fontWeight: 800, color: "#38bdf8", fontSize: 13 }}>
+                          <div style={{ color: "var(--text-muted)" }}>Avg Fix</div>
+                          <div style={{ fontWeight: 800, color: "var(--info)", fontSize: 13 }}>
                             {stats.avgResolutionMinutes !== null ? `${stats.avgResolutionMinutes}m` : "—"}
                           </div>
                         </div>
@@ -1163,9 +1163,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         width: "100%",
                         padding: "9px",
                         borderRadius: 10,
-                        background: "rgba(245, 158, 11, 0.15)",
-                        border: "1px solid rgba(245, 158, 11, 0.4)",
-                        color: "#fbbf24",
+                        background: "var(--warning-subtle)",
+                        border: "1px solid color-mix(in srgb, var(--warning) 35%, transparent)",
+                        color: "var(--warning)",
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: "pointer",
@@ -1222,7 +1222,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                 >
                   <span>🛎️ Reclamations</span>
                   {roomModalReclamations.length > 0 && (
-                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "rgba(99, 102, 241, 0.3)", color: "#a5b4fc", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                    <span style={{ padding: "1px 6px", borderRadius: 999, background: "var(--special-subtle)", color: "var(--special)", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
                       {roomModalReclamations.length}
                     </span>
                   )}
@@ -1245,7 +1245,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       </div>
                     </div>
 
-                    <button onClick={() => handleCleaningCycle(selectedRoomModal)} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "rgba(245, 158, 11, 0.15)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontWeight: 800, cursor: "pointer" }}>
+                    <button onClick={() => handleCleaningCycle(selectedRoomModal)} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "var(--warning-subtle)", border: "1px solid var(--accent-amber)", color: "var(--accent-amber)", fontWeight: 800, cursor: "pointer" }}>
                       🧹 Cycle Cleaning Status &rarr;
                     </button>
 
@@ -1255,7 +1255,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       if (!stats) return null;
                       return (
                         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
-                          <div style={{ background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.25)", borderRadius: 10, padding: "10px" }}>
+                          <div style={{ background: "var(--warning-subtle)", border: "1px solid var(--warning-subtle)", borderRadius: 10, padding: "10px" }}>
                             <div style={{ fontSize: 11, fontWeight: 800, color: "var(--accent-amber)" }}>⏰ RUSH HOUR & PEAK INCIDENT TIME</div>
                             {stats.rushHour ? (
                               <div style={{ marginTop: 4 }}>
@@ -1300,8 +1300,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           padding: "7px 8px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "ACTIVE" ? "var(--accent-amber)" : "transparent",
-                          color: roomModalSubTab === "ACTIVE" ? "#000" : "var(--text-secondary)",
+                          background: roomModalSubTab === "ACTIVE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "ACTIVE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "ACTIVE" ? "var(--text-primary)" : "var(--text-secondary)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1314,7 +1315,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                       >
                         <span>⚡ Active</span>
                         {roomActiveReclamations.length > 0 && (
-                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "rgba(0,0,0,0.2)" : "var(--status-rose)", color: "#fff", fontSize: 10, fontWeight: 800 }}>
+                          <span style={{ padding: "1px 5px", borderRadius: 999, background: roomModalSubTab === "ACTIVE" ? "var(--surface-hover)" : "var(--status-rose)", color: "var(--text-primary)", fontSize: 10, fontWeight: 800 }}>
                             {roomActiveReclamations.length}
                           </span>
                         )}
@@ -1327,8 +1328,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           padding: "7px 8px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--brand-primary)" : "transparent",
-                          color: roomModalSubTab === "MOST_REPORTED" ? "#fff" : "var(--text-secondary)",
+                          background: roomModalSubTab === "MOST_REPORTED" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "MOST_REPORTED" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "MOST_REPORTED" ? "var(--text-primary)" : "var(--text-secondary)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1340,7 +1342,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         }}
                       >
                         <span>💥 Trends</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "var(--accent-subtle)", fontSize: 10, fontWeight: 800 }}>
                           {roomProblemStats.length}
                         </span>
                       </button>
@@ -1352,8 +1354,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           padding: "7px 8px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "HISTORY" ? "var(--status-purple, #a855f7)" : "transparent",
-                          color: roomModalSubTab === "HISTORY" ? "#fff" : "var(--text-secondary)",
+                          background: roomModalSubTab === "HISTORY" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "HISTORY" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "HISTORY" ? "var(--text-primary)" : "var(--text-secondary)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1365,7 +1368,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                         }}
                       >
                         <span>📜 History</span>
-                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 800 }}>
+                        <span style={{ padding: "1px 5px", borderRadius: 999, background: "var(--accent-subtle)", fontSize: 10, fontWeight: 800 }}>
                           {roomModalReclamations.length}
                         </span>
                       </button>
@@ -1377,8 +1380,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           padding: "7px 8px",
                           borderRadius: 8,
                           border: "none",
-                          background: roomModalSubTab === "TIMELINE" ? "var(--status-emerald)" : "transparent",
-                          color: roomModalSubTab === "TIMELINE" ? "#fff" : "var(--text-secondary)",
+                          background: roomModalSubTab === "TIMELINE" ? "var(--surface)" : "transparent",
+                          boxShadow: roomModalSubTab === "TIMELINE" ? "var(--shadow-subtle)" : "none",
+                          color: roomModalSubTab === "TIMELINE" ? "var(--text-primary)" : "var(--text-secondary)",
                           fontSize: 11,
                           fontWeight: 800,
                           cursor: "pointer",
@@ -1414,7 +1418,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                                     <div>
                                       <span style={{ fontWeight: 800, color: "var(--text-primary)", fontSize: 13 }}>#{rec.id} • {rec.category}</span>
-                                      <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "rgba(245, 158, 11, 0.15)", color: "var(--accent-amber)" }}>{rec.department}</span>
+                                      <span style={{ marginLeft: 8, fontSize: 11, padding: "2px 6px", borderRadius: 4, background: "var(--warning-subtle)", color: "var(--accent-amber)" }}>{rec.department}</span>
                                       <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>🕒 {dateInfo.relative}</span>
                                     </div>
                                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: rec.status === "OPEN" ? "var(--status-rose-bg)" : "var(--status-amber-bg)", color: rec.status === "OPEN" ? "var(--status-rose)" : "var(--status-amber)", fontWeight: 800 }}>
@@ -1454,7 +1458,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                           <button
                             type="submit"
                             disabled={isPending}
-                            style={{ padding: "8px", borderRadius: 8, background: "var(--accent-amber)", border: "none", color: "#000", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
+                            style={{ padding: "8px", borderRadius: 8, background: "var(--accent-amber)", border: "none", color: "var(--brand-foreground)", fontWeight: 800, cursor: "pointer", fontSize: 12 }}
                           >
                             Dispatch Directive &rarr;
                           </button>
@@ -1503,7 +1507,7 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                     {roomModalSubTab === "HISTORY" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-purple, #a855f7)", fontWeight: 800 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, color: "var(--status-purple)", fontWeight: 800 }}>
                             📜 Ticket History ({roomModalReclamations.length})
                           </h4>
                           <button
@@ -1512,9 +1516,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                             style={{
                               padding: "5px 10px",
                               borderRadius: "var(--radius-sm)",
-                              background: showInModalPastLog ? "var(--status-rose-bg)" : "rgba(168, 85, 247, 0.15)",
-                              border: `1px solid ${showInModalPastLog ? "var(--status-rose)" : "var(--status-purple, #a855f7)"}`,
-                              color: showInModalPastLog ? "var(--status-rose)" : "var(--status-purple, #a855f7)",
+                              background: showInModalPastLog ? "var(--status-rose-bg)" : "var(--special-subtle)",
+                              border: `1px solid ${showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)"}`,
+                              color: showInModalPastLog ? "var(--status-rose)" : "var(--status-purple)",
                               fontSize: 11,
                               fontWeight: 700,
                               cursor: "pointer",
@@ -1526,8 +1530,8 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
 
                         {/* INLINE PAST LOG FORM */}
                         {showInModalPastLog && (
-                          <form onSubmit={handleInModalHistoricalSubmit} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 12, border: "1.5px dashed var(--status-purple, #a855f7)", display: "flex", flexDirection: "column", gap: 10 }}>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--status-purple, #a855f7)" }}>
+                          <form onSubmit={handleInModalHistoricalSubmit} style={{ background: "var(--surface-1)", padding: "12px", borderRadius: 12, border: "1.5px dashed var(--status-purple)", display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--status-purple)" }}>
                               📅 Backfill Historical Record for Room {selectedRoomModal.room_number}
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -1606,9 +1610,9 @@ export default function ManagerPortal({ rooms, reclamations, staff, isLiveSupaba
                               style={{
                                 padding: "8px",
                                 borderRadius: 8,
-                                background: "var(--status-purple, #a855f7)",
+                                background: "var(--status-purple)",
                                 border: "none",
-                                color: "#ffffff",
+                                color: "var(--text-primary)",
                                 fontWeight: 800,
                                 cursor: "pointer",
                                 fontSize: 12,

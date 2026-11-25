@@ -28,8 +28,8 @@ export const viewport: Viewport = {
   // Pinch-zoom stays enabled (WCAG 1.4.4 Resize Text).
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#070a0f" },
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#111113" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
   ],
 };
 
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
     "apple-mobile-web-app-title": "Hotel SES",
-    "msapplication-TileColor": "#070a0f",
+    "msapplication-TileColor": "#111113",
     "msapplication-TileImage": "/icons/icon-144x144.png",
   },
 };
