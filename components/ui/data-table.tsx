@@ -11,6 +11,7 @@ import React, {
   useState,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { SpringSelect } from "./spring-select";
 
 /* -------------------------------------------------------------------------- */
 /*  DataTable — the other half of every dashboard.                             */
@@ -541,24 +542,17 @@ export function DataTable<T extends { id: Id }>({
   const header = cards ? (
     <div className={cx("flex items-center gap-3 px-1 pb-3")}>
       {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Select all rows" />}
-      <label className="relative ml-1 flex min-w-0 flex-1 items-center">
-        <span className="sr-only">Sort by</span>
-        <select
-          value={sort?.key ?? ""}
-          onChange={(e) => setSort(e.target.value ? { key: e.target.value, dir: sort?.dir ?? "desc" } : null)}
-          className={`h-10 w-full appearance-none rounded-xl bg-black/[0.04] pl-3 pr-8 text-[16px] text-neutral-900 dark:bg-white/[0.05] dark:text-neutral-100 ${focus}`}
-        >
-          <option value="">Sort: default order</option>
-          {sortable.map((c) => (
-            <option key={c.key} value={c.key}>
-              Sort: {c.header}
-            </option>
-          ))}
-        </select>
-        <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-3 h-3.5 w-3.5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </label>
+      <SpringSelect
+        aria-label="Sort by"
+        className="ml-1 flex-1"
+        triggerClassName="h-10"
+        value={sort?.key ?? ""}
+        onChange={(key) => setSort(key ? { key, dir: sort?.dir ?? "desc" } : null)}
+        options={[
+          { value: "", label: "Sort: default order" },
+          ...sortable.map((c) => ({ value: c.key, label: `Sort: ${c.header}` })),
+        ]}
+      />
       <button
         type="button"
         disabled={!sort}

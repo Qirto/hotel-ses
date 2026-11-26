@@ -126,16 +126,13 @@ type RosterProps = { member: Staff; shifts?: Record<string, ShiftType>; onChange
 function ShiftSelect({ member, day, shift, onChange }: { member: Staff; day: string; shift: ShiftType; onChange: OnShiftChange }) {
   const Icon = SHIFT_ICONS[shift];
   return (
-    <div className="relative">
-      <Icon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
-      <Select
-        aria-label={`${member.full_name}, ${day}`}
-        value={shift}
-        options={SHIFT_OPTIONS}
-        onChange={(e) => onChange(member.id, day, e.target.value as ShiftType)}
-        className="pl-8"
-      />
-    </div>
+    <Select
+      aria-label={`${member.full_name}, ${day}`}
+      icon={<Icon />}
+      value={shift}
+      options={SHIFT_OPTIONS}
+      onChange={(v) => onChange(member.id, day, v)}
+    />
   );
 }
 

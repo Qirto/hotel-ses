@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { CircleCheck, CircleX, History, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SpringSelect, type SpringSelectProps } from "@/components/ui/spring-select";
 import { DEFAULT_PRESETS, DISPATCH_DEPARTMENTS, PRESET_ISSUES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { DateTimeField } from "./DateTimeField";
@@ -32,16 +33,9 @@ export function TextArea(props: React.ComponentProps<"textarea">) {
   return <textarea rows={3} {...props} className={cn(control, "min-h-24 py-2.5", props.className)} />;
 }
 
-export function Select({ options, ...props }: React.ComponentProps<"select"> & { options: readonly { value: string; label: string }[] }) {
-  return (
-    <select {...props} className={cn(control, "h-11", props.className)}>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
+/** Form select: easyui SpringSelect (themed list, portal, full keyboard support). */
+export function Select<V extends string>(props: SpringSelectProps<V> & { value: V; onChange: (value: V) => void }) {
+  return <SpringSelect {...props} />;
 }
 
 /** Segmented single choice (priority, status). */
@@ -173,14 +167,14 @@ export function NewTicketForm({
             id={`${id}-dept`}
             value={department}
             options={DISPATCH_DEPARTMENTS}
-            onChange={(e) => {
-              setDepartment(e.target.value);
-              setCategory(categoriesFor(e.target.value)[0]?.value ?? "General");
+            onChange={(v) => {
+              setDepartment(v);
+              setCategory(categoriesFor(v)[0]?.value ?? "General");
             }}
           />
         </Field>
         <Field label="Issue" htmlFor={`${id}-cat`}>
-          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={(e) => setCategory(e.target.value)} />
+          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={setCategory} />
         </Field>
       </div>
       <Segmented label="Priority" value={priority} onChange={setPriority} options={PRIORITIES} />
@@ -266,14 +260,14 @@ export function PastIncidentForm({
             id={`${id}-dept`}
             value={department}
             options={DISPATCH_DEPARTMENTS}
-            onChange={(e) => {
-              setDepartment(e.target.value);
-              setCategory(categoriesFor(e.target.value)[0]?.value ?? "General");
+            onChange={(v) => {
+              setDepartment(v);
+              setCategory(categoriesFor(v)[0]?.value ?? "General");
             }}
           />
         </Field>
         <Field label="Issue" htmlFor={`${id}-cat`}>
-          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={(e) => setCategory(e.target.value)} />
+          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={setCategory} />
         </Field>
       </div>
       <Segmented label="Status" value={status} onChange={setStatus} options={PAST_STATUSES} />

@@ -28,3 +28,14 @@ export function forgetPersistedRole(): void {
     // Storage unavailable (private mode): nothing to forget.
   }
 }
+
+export type PortalRole = "reception" | "rh" | "gm";
+
+/** Remember the open portal so the login page can restore it (e.g. iOS PWA cookie loss). */
+export function rememberRole(role: PortalRole): void {
+  try {
+    localStorage.setItem("hotel_persisted_role", role);
+  } catch {
+    // Storage unavailable (private mode): the session cookie still works.
+  }
+}

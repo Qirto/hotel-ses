@@ -1,10 +1,10 @@
 "use client";
 
-import { memo, useCallback, useMemo, useRef, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { LogOut, RefreshCw } from "lucide-react";
 import { Sidebar, useSidebar, type SidebarItem, type SidebarSection } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { clearCachesAndReload } from "@/lib/pwa";
+import { clearCachesAndReload, rememberRole, type PortalRole } from "@/lib/pwa";
 import { signOutToLogin } from "@/lib/session";
 import { BottomNav } from "./BottomNav";
 import { NoticeOutlet } from "./notice";
@@ -20,6 +20,8 @@ const TONE_TEXT: Record<DepartmentTone, string> = {
 };
 
 interface AppShellProps {
+  /** Portal this shell belongs to; remembered for session restore. */
+  role: PortalRole;
   items: NavTabItem[];
   departmentName: string;
   departmentCode: string;
@@ -39,6 +41,7 @@ interface AppShellProps {
  * the portal content, not the shell.
  */
 export default function AppShell({
+  role,
   items,
   departmentName,
   departmentCode,
@@ -46,6 +49,8 @@ export default function AppShell({
   headerActions,
   children,
 }: AppShellProps) {
+  useEffect(() => rememberRole(role), [role]);
+
   // Latest values behind refs so the callbacks below never change identity.
   const itemsRef = useRef(items);
   itemsRef.current = items;

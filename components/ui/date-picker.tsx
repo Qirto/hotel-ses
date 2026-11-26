@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnchoredPopover } from "./anchored-popover";
 import { CalendarDays } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Calendar, type CalendarOptions, type DateRange } from "./calendar";
@@ -32,71 +32,6 @@ function useControllableState<T>(
 }
 
 type Side = "bottom" | "top";
-type CloseReason = "escape" | "outside";
-
-function usePopover({
-  open,
-  onClose,
-  rootRef,
-  height = 340,
-  side: preferredSide = "auto",
-}: {
-  open: boolean;
-  onClose: (reason: CloseReason) => void;
-  rootRef: React.RefObject<HTMLElement | null>;
-  height?: number;
-  side?: Side | "auto";
-}) {
-  const [side, setSide] = React.useState<Side>("bottom");
-
-  React.useLayoutEffect(() => {
-    if (!open || !rootRef.current) return;
-    if (preferredSide && preferredSide !== "auto") {
-      setSide(preferredSide);
-      return;
-    }
-    // Always open downward on mobile viewports (< 640px)
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-    if (isMobile) {
-      setSide("bottom");
-      return;
-    }
-    const rect = rootRef.current.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom;
-    // On desktop, only flip upward if space below is tight AND there is sufficient space above
-    setSide(below < height && rect.top >= height ? "top" : "bottom");
-  }, [open, height, rootRef, preferredSide]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) onClose("outside");
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose("escape");
-    };
-    document.addEventListener("pointerdown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose, rootRef]);
-
-  return side;
-}
-
-const popoverMotion = (side: Side, align: "start" | "end" = "start") =>
-  ({
-    initial: { opacity: 0, scale: 0.96 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.97, transition: { duration: 0.1 } },
-    transition: { type: "spring", stiffness: 520, damping: 38, mass: 0.7 },
-    style: {
-      transformOrigin: `${side === "top" ? "bottom" : "top"} ${align === "end" ? "right" : "left"}`,
-    },
-  }) as const;
-
 const fmt = (d: Date, locale?: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d);
 
 /* ───────────── shell: trigger + animated popover ───────────── */
@@ -105,7 +40,8 @@ function PickerShell({
   text,
   placeholder,
   align = "start",
-  side: preferredSide = "auto",
+  // `side` is kept for API compatibility; AnchoredPopover picks the side that fits.
+  side: _side,
   disabled,
   className,
   children,
@@ -119,20 +55,8 @@ function PickerShell({
   children: (api: { close: () => void }) => React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
-  const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const timer = React.useRef<number | undefined>(undefined);
-
-  const side = usePopover({
-    open,
-    rootRef,
-    height: 340,
-    side: preferredSide,
-    onClose: (reason) => {
-      setOpen(false);
-      if (reason === "escape") triggerRef.current?.focus();
-    },
-  });
 
   // brief beat so the selection pill lands before the popover closes
   const close = React.useCallback(() => {
@@ -140,14 +64,14 @@ function PickerShell({
     timer.current = window.setTimeout(() => {
       const a = document.activeElement;
       setOpen(false);
-      // only hand focus back if it hasn't moved elsewhere in the meantime
-      if (!a || a === document.body || rootRef.current?.contains(a)) triggerRef.current?.focus();
+      // only hand focus back if it hasn't left the picker in the meantime
+      if (!a || a === document.body || a.closest('[role="dialog"][aria-label="Choose date"]')) triggerRef.current?.focus();
     }, 160);
   }, []);
   React.useEffect(() => () => window.clearTimeout(timer.current), []);
 
   return (
-    <div ref={rootRef} className={cn("relative inline-block w-64 max-w-full", className)}>
+    <div className={cn("relative inline-block w-64 max-w-full", className)}>
       <button
         ref={triggerRef}
         type="button"
@@ -172,22 +96,21 @@ function PickerShell({
         </span>
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            role="dialog"
-            aria-label="Choose date"
-            {...popoverMotion(side, align)}
-            className={cn(
-              "absolute z-50 w-max max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white shadow-lg shadow-neutral-900/5 dark:border-neutral-800 dark:bg-neutral-950 dark:shadow-black/40",
-              side === "top" ? "bottom-full mb-2" : "top-full mt-2",
-              align === "end" ? "right-0" : "left-0"
-            )}
-          >
-            {children({ close })}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Hotel SES: portalled + viewport-aware, so sheets and cards never clip it */}
+      <AnchoredPopover
+        open={open}
+        onClose={(reason) => {
+          setOpen(false);
+          if (reason === "escape") triggerRef.current?.focus();
+        }}
+        anchorRef={triggerRef}
+        align={align}
+        role="dialog"
+        aria-label="Choose date"
+        className="w-max max-w-[calc(100vw-1rem)]"
+      >
+        {children({ close })}
+      </AnchoredPopover>
     </div>
   );
 }

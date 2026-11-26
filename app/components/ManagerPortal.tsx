@@ -142,7 +142,7 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
   );
 
   return (
-    <AppShell items={navItems} departmentName="Executive Management" departmentCode="GM">
+    <AppShell role="gm" items={navItems} departmentName="Executive Management" departmentCode="GM">
       <PageStack>
         <TabPanel active={activeTab === "STATS"}>
           <KpiGrid>

@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { SpringSelect } from "@/components/ui/spring-select";
 import { cn } from "@/lib/utils";
 
 /** Search field with icon. 44px tall, 16px text (no iOS zoom). */
@@ -33,7 +34,7 @@ export function SearchInput({
   );
 }
 
-/** Native select (best on mobile) styled to match. */
+/** Filter dropdown: easyui SpringSelect with a leading icon; the label is for screen readers. */
 export function SelectField<V extends string | number>({
   value,
   onChange,
@@ -49,35 +50,7 @@ export function SelectField<V extends string | number>({
   icon?: ReactNode;
   className?: string;
 }) {
-  return (
-    <label className={cn("relative block min-w-0", className)}>
-      <span className="sr-only">{label}</span>
-      {icon && (
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted [&>svg]:size-4" aria-hidden>
-          {icon}
-        </span>
-      )}
-      <select
-        value={String(value)}
-        onChange={(e) => {
-          const raw = e.target.value;
-          const match = options.find((o) => String(o.value) === raw);
-          if (match) onChange(match.value);
-        }}
-        className={cn(
-          "focus-ring h-11 w-full appearance-none truncate rounded-lg border border-border-strong bg-surface pr-9 text-base text-fg md:text-sm",
-          icon ? "pl-9" : "pl-3"
-        )}
-      >
-        {options.map((o) => (
-          <option key={String(o.value)} value={String(o.value)}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
-    </label>
-  );
+  return <SpringSelect aria-label={label} icon={icon} value={value} onChange={onChange} options={options} className={className} />;
 }
 
 /** Responsive filter row: stacks on phones, one line from md. */

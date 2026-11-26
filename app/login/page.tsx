@@ -1,19 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CircleAlert, CircleCheck, Eye, EyeOff, KeyRound, RefreshCw, WifiOff } from "lucide-react";
-import { loginWithPasscode, restorePersistedSession } from "@/app/actions";
+import { restorePersistedSession, signInWithForm, type SignInState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { clearCachesAndReload, forgetPersistedRole } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [passcode, setPasscode] = useState("");
   const [showPasscode, setShowPasscode] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successRole, setSuccessRole] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -37,29 +35,12 @@ export default function LoginPage() {
     } catch (_) {}
   }, [router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!passcode.trim() || isPending) return;
-
-    setErrorMessage(null);
-    startTransition(async () => {
-      const res = await loginWithPasscode(passcode);
-      if (res.success && res.redirectUrl) {
-        setSuccessRole(res.role || "workspace");
-        try {
-          if (res.role) {
-            localStorage.setItem("hotel_persisted_role", res.role);
-          }
-        } catch (_) {}
-        setTimeout(() => {
-          router.push(res.redirectUrl!);
-          router.refresh();
-        }, 350);
-      } else {
-        setErrorMessage(res.error || "Authentication failed. Please verify your passcode.");
-      }
-    });
-  };
+  // Real form action: submits (POST + redirect) even before hydration, and reads
+  // the field itself, so password-manager autofill always counts.
+  const [signIn, signInAction, signingIn] = useActionState(signInWithForm, null);
+  const [dismissedError, setDismissedError] = useState<SignInState>(null);
+  const errorMessage = signIn && signIn !== dismissedError ? signIn.error : null;
+  const busy = isPending || signingIn;
 
   return (
     <main id="main" className="flex min-h-dvh flex-col items-center justify-center px-4 py-10 pt-[calc(2.5rem+var(--safe-top))]">
@@ -78,7 +59,7 @@ export default function LoginPage() {
           <h2 className="text-base font-semibold">Sign in</h2>
           <p className="mt-1 text-sm text-fg-muted">Enter the passcode for your department.</p>
 
-          <form onSubmit={handleSubmit} noValidate className="mt-5 flex flex-col gap-4">
+          <form action={signInAction} noValidate className="mt-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="passcode-input" className="text-sm font-medium text-fg-secondary">
                 Passcode
@@ -93,15 +74,14 @@ export default function LoginPage() {
                   autoFocus
                   required
                   autoComplete="current-password"
-                  value={passcode}
-                  onChange={(e) => setPasscode(e.target.value)}
+                  onChange={() => errorMessage && setDismissedError(signIn)}
                   placeholder="Enter passcode"
-                  disabled={isPending || Boolean(successRole)}
+                  disabled={busy || Boolean(successRole)}
                   aria-invalid={Boolean(errorMessage)}
                   aria-describedby={errorMessage ? "passcode-error" : undefined}
                   className={cn(
                     "focus-ring h-12 w-full rounded-lg border bg-surface pl-9 pr-12 text-base text-fg placeholder:text-fg-muted disabled:opacity-60",
-                    !showPasscode && passcode && "tracking-[0.3em]",
+                    !showPasscode && "[&:not(:placeholder-shown)]:tracking-[0.3em]",
                     errorMessage ? "border-danger" : "border-border-strong"
                   )}
                 />
@@ -134,8 +114,8 @@ export default function LoginPage() {
               type="submit"
               variant="primary"
               size="lg"
-              disabled={!passcode.trim() || Boolean(successRole)}
-              isLoading={isPending}
+              disabled={Boolean(successRole)}
+              isLoading={busy}
               loadingText="Checking"
               rightIcon={<ArrowRight className="size-4" aria-hidden />}
               className="w-full justify-center"

@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 // =====================================================================
 // AUTHENTICATION & ROLE ACCESS CONTROL ACTIONS
@@ -33,6 +34,21 @@ export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: st
 
   revalidatePath(`/${role}`);
   return { success: true, redirectUrl: `/${role}` };
+}
+
+export type SignInState = { error: string } | null;
+
+/**
+ * Login form action (`<form action>` via useActionState). Works before the page
+ * hydrates: the browser POSTs the form and follows a 303 to the portal, so the
+ * passcode never ends up in the URL.
+ */
+export async function signInWithForm(_prev: SignInState, formData: FormData): Promise<SignInState> {
+  const res = await loginWithPasscode(String(formData.get("passcode") ?? ""));
+  if (!res.success || !res.redirectUrl) {
+    return { error: res.error ?? "Authentication failed. Please verify your passcode." };
+  }
+  redirect(res.redirectUrl);
 }
 
 export async function loginWithPasscode(passcode: string) {

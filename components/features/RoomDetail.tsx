@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { CircleCheck, Clock, History, ListChecks, Repeat, Timer } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, CircleCheck, ClipboardPlus, Clock, History, ListChecks, Repeat, Timer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
@@ -13,14 +14,14 @@ import { departmentLabel, formatIncidentDate, plural } from "@/lib/format";
 import { EmptyState } from "./Panel";
 import { PriorityBadge, TicketStatusBadge, ToneBadge } from "./StatusBadges";
 
-type TabId = "overview" | "open" | "history" | "patterns" | "log";
+type TabId = "overview" | "open" | "history" | "patterns";
 
 /**
  * Room detail shared by every portal (replaces three ~600-line modals).
  * Role-specific behaviour is passed in:
  *  - `controls`: room actions on the Overview tab (stay state, cleaning, ...)
  *  - `ticketActions`: buttons per open ticket (acknowledge, resolve, ...)
- *  - `logForm`: optional form for the "Log issue" tab
+ *  - `logForm`: optional form, opened from the "Log issue" footer button
  */
 export function RoomDetail({
   room,
@@ -38,6 +39,23 @@ export function RoomDetail({
   logForm?: ReactNode;
 }) {
   const [tab, setTab] = useState<TabId>("overview");
+  const [logging, setLogging] = useState(false);
+  const logButton = useRef<HTMLButtonElement>(null);
+  const backButton = useRef<HTMLButtonElement>(null);
+  const wasLogging = useRef(false);
+
+  // the button that was clicked unmounts with the view: hand focus to its counterpart
+  useEffect(() => {
+    if (logging) backButton.current?.focus();
+    else if (wasLogging.current) logButton.current?.focus();
+    wasLogging.current = logging;
+  }, [logging]);
+
+  const close = () => {
+    setTab("overview");
+    setLogging(false);
+    onClose();
+  };
 
   const roomTickets = useMemo(
     () =>
@@ -59,21 +77,58 @@ export function RoomDetail({
     { id: "open", label: "Open", badge: open.length || undefined },
     { id: "history", label: "History" },
     { id: "patterns", label: "Patterns" },
-    ...(logForm ? [{ id: "log", label: "Log issue" }] : []),
   ];
+
+  // Logging is an action, not a view: a footer button swaps the body to the form.
+  if (logging && logForm) {
+    return (
+      <ResponsiveSheet
+        open
+        onOpenChange={(o) => !o && close()}
+        size="lg"
+        title={`Log issue · Room ${room.room_number}`}
+        description="Create a ticket now, or record a past incident."
+      >
+        <div className="flex flex-col gap-5">
+          <Button
+            ref={backButton}
+            type="button"
+            variant="ghost"
+            size="touch"
+            onClick={() => setLogging(false)}
+            leftIcon={<ArrowLeft className="size-4" aria-hidden />}
+            className="-ml-2 self-start"
+          >
+            Back to room
+          </Button>
+          {logForm}
+        </div>
+      </ResponsiveSheet>
+    );
+  }
 
   return (
     <ResponsiveSheet
       open
-      onOpenChange={(o) => {
-        if (!o) {
-          setTab("overview");
-          onClose();
-        }
-      }}
+      onOpenChange={(o) => !o && close()}
       size="lg"
       title={`Room ${room.room_number}`}
       description={`Floor ${room.floor} · ${blockLabel(room.block)}`}
+      footer={
+        logForm ? (
+          <Button
+            ref={logButton}
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={() => setLogging(true)}
+            leftIcon={<ClipboardPlus className="size-4" aria-hidden />}
+            className="w-full justify-center"
+          >
+            Log issue
+          </Button>
+        ) : undefined
+      }
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap gap-2">
@@ -87,7 +142,7 @@ export function RoomDetail({
           activeTab={tab}
           onChange={(id) => setTab(id as TabId)}
           renderContent={false}
-          tabsContainerClassName="no-scrollbar max-w-full overflow-x-auto"
+          tabsContainerClassName="no-scrollbar w-full max-w-full self-stretch overflow-x-auto [&>button]:flex-1 [&>button]:justify-center"
         />
 
         {tab === "overview" && (
@@ -180,7 +235,6 @@ export function RoomDetail({
           </div>
         )}
 
-        {tab === "log" && logForm}
       </div>
     </ResponsiveSheet>
   );

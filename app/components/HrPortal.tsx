@@ -228,7 +228,7 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
   );
 
   return (
-    <AppShell items={navItems} departmentName="Human Resources & Roster" departmentCode="HR" tone="success">
+    <AppShell role="rh" items={navItems} departmentName="Human Resources & Roster" departmentCode="HR" tone="success">
       <PageStack>
         <TabPanel active={activeTab === "EMPLOYEES"}>
           <AnimatedTabs

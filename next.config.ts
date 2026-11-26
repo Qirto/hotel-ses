@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Dev server only: also serve dev assets (scripts, HMR) to http://127.0.0.1:3000,
+  // not just localhost. Without it the page renders but never hydrates there.
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [
       {

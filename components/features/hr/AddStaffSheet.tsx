@@ -63,10 +63,10 @@ export function AddStaffSheet({
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Role" htmlFor={`${id}-role`}>
-            <Select id={`${id}-role`} value={role} options={ROLE_OPTIONS} onChange={(e) => setRole(e.target.value)} />
+            <Select id={`${id}-role`} value={role} options={ROLE_OPTIONS} onChange={setRole} />
           </Field>
           <Field label="Department" htmlFor={`${id}-dept`}>
-            <Select id={`${id}-dept`} value={department} options={departments} onChange={(e) => setDepartment(e.target.value)} />
+            <Select id={`${id}-dept`} value={department} options={departments} onChange={setDepartment} />
           </Field>
         </div>
         <Field label="Phone number" htmlFor={`${id}-phone`} hint="Optional">

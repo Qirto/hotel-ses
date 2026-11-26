@@ -217,7 +217,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
   );
 
   return (
-    <AppShell items={navItems} departmentName="Reception Operations" departmentCode="Reception">
+    <AppShell role="reception" items={navItems} departmentName="Reception Operations" departmentCode="Reception">
       <PageStack>
         <TabPanel active={activeTab === "OVERVIEW"}>
           <Panel title="Front desk" description="Live room status, guest requests and dispatch." icon={<ConciergeBell />}>
