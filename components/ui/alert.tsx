@@ -46,6 +46,8 @@ export interface AlertProps extends Omit<React.ComponentProps<"div">, "title"> {
   onDismiss?: () => void;
   /** Right-side slot, e.g. a button. */
   action?: React.ReactNode;
+  /** Put `action` on its own right-aligned row under the text (two buttons, narrow toasts). */
+  actionsBelow?: boolean;
 }
 
 export function Alert({
@@ -54,6 +56,7 @@ export function Alert({
   dismissible,
   onDismiss,
   action,
+  actionsBelow = false,
   className,
   children,
   ...props
@@ -80,8 +83,11 @@ export function Alert({
             {icon !== false && (
               <span className={cn("mt-0.5 shrink-0 [&>svg]:size-4", t.icon)}>{icon ?? <t.Icon />}</span>
             )}
-            <div className="min-w-0 flex-1">{children}</div>
-            {action && <div className="-my-1 shrink-0">{action}</div>}
+            <div className="min-w-0 flex-1">
+              {children}
+              {action && actionsBelow && <div className="mt-3 flex justify-end gap-2">{action}</div>}
+            </div>
+            {action && !actionsBelow && <div className="-my-1 shrink-0">{action}</div>}
             {dismissible && (
               <button
                 type="button"

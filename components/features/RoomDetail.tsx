@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, CircleCheck, ClipboardPlus, Clock, History, ListChecks, Repeat, Timer } from "lucide-react";
+import { ArrowLeft, CircleCheck, ClipboardPlus, Clock, History, ListChecks, Pencil, Repeat, Timer } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
@@ -269,7 +269,7 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: R
   );
 }
 
-export function TicketCard({ ticket, actions }: { ticket: Reclamation; actions?: ReactNode }) {
+export function TicketCard({ ticket, actions, onEdit }: { ticket: Reclamation; actions?: ReactNode; onEdit?: (ticket: Reclamation) => void }) {
   const Icon = categoryIcon(ticket.category);
   const DeptIcon = departmentIcon(ticket.department);
   const d = formatIncidentDate(ticket.created_at);
@@ -284,6 +284,11 @@ export function TicketCard({ ticket, actions }: { ticket: Reclamation; actions?:
             <span className="font-medium">{categoryLabel(ticket.category)}</span>
             <PriorityBadge priority={ticket.priority} />
             <TicketStatusBadge status={ticket.status} />
+            {onEdit && (
+              <Button variant="ghost" size="sm" className="ml-auto flex-none" title="Modifier la demande" aria-label="Modifier la demande" onClick={() => onEdit(ticket)}>
+                <Pencil className="size-3.5" aria-hidden />
+              </Button>
+            )}
           </div>
           {ticket.description && <p className="mt-1 text-sm text-fg-secondary">{ticket.description}</p>}
           <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">

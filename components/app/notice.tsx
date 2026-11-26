@@ -4,12 +4,16 @@ import { createContext, useCallback, useContext, useRef, useState, type Componen
 import { VelocityToast } from "@/components/ui/velocity-toast";
 
 export type NoticeTone = "success" | "danger";
-export type Flash = (tone: NoticeTone, text: string) => void;
+/** Inline toast action, e.g. `{ label: "Annuler", onClick: undo }` for a reversible change. */
+export type NoticeAction = { label: string; onClick: () => void };
+export type Flash = (tone: NoticeTone, text: string, action?: NoticeAction) => void;
 
-type Notice = { id: number; tone: NoticeTone; text: string };
+type Notice = { id: number; tone: NoticeTone; text: string; action?: NoticeAction };
 
-/** Errors stay longer: they usually need reading, and the countdown pauses on hover/focus. */
+/** Errors stay longer: they usually need reading, and the countdown pauses on hover/focus.
+ *  A message with an action (undo) also stays longer, to leave time to use it. */
 const DURATION: Record<NoticeTone, number> = { success: 4000, danger: 8000 };
+const ACTION_DURATION = 7000;
 
 /** Stable `flash` (never changes), so callers do not re-render when a message shows. */
 const FlashContext = createContext<Flash>(() => {});
@@ -24,8 +28,8 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const nextId = useRef(0);
 
-  const flash = useCallback<Flash>((tone, text) => {
-    setNotice({ id: ++nextId.current, tone, text });
+  const flash = useCallback<Flash>((tone, text, action) => {
+    setNotice({ id: ++nextId.current, tone, text, action });
     setOpen(true);
   }, []);
 
@@ -40,7 +44,8 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
         messageKey={notice?.id}
         title={notice?.text ?? ""}
         variant={notice?.tone === "danger" ? "error" : "success"}
-        duration={DURATION[notice?.tone ?? "success"]}
+        action={notice?.action}
+        duration={notice?.action ? ACTION_DURATION : DURATION[notice?.tone ?? "success"]}
         onDismiss={dismiss}
       />
     </FlashContext.Provider>

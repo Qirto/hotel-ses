@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { Building2, Power, Trash2, UserCheck, UserMinus, UserPlus, UserRound, Users, UserX } from "lucide-react";
+import { Building2, Pencil, Power, Trash2, UserCheck, UserMinus, UserPlus, UserRound, Users, UserX } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, rowButton, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
 import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
@@ -35,6 +35,7 @@ export const DirectoryView = memo(function DirectoryView({
   onToggleShift,
   onMarkAbsent,
   onRemove,
+  onEdit,
   onAdd,
 }: {
   staff: readonly Staff[];
@@ -52,6 +53,7 @@ export const DirectoryView = memo(function DirectoryView({
   onToggleShift: (member: Staff) => void;
   onMarkAbsent: (member: Staff) => void;
   onRemove: (member: Staff) => void;
+  onEdit: (member: Staff) => void;
   onAdd: () => void;
 }) {
   const columns = useMemo<DataTableColumn<Staff>[]>(
@@ -75,6 +77,7 @@ export const DirectoryView = memo(function DirectoryView({
         key: "role",
         header: "Fonction",
         minWidth: 8,
+        priority: 3,
         accessor: (s) => roleLabel(s.role),
         cell: (s) => <span className="block min-w-0 truncate text-fg-secondary">{roleLabel(s.role)}</span>,
       },
@@ -83,6 +86,7 @@ export const DirectoryView = memo(function DirectoryView({
         header: "Service",
         minWidth: 9,
         grow: 1.3,
+        priority: 2,
         accessor: (s) => departmentName(staffDepartment(s)),
         cell: (s) => {
           const Icon = departmentIcon(staffDepartment(s));
@@ -98,6 +102,7 @@ export const DirectoryView = memo(function DirectoryView({
         key: "phone_number",
         header: "Téléphone",
         minWidth: 8.5,
+        priority: 4,
         hideOnMobile: true,
         accessor: (s) => s.phone_number ?? "",
         cell: (s) => <span className="block min-w-0 truncate tabular-nums text-fg-secondary">{s.phone_number || "–"}</span>,
@@ -118,27 +123,35 @@ export const DirectoryView = memo(function DirectoryView({
         header: "Actions",
         sortable: false,
         align: "right",
-        minWidth: 19,
+        minWidth: 21, // measured: « Absent » 86 + toggle 116 + edit 40 + delete 40 + gaps 24 + padding 24 px
         grow: 1.2,
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (s) => (
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" size="touch" onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-4" aria-hidden />}>
-              {s.shift_status === "ON_SHIFT" ? "Terminer le service" : "Prendre son service"}
-            </Button>
-            <Button variant="outline" size="touch" onClick={() => onMarkAbsent(s)} disabled={pending} leftIcon={<UserMinus className="size-4" aria-hidden />}>
-              Déclarer absent
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => onRemove(s)} disabled={pending} aria-label={`Supprimer ${s.full_name}`}>
-              <Trash2 className="size-4 text-danger" aria-hidden />
-            </Button>
-          </div>
-        ),
+        cell: (s, { layout }) => {
+          const size = rowButton(layout);
+          const onShift = s.shift_status === "ON_SHIFT";
+          return (
+            <DataTableActions layout={layout}>
+              <Button variant="outline" size={size} title="Déclarer absent" onClick={() => onMarkAbsent(s)} disabled={pending} leftIcon={<UserMinus className="size-3.5" aria-hidden />}>
+                Absent
+              </Button>
+              {/* One width for both labels (« Commencer » is the longer): the buttons line up as columns down the list. */}
+              <Button variant="secondary" size={size} className={layout === "cards" ? undefined : "w-[7.25rem]"} title={onShift ? "Terminer le service" : "Commencer le service"} onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-3.5" aria-hidden />}>
+                {onShift ? "Terminer" : "Commencer"}
+              </Button>
+              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier ${s.full_name}`} onClick={() => onEdit(s)} disabled={pending} aria-label={`Modifier ${s.full_name}`}>
+                <Pencil className="size-3.5" aria-hidden />
+              </Button>
+              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Supprimer ${s.full_name}`} onClick={() => onRemove(s)} disabled={pending} aria-label={`Supprimer ${s.full_name}`}>
+                <Trash2 className="size-3.5 text-danger" aria-hidden />
+              </Button>
+            </DataTableActions>
+          );
+        },
       },
     ],
-    [departmentName, onToggleShift, onMarkAbsent, onRemove, pending]
+    [departmentName, onToggleShift, onMarkAbsent, onRemove, onEdit, pending]
   );
 
   return (
@@ -163,7 +176,7 @@ export const DirectoryView = memo(function DirectoryView({
         <div className="mb-4">
           <FilterBar>
             <SearchInput label="Rechercher un employé" placeholder="Nom ou fonction" value={search} onChange={onSearchChange} />
-            <SelectField label="Service" icon={<Building2 />} value={department} onChange={onDepartmentChange} options={departmentOptions} />
+            <SelectField label="Service" value={department} onChange={onDepartmentChange} options={departmentOptions} />
           </FilterBar>
         </div>
         <DataTable<Staff>

@@ -52,6 +52,9 @@ export interface DataTableColumn<T> {
   minWidth?: number;
   /** Share of the remaining width (default: 1.8 for the primary column, 1 otherwise). */
   grow?: number;
+  /** Hotel SES: 1 = essential (default). When the list runs out of width, columns with a
+   *  higher number are hidden first (highest first); phone cards always show them. */
+  priority?: number;
   /** The card title on mobile. Usually your first column */
   primary?: boolean;
   hideOnMobile?: boolean;
@@ -62,6 +65,20 @@ export interface DataTableColumn<T> {
 }
 
 export type CellContext = { layout: "table" | "cards" };
+
+/** The one row-action format of every table. List rows: small buttons with short
+ *  labels (`rowButton`), then icon buttons (`rowIconButton`: edit, delete) at the far
+ *  right, right-aligned so they line up down the list. Phone cards: full-size buttons. */
+export const rowButton = (layout: CellContext["layout"]) => (layout === "cards" ? "touch" : "sm") as "touch" | "sm";
+export const rowIconButton = (layout: CellContext["layout"]) => (layout === "cards" ? "icon" : "sm") as "icon" | "sm";
+
+/** Row buttons container: right-aligned in the list, an even full-width row on phone cards.
+ *  Children with `flex-none` (icon buttons) keep their size. */
+export function DataTableActions({ layout, children }: CellContext & { children: ReactNode }) {
+  if (layout === "cards")
+    return <div className="flex flex-wrap gap-2 [&>*:not(.flex-none)]:flex-1 [&>*:not(.flex-none)]:basis-36">{children}</div>;
+  return <div className="flex justify-end gap-2">{children}</div>;
+}
 
 export type SortState = { key: string; dir: "asc" | "desc" } | null;
 type Id = string | number;
@@ -93,7 +110,7 @@ export interface DataTableProps<T extends { id: Id }> {
   /** Hotel SES: null = no internal scroll (the page scrolls; sticky header off) */
   maxHeight?: number | null;
   density?: "comfortable" | "compact";
-  /** Width below which rows become cards (default 640) */
+  /** Width below which rows become cards: phones only (default 640) */
   cardBreakpoint?: number;
   onRowClick?: (row: T) => void;
   emptyState?: ReactNode;
@@ -219,13 +236,21 @@ export function DataTable<T extends { id: Id }>({
 }: DataTableProps<T>) {
   const reduce = useReducedMotion();
   const [rootRef, width] = useElementWidth<HTMLDivElement>(960);
-  // Hotel SES: switch to cards whenever the table cannot fit its columns' minimum
-  // widths (e.g. next to the sidebar on tablets), not only below a fixed breakpoint.
-  const minTableWidth = useMemo(
-    () => columns.reduce((sum, c) => sum + (c.minWidth ?? 0) * 16, selectable ? 44 : 0),
-    [columns, selectable],
-  );
-  const cards = width < Math.max(cardBreakpoint, minTableWidth);
+  // Hotel SES: always a list, never scrolling sideways. When the width runs out, optional
+  // columns (priority > 1) drop out, highest number first, until the rest fit. Cards only
+  // on phones, or in the rare case where even the essential columns cannot fit.
+  const listColumns = useMemo(() => {
+    const room = width - (selectable ? 44 : 0);
+    const need = (cs: DataTableColumn<T>[]) => cs.reduce((sum, c) => sum + (c.minWidth ?? 0) * 16, 0);
+    let cs = columns;
+    const optional = columns.filter((c) => !c.primary && (c.priority ?? 1) > 1).sort((a, b) => (b.priority ?? 1) - (a.priority ?? 1));
+    for (const c of optional) {
+      if (need(cs) <= room) break;
+      cs = cs.filter((x) => x !== c);
+    }
+    return need(cs) <= room ? cs : null;
+  }, [columns, width, selectable]);
+  const cards = width < cardBreakpoint || listColumns === null;
   /** Table mode with a height cap: the body is its own vertical scroller. */
   const scrollsY = !cards && maxHeight != null;
 
@@ -276,7 +301,7 @@ export function DataTable<T extends { id: Id }>({
   useEffect(() => setLimit(pageSize), [query, pageSize]);
   const visible = processed.slice(0, limit);
 
-  const cols = cards ? columns.filter((c) => !c.hideOnMobile) : columns;
+  const cols = cards ? columns.filter((c) => !c.hideOnMobile) : (listColumns ?? columns);
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const sortable = columns.filter((c) => c.sortable !== false);
 
@@ -391,12 +416,12 @@ export function DataTable<T extends { id: Id }>({
 
   /* ------------------------------ render: header ---------------------------- */
   const header = cards ? (
-    <div className={cx("flex items-center gap-3 px-1 pb-3")}>
+    <div className="flex items-center gap-3 pb-3">
       {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />}
       <SpringSelect
         aria-label="Trier par"
-        className="ml-1 flex-1"
-        triggerClassName="h-10"
+        className="flex-1"
+        triggerClassName="h-11"
         value={sort?.key ?? ""}
         onChange={(key) => setSort(key ? { key, dir: sort?.dir ?? "desc" } : null)}
         options={[
@@ -409,7 +434,7 @@ export function DataTable<T extends { id: Id }>({
         disabled={!sort}
         aria-label={sort?.dir === "asc" ? "Tri croissant. Passer en décroissant" : "Tri décroissant. Passer en croissant"}
         onClick={() => sort && setSort({ key: sort.key, dir: sort.dir === "asc" ? "desc" : "asc" })}
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-neutral-600 transition-opacity active:scale-[0.96] disabled:opacity-40 dark:bg-white/[0.05] dark:text-neutral-300 ${focus}`}
+        className={`grid size-11 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-neutral-600 transition-opacity active:scale-[0.96] disabled:opacity-40 dark:bg-white/[0.05] dark:text-neutral-300 ${focus}`}
       >
         <SortIcon state={sort?.dir ?? null} />
       </button>
@@ -499,6 +524,9 @@ export function DataTable<T extends { id: Id }>({
           {...interactive}
           className={cx(
             "rounded-2xl bg-white p-4 dark:bg-surface",
+            // Hotel SES: cells written for one-line table rows truncate; a card has the
+            // vertical room, so their text wraps instead of being cut.
+            "[&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal [&_.truncate]:[text-overflow:clip]",
             ring,
             isSel && "bg-neutral-50 ring-neutral-900/25 dark:bg-white/[0.04] dark:ring-white/25",
             onRowClick && cx("cursor-pointer", focus),

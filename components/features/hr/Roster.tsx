@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
-import { Building2, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
@@ -97,7 +97,7 @@ export const ShiftsView = memo(function ShiftsView({
               key={s}
               label={SHIFT_LABELS[s].label}
               value={totals[s]}
-              hint={s === "OFF" ? `Jours de repos · ${SHIFT_LABELS[s].time}` : `Créneaux · ${SHIFT_LABELS[s].time}`}
+              hint={s === "OFF" ? "Jours de repos sur la semaine" : `Créneaux · ${SHIFT_LABELS[s].time}`}
               tone={SHIFT_LABELS[s].tone}
               icon={<Icon />}
             />
@@ -111,7 +111,7 @@ export const ShiftsView = memo(function ShiftsView({
         icon={<CalendarDays />}
       >
         <FilterBar className="mb-4">
-          <SelectField label="Service du planning" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
+          <SelectField label="Service du planning" value={department} onChange={setDepartment} options={departmentOptions} />
         </FilterBar>
         <DataTable<Staff>
           rows={rows}
@@ -145,11 +145,9 @@ function ShiftSelect({
   /** Dense trigger inside table rows; full touch size on cards. */
   compact?: boolean;
 }) {
-  const Icon = SHIFT_ICONS[shift];
   return (
     <Select
       aria-label={`${member.full_name}, ${day}`}
-      icon={<Icon />}
       size={compact ? "sm" : "md"}
       value={shift}
       options={SHIFT_OPTIONS}

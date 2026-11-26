@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback } from "react";
-import type { HotelRoom, Reclamation } from "@/utils/roomsData";
+import type { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import type { NewTicketInput, PastIncidentInput } from "@/components/features/Forms";
-import { acknowledgeReclamation, createHistoricalReclamation, createRapidReclamation, resolveReclamation } from "@/app/actions";
+import {
+  acknowledgeReclamation,
+  createHistoricalReclamation,
+  createRapidReclamation,
+  deleteReclamation,
+  resolveReclamation,
+  updateReclamation,
+} from "@/app/actions";
 import type { PortalState } from "./usePortalState";
 import { categoryLabel } from "@/lib/format";
 
@@ -18,6 +25,9 @@ import { categoryLabel } from "@/lib/format";
  *   New tickets are added to the list with their room number, so they show and are
  *   searchable at once, before the realtime refresh.
  */
+/** What the request editor can change (status has its own actions). */
+export type TicketEditInput = { department: string; category: string; priority: Reclamation["priority"]; description: string };
+
 export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, actor: string) {
   const { run, runForResult, setTickets, flash, selectedRoom } = p;
 
@@ -57,6 +67,45 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
         "Impossible de résoudre la demande."
       ),
     [updateTicket]
+  );
+
+  /** Edits subject, priority, details and assignee; the row shows the change at once. */
+  const editTicket = useCallback(
+    (id: number, input: TicketEditInput, assignee: Pick<Staff, "id" | "full_name" | "role"> | null) =>
+      updateTicket(
+        id,
+        {
+          department: input.department,
+          category: input.category,
+          priority: input.priority,
+          description: input.description,
+          assigned_staff_id: assignee?.id ?? null,
+          assigned_to: assignee ? { full_name: assignee.full_name, role: assignee.role } : undefined,
+        },
+        () => updateReclamation(id, { ...input, assignedStaffId: assignee?.id ?? null }),
+        "Demande mise à jour.",
+        "Impossible de mettre à jour la demande."
+      ),
+    [updateTicket]
+  );
+
+  /** Removes the request at once; puts it back in place if the server refuses. */
+  const deleteTicket = useCallback(
+    (id: number) =>
+      run(async () => {
+        let removed: { ticket: Reclamation; index: number } | undefined;
+        setTickets((prev) => {
+          const index = prev.findIndex((t) => t.id === id);
+          if (index >= 0) removed = { ticket: prev[index], index };
+          return prev.filter((t) => t.id !== id);
+        });
+        const res = await deleteReclamation(id);
+        if (res.success) return flash("success", "Demande supprimée.");
+        const back = removed;
+        if (back) setTickets((prev) => [...prev.slice(0, back.index), back.ticket, ...prev.slice(back.index)]);
+        flash("danger", "Impossible de supprimer la demande.");
+      }),
+    [run, setTickets, flash]
   );
 
   /** Adds the created ticket to the list, with its room number. */
@@ -111,5 +160,5 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
     [selectedRoom, recordPast]
   );
 
-  return { acknowledge, resolve, createTicket, recordPast, createInSelectedRoom, recordInSelectedRoom };
+  return { acknowledge, resolve, editTicket, deleteTicket, createTicket, recordPast, createInSelectedRoom, recordInSelectedRoom };
 }

@@ -48,7 +48,8 @@ export const sizeStyles: Record<ButtonSize, string> = {
 /** Hotel SES: Button's look as classes, shared with ButtonLink (links styled as buttons). */
 export function buttonClasses({ variant = 'primary', size = 'md', fullWidth = false, className }: { variant?: ButtonVariant; size?: ButtonSize; fullWidth?: boolean; className?: string } = {}) {
   return cn(
-    'relative inline-flex items-center justify-center font-medium select-none focus-ring transition-colors duration-150',
+    // whitespace-nowrap: a label never wraps onto several lines (rows stay one line tall).
+    'relative inline-flex items-center justify-center whitespace-nowrap font-medium select-none focus-ring transition-colors duration-150',
     variantStyles[variant],
     variant !== 'link' && sizeStyles[size],
     fullWidth && 'w-full',

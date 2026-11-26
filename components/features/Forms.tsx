@@ -8,6 +8,7 @@ import { DEFAULT_PRESETS, DISPATCH_DEPARTMENTS, PRESET_ISSUES } from "@/lib/cons
 import { cn } from "@/lib/utils";
 import { DAY_MS, toHotelDateTimeValue } from "@/lib/datetime";
 import { TICKET_PRIORITY, TICKET_STATUS } from "@/lib/tickets";
+import { categoryLabel, departmentLabel } from "@/lib/format";
 import type { Reclamation } from "@/utils/roomsData";
 import { DateTimeField } from "./DateTimeField";
 
@@ -101,7 +102,7 @@ export interface NewTicketInput {
 }
 
 // Labels and tones from lib/tickets; least urgent first, so the default is the first choice.
-const PRIORITIES = (["STANDARD", "HIGH", "EMERGENCY"] as const).map((value) => {
+export const PRIORITIES = (["STANDARD", "HIGH", "EMERGENCY"] as const).map((value) => {
   const { label, tone } = TICKET_PRIORITY[value];
   return { value, label, tone: tone === "danger" || tone === "warning" ? tone : undefined };
 });
@@ -122,10 +123,11 @@ function issueOptions(dept: string) {
 }
 const firstIssue = (dept: string) => issueOptions(dept)[0]?.value ?? "General";
 
-/** Department + issue state: changing the department resets the issue to its first preset. */
-function useTicketSubject(defaultDepartment = DEFAULT_DEPARTMENT) {
+/** Department + issue state: changing the department resets the issue to its first preset.
+ *  `initialCategory` keeps an existing request's issue when editing it. */
+export function useTicketSubject(defaultDepartment = DEFAULT_DEPARTMENT, initialCategory?: string) {
   const [department, setDepartment] = useState(defaultDepartment);
-  const [category, setCategory] = useState(() => firstIssue(defaultDepartment));
+  const [category, setCategory] = useState(() => initialCategory ?? firstIssue(defaultDepartment));
   const changeDepartment = (dept: string) => {
     setDepartment(dept);
     setCategory(firstIssue(dept));
@@ -133,14 +135,19 @@ function useTicketSubject(defaultDepartment = DEFAULT_DEPARTMENT) {
   return { department, category, setCategory, changeDepartment };
 }
 
-function DepartmentIssueFields({ id, subject }: { id: string; subject: ReturnType<typeof useTicketSubject> }) {
+/** Options with `value` guaranteed present (an older request may use a value no longer offered). */
+function withCurrent(options: readonly { value: string; label: string }[], value: string, label: (v: string) => string) {
+  return options.some((o) => o.value === value) ? options : [...options, { value, label: label(value) }];
+}
+
+export function DepartmentIssueFields({ id, subject }: { id: string; subject: ReturnType<typeof useTicketSubject> }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Field label="Service" htmlFor={`${id}-dept`}>
-        <Select id={`${id}-dept`} value={subject.department} options={DISPATCH_DEPARTMENTS} onChange={subject.changeDepartment} />
+        <Select id={`${id}-dept`} value={subject.department} options={withCurrent(DISPATCH_DEPARTMENTS, subject.department, departmentLabel)} onChange={subject.changeDepartment} />
       </Field>
       <Field label="Problème" htmlFor={`${id}-cat`}>
-        <Select id={`${id}-cat`} value={subject.category} options={issueOptions(subject.department)} onChange={subject.setCategory} />
+        <Select id={`${id}-cat`} value={subject.category} options={withCurrent(issueOptions(subject.department), subject.category, categoryLabel)} onChange={subject.setCategory} />
       </Field>
     </div>
   );

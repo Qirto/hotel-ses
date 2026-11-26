@@ -100,10 +100,13 @@ const ISSUES = {
     ["Cleaning", ["Café renversé sur la moquette", "Balcon à nettoyer", "Sable dans la chambre au retour de la plage"]],
     ["Minibar", ["Réassort du minibar", "Le minibar ne refroidit pas", "Bouteilles d’eau demandées"]],
   ],
+  // Restauration: complaints only (no orders)
   FOOD_AND_BEVERAGE: [
-    ["Room Service", ["Commande du dîner en retard", "Erreur dans la commande livrée", "Collation commandée en fin de soirée"]],
-    ["Breakfast", ["Plateau petit-déjeuner continental à 7:30", "Petit-déjeuner sans gluten demandé", "Petit-déjeuner pour deux en chambre"]],
-    ["Drinks", ["Champagne et seau à glace pour un anniversaire", "Jus d’orange frais demandé"]],
+    ["Room Service", ["Dîner livré avec 45 minutes de retard", "Erreur dans la commande livrée", "Plat manquant dans la commande room service"]],
+    ["Breakfast", ["Petit-déjeuner en chambre arrivé froid", "Petit-déjeuner sans gluten oublié", "Plateau du petit-déjeuner incomplet"]],
+    ["Drinks", ["Attente de plus de 20 minutes au bar de la piscine", "Cocktail servi différent de la commande"]],
+    ["Food Quality", ["Poisson trop cuit au restaurant", "Plat servi tiède"]],
+    ["Billing", ["Consommation du bar facturée deux fois", "Dîner facturé sur la mauvaise chambre"]],
   ],
   CONCIERGE: [
     ["Luggage", ["Prise en charge des bagages au départ", "Bagages à garder jusqu’au soir"]],

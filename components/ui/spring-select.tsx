@@ -40,7 +40,8 @@ export interface SpringSelectProps<V extends string | number = string> {
   error?: string;
   className?: string;
   triggerClassName?: string;
-  /** `sm`: compact trigger for dense grids (e.g. a weekly roster). */
+  /** `sm`: compact chip for dense grids (e.g. a weekly roster): no arrow, tight padding,
+   *  so the label keeps the room. */
   size?: "md" | "sm";
 }
 
@@ -173,7 +174,8 @@ export function SpringSelect<V extends string | number = string>({
         onKeyDown={onKeyDown}
         className={cn(
           "focus-ring relative flex w-full min-w-0 items-center gap-2 rounded-lg border bg-surface text-left transition-colors",
-          sm ? "h-9 pr-7 text-sm" : "h-11 pr-9 text-base md:text-sm",
+          sm ? "h-9 pr-2.5 text-sm" : "h-11 pr-9 text-base md:text-sm",
+          sm && !icon && "justify-center",
           icon ? (sm ? "pl-8" : "pl-9") : sm ? "pl-2.5" : "pl-3",
           open ? "border-border-hover" : error ? "border-danger" : "border-border-strong hover:border-border-hover",
           disabled && "cursor-not-allowed opacity-50",
@@ -187,14 +189,16 @@ export function SpringSelect<V extends string | number = string>({
           </span>
         )}
         <span className="truncate">{selected?.label ?? placeholder}</span>
-        <motion.span
-          aria-hidden
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={motionTransitions.springSnappy}
-          className={cn("pointer-events-none absolute top-1/2 -mt-2 text-fg-muted", sm ? "right-2" : "right-3")}
-        >
-          <ChevronDown className="size-4" />
-        </motion.span>
+        {!sm && (
+          <motion.span
+            aria-hidden
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={motionTransitions.springSnappy}
+            className={cn("pointer-events-none absolute top-1/2 -mt-2 text-fg-muted", sm ? "right-2" : "right-3")}
+          >
+            <ChevronDown className="size-4" />
+          </motion.span>
+        )}
       </button>
 
       <AnchoredPopover

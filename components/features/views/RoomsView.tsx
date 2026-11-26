@@ -1,13 +1,13 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
-import { BedDouble, Layers } from "lucide-react";
+import { BedDouble } from "lucide-react";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { Panel } from "@/components/features/Panel";
 import { FilterBar, PillGroup, SearchInput, SelectField } from "@/components/features/Filters";
 import { RoomGrid } from "@/components/features/RoomGrid";
 import { countRoomsNeedingAttention } from "@/lib/tickets";
-import { floorOptions as floorOptionsFor, matchesRoomFilter, roomStatusCounts, ticketStatsByRoom, type RoomFilter } from "@/lib/rooms";
+import { blockOptions as blockOptionsFor, floorOptions as floorOptionsFor, matchesRoomFilter, roomStatusCounts, ticketStatsByRoom, type RoomFilter } from "@/lib/rooms";
 import { plural } from "@/lib/format";
 
 /**
@@ -33,12 +33,14 @@ export const RoomsView = memo(function RoomsView({
   const setStatus = onFilterChange ?? setOwnFilter;
   const [search, setSearch] = useState("");
   const [floor, setFloor] = useState<number | "ALL">("ALL");
+  const [block, setBlock] = useState("ALL");
 
   const stats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
   const counts = useMemo(() => roomStatusCounts(rooms), [rooms]);
   const attention = useMemo(() => countRoomsNeedingAttention(rooms, tickets), [rooms, tickets]);
 
   const floorOptions = useMemo(() => floorOptionsFor(rooms), [rooms]);
+  const blockOptions = useMemo(() => blockOptionsFor(rooms), [rooms]);
 
   const statusOptions = useMemo(
     () =>
@@ -56,16 +58,17 @@ export const RoomsView = memo(function RoomsView({
   const filtered = useMemo(() => {
     const q = search.trim();
     return rooms.filter(
-      (r) => (!q || r.room_number.includes(q)) && (floor === "ALL" || r.floor === floor) && matchesRoomFilter(r, status, stats.get(r.id))
+      (r) => (!q || r.room_number.includes(q)) && (floor === "ALL" || r.floor === floor) && (block === "ALL" || r.block === block) && matchesRoomFilter(r, status, stats.get(r.id))
     );
-  }, [rooms, search, floor, status, stats]);
+  }, [rooms, search, floor, block, status, stats]);
 
   return (
     <Panel title="Chambres" description={`${filtered.length} sur ${plural(rooms.length, "chambre")}`} icon={<BedDouble />}>
       <div className="mb-5 flex flex-col gap-2">
         <FilterBar>
           <SearchInput label="Rechercher une chambre" placeholder="Numéro de chambre" value={search} onChange={setSearch} />
-          <SelectField label="Étage" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
+          <SelectField label="Étage" value={floor} onChange={setFloor} options={floorOptions} />
+          <SelectField label="Bloc" value={block} onChange={setBlock} options={blockOptions} />
         </FilterBar>
         <PillGroup<RoomFilter> label="État des chambres" value={status} onChange={setStatus} options={statusOptions} />
       </div>

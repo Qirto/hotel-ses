@@ -1,19 +1,4 @@
-import type { Department, Staff } from "@/utils/roomsData";
-
-/** Built-in departments. Icons are rendered with `departmentIcon(code)`, never stored here. */
-export const DEFAULT_HOTEL_DEPARTMENTS: Omit<Department, "icon">[] = [
-  { id: 1, code: "RECEPTION", name: "Réception", description: "Arrivées et départs des clients, standard, demandes d’information et transmissions à la conciergerie", head_of_department: "Sophie Mercier" },
-  { id: 2, code: "HOUSEKEEPING", name: "Gouvernance", description: "Nettoyage des chambres, gestion du linge, réassort des produits d’accueil et contrôle des étages", head_of_department: "Martine Aubry" },
-  { id: 3, code: "TECHNICAL", name: "Service technique & maintenance", description: "Plomberie, électricité, climatisation et ventilation, équipements et maintenance préventive des installations", head_of_department: "Pierre Dubois" },
-  { id: 4, code: "FOOD_AND_BEVERAGE", name: "Restauration (F&B)", description: "Cuisine, restaurants, banquets, room service et bars", head_of_department: "Chef Antoine Girard" },
-  { id: 5, code: "MANAGEMENT", name: "Direction générale", description: "Supervision des opérations de l’hôtel, décisions de direction, relations VIP et stratégie", head_of_department: "Jean-Paul Bonnet" },
-  { id: 6, code: "SECURITY", name: "Sécurité & sûreté", description: "Surveillance des locaux, contrôle d’accès, cartes-clés, sécurité des clients et procédures d’urgence", head_of_department: "Marc Lambert" },
-  { id: 7, code: "CONCIERGE", name: "Conciergerie & relations clients", description: "Voiturier, gestion des bagages, excursions, transport et assistance aux clients VIP", head_of_department: "Lucie Moreau" },
-  { id: 8, code: "SPA_AND_WELLNESS", name: "Spa, thalasso & fitness", description: "Massages, bains thermaux, sauna, salle de sport et soins bien-être", head_of_department: "Camille Roux" },
-  { id: 9, code: "SALES_AND_MARKETING", name: "Commercial, marketing & événements", description: "Réservations de groupe, événements d’entreprise, mariages, marketing digital et relations presse", head_of_department: "Helene Fontaine" },
-  { id: 10, code: "FINANCE_AND_ACCOUNTING", name: "Finance, comptabilité & audit", description: "Audit de nuit, facturation, achats, paie et revenue management", head_of_department: "Bernard Leroy" },
-  { id: 11, code: "HUMAN_RESOURCES", name: "Ressources humaines (RH)", description: "Recrutement, intégration des employés, plannings, paie et formation", head_of_department: "Claire Delacroix" },
-];
+import type { Staff } from "@/utils/roomsData";
 
 export const STANDARD_ROLES = [
   "manager", "receptionist", "maintenance", "governance", "chef", "cook", "waiter", "bartender",

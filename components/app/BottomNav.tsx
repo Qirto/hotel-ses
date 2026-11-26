@@ -36,7 +36,8 @@ export function BottomNav({ items }: { items: NavTabItem[] }) {
               )}
               <span className="relative grid size-6 place-items-center [&>svg]:size-5">
                 {item.icon}
-                {!!item.badge && item.badge > 0 && (
+                {/* Only counts that need action: the narrow bar has no room for informational ones. */}
+                {item.badgeTone === "alert" && !!item.badge && item.badge > 0 && (
                   <span
                     className={cn(
                       "absolute -right-2.5 -top-1.5 min-w-[1.125rem] rounded-full px-1 text-center text-[10px] font-semibold leading-[1.125rem] tabular-nums",
@@ -48,7 +49,7 @@ export function BottomNav({ items }: { items: NavTabItem[] }) {
                   </span>
                 )}
               </span>
-              <span className="max-w-full truncate px-1">{item.label}</span>
+              <span className="max-w-full truncate px-1">{item.shortLabel ?? item.label}</span>
             </button>
           </li>
         ))}

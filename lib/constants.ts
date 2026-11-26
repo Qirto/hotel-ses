@@ -14,10 +14,13 @@ export const PRESET_ISSUES: Record<string, { category: string; label: string }[]
     { category: "Cleaning", label: "Nettoyage urgent du sol" },
     { category: "Minibar", label: "Réassort du minibar" },
   ],
+  // Restauration receives complaints only (orders go through the restaurant itself).
   FOOD_AND_BEVERAGE: [
-    { category: "Room Service", label: "Livraison room service" },
-    { category: "Breakfast", label: "Plateau petit-déjeuner continental" },
-    { category: "Drinks", label: "Champagne & seau à glace" },
+    { category: "Room Service", label: "Room service en retard ou erroné" },
+    { category: "Breakfast", label: "Petit-déjeuner incomplet ou en retard" },
+    { category: "Food Quality", label: "Qualité des plats (froid, mal cuit)" },
+    { category: "Drinks", label: "Service du bar (attente, erreur)" },
+    { category: "Billing", label: "Erreur de facturation restaurant / bar" },
   ],
   CONCIERGE: [
     { category: "Luggage", label: "Prise en charge des bagages" },

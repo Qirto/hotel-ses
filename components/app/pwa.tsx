@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { SerwistProvider, useSerwist } from "@serwist/turbopack/react";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -56,19 +56,20 @@ function UpdatePrompt() {
         tone="neutral"
         icon={<RefreshCw />}
         className="shadow-float"
+        actionsBelow
         action={
-          <div className="flex gap-1">
+          <>
             <Button type="button" variant="ghost" size="touch" onClick={() => setWaiting(false)}>
               Plus tard
             </Button>
             <Button type="button" variant="primary" size="touch" onClick={update}>
               Recharger
             </Button>
-          </div>
+          </>
         }
       >
-        <p className="font-medium text-fg">Mise à jour disponible</p>
-        <p className="text-fg-secondary">Rechargez pour utiliser la dernière version de Hotel SES.</p>
+        <AlertTitle>Mise à jour disponible</AlertTitle>
+        <AlertDescription>Une nouvelle version de Hotel SES est prête.</AlertDescription>
       </Alert>
     </div>
   );

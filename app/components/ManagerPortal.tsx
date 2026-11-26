@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { ChartColumn, ClipboardList, Hotel, LayoutDashboard, Sparkles, Timer, TriangleAlert } from "lucide-react";
-import type { HotelRoom, Reclamation } from "@/utils/roomsData";
+import type { HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
 import { navItem, sharedNavItems, type NavTabItem } from "@/components/app/nav";
 import { withNotices } from "@/components/app/notice";
@@ -11,6 +11,7 @@ import { Panel, PageStack } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
 import { PortalRoomDetail } from "@/components/features/PortalRoomDetail";
 import { useTicketActions } from "@/components/features/TicketActions";
+import { useTicketEditor } from "@/components/features/TicketEditSheet";
 import { RoomsView } from "@/components/features/views/RoomsView";
 import { TicketsView } from "@/components/features/views/TicketsView";
 import { UrgentTicketsPanel } from "@/components/features/views/UrgentTicketsPanel";
@@ -29,12 +30,16 @@ import { formatMinutes, percent, plural } from "@/lib/format";
 interface Props {
   rooms: HotelRoom[];
   reclamations: Reclamation[];
+  /** For reassigning requests in the request editor. */
+  staffList?: Staff[];
   isLiveSupabase?: boolean;
 }
 
 type Tab = "STATS" | "ROOMS" | "RECLAMATIONS" | "ANALYTICS";
 
-function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Props) {
+const NO_STAFF: Staff[] = [];
+
+function ManagerPortalView({ rooms, reclamations, staffList = NO_STAFF, isLiveSupabase = false }: Props) {
   const p = usePortalState<Tab>({ initialTab: "STATS", rooms, reclamations });
   const { activeTab, tickets, liveRooms, isPending, openRoom, openCount, attentionCount, showRooms, showTickets } = p;
 
@@ -48,6 +53,7 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
   /* ───────────── actions ───────────── */
   const ticketMutations = useTicketMutations(p, "Direction");
   const ticketActions = useTicketActions({ pending: isPending, onResolve: ticketMutations.resolve });
+  const ticketEditor = useTicketEditor(ticketMutations, staffList, isPending);
   const cycleCleaning = useCleaningCycle(p);
 
   /* ───────────── navigation ───────────── */
@@ -75,10 +81,10 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
           <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
             <RoomStatusPanel rooms={liveRooms} />
             <Panel title="Résolution" description="Demandes clôturées et délai de résolution" icon={<Timer />}>
-              <div className="grid grid-cols-2 gap-3">
+              <KpiGrid columns={2}>
                 <Kpi label="Résolues" value={percent(tickets.length - openCount, tickets.length)} hint={plural(tickets.length, "demande")} tone="success" />
                 <Kpi label="Délai moyen de résolution" value={formatMinutes(mttr)} hint="Demandes résolues" />
-              </div>
+              </KpiGrid>
               <div className="mt-5">
                 <TicketsByDepartmentChart tickets={tickets} />
               </div>
@@ -91,6 +97,7 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
             tickets={urgentOpen}
             actions={ticketActions}
             onViewAll={showTickets}
+            onOpenTicket={ticketEditor.openTicket}
           />
         </TabPanel>
 
@@ -99,7 +106,7 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
         </TabPanel>
 
         <TabPanel active={activeTab === "RECLAMATIONS"}>
-          <TicketsView tickets={tickets} actions={ticketActions} />
+          <TicketsView tickets={tickets} actions={ticketActions} onOpenTicket={ticketEditor.openTicket} />
         </TabPanel>
 
         <AnalyticsView active={activeTab === "ANALYTICS"} rooms={liveRooms} tickets={tickets} onOpenRoom={openRoom} />
@@ -111,6 +118,7 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
         ticketActions={ticketActions}
         controls={p.selectedRoom && <HousekeepingControl room={p.selectedRoom} pending={isPending} onCycle={cycleCleaning} />}
       />
+      {ticketEditor.editor}
     </AppShell>
   );
 }

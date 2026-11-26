@@ -13,7 +13,7 @@ interface ResponsiveSheetProps {
   description?: string;
   /** Sticky action row under the scrolling body. */
   footer?: ReactNode;
-  /** Desktop panel width; mobile is always full width. */
+  /** Desktop modal width; mobile is always full width. */
   size?: "md" | "lg" | "xl";
   className?: string;
   children: ReactNode;
@@ -25,7 +25,7 @@ const DESKTOP_WIDTH = {
   xl: "max-w-[56rem]",
 } as const;
 
-/** easyui Sheet: bottom sheet on phones, right-side panel from md up. */
+/** easyui Sheet: bottom sheet on phones, a centred modal dialog from md up. */
 export function ResponsiveSheet({
   open,
   onOpenChange,
@@ -40,10 +40,10 @@ export function ResponsiveSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side={desktop ? "right" : "bottom"}
+        side={desktop ? "center" : "bottom"}
         className={cn(
           "border-border bg-surface text-fg",
-          desktop ? cn("w-full", DESKTOP_WIDTH[size]) : "max-h-[92dvh] max-w-none pb-[var(--safe-bottom)]",
+          desktop ? DESKTOP_WIDTH[size] : "max-h-[92dvh] max-w-none pb-[var(--safe-bottom)]",
           className
         )}
       >
@@ -60,19 +60,23 @@ export function ResponsiveSheet({
   );
 }
 
-/** Sheet footer: Cancel plus the primary action; stacked on phones (primary on top), a row from sm. */
+/** Sheet footer: Cancel plus the primary action; stacked on phones (primary on top), a row from sm.
+ *  `secondary` (e.g. Delete) sits apart: at the far left from sm, at the bottom on phones. */
 export function SheetActions({
   onCancel,
   cancelDisabled,
+  secondary,
   children,
 }: {
   onCancel: () => void;
   cancelDisabled?: boolean;
+  secondary?: ReactNode;
   /** The primary button. */
   children: ReactNode;
 }) {
   return (
-    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+      {secondary && <div className="sm:mr-auto">{secondary}</div>}
       <Button variant="outline" onClick={onCancel} disabled={cancelDisabled} className="justify-center">
         Annuler
       </Button>

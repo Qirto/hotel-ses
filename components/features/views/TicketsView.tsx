@@ -2,7 +2,7 @@
 
 import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { Building2, CalendarRange, ClipboardList, ListFilter } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
 import { Panel } from "@/components/features/Panel";
 import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
@@ -19,6 +19,7 @@ export const TicketsView = memo(function TicketsView({
   actions,
   departments,
   departmentName = departmentLabel,
+  onOpenTicket,
 }: {
   tickets: readonly Reclamation[];
   /** Per-ticket buttons (see `useTicketActions`); omit for a read-only list. */
@@ -27,6 +28,8 @@ export const TicketsView = memo(function TicketsView({
   departments?: readonly string[];
   /** Label for a department code. Must be stable. */
   departmentName?: (code: string) => string;
+  /** Row click opens the request editor (omit for a read-only list). Must be stable. */
+  onOpenTicket?: (ticket: Reclamation) => void;
 }) {
   const [department, setDepartment] = useState("ALL");
   const [status, setStatus] = useState<TicketStatusFilter>("ALL");
@@ -63,11 +66,11 @@ export const TicketsView = memo(function TicketsView({
     <Panel title="Demandes" description={`${plural(filtered.length, "demande")} · ${plural(openCount, "ouverte")}`} icon={<ClipboardList />}>
       <FilterBar className="mb-4">
         <SearchInput label="Rechercher une demande par chambre, problème ou personne assignée" placeholder="Rechercher une demande" value={query} onChange={setQuery} />
-        <SelectField label="Service" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
-        <SelectField label="Statut" icon={<ListFilter />} value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
-        <SelectField<DateRange> label="Période" icon={<CalendarRange />} value={range} onChange={setRange} options={DATE_RANGES} />
+        <SelectField label="Service" value={department} onChange={setDepartment} options={departmentOptions} />
+        <SelectField label="Statut" value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
+        <SelectField<DateRange> label="Période" value={range} onChange={setRange} options={DATE_RANGES} />
       </FilterBar>
-      <TicketTable tickets={filtered} actions={actions} />
+      <TicketTable tickets={filtered} actions={actions} onRowClick={onOpenTicket} onEdit={onOpenTicket} />
     </Panel>
   );
 });

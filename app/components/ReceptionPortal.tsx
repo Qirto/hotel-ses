@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ChartColumn, ClipboardList, ConciergeBell, History, Hotel, LayoutDashboard, Send, Sparkles, TriangleAlert } from "lucide-react";
-import type { Department, HotelRoom, Reclamation } from "@/utils/roomsData";
+import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
 import { navItem, sharedNavItems, type NavTabItem } from "@/components/app/nav";
 import { Fab } from "@/components/app/Fab";
@@ -15,6 +15,7 @@ import { Kpi, KpiGrid } from "@/components/features/Kpi";
 import { PortalRoomDetail } from "@/components/features/PortalRoomDetail";
 import { NewTicketForm, PastIncidentForm, type NewTicketInput, type PastIncidentInput } from "@/components/features/Forms";
 import { useTicketActions } from "@/components/features/TicketActions";
+import { useTicketEditor } from "@/components/features/TicketEditSheet";
 import { RoomsView } from "@/components/features/views/RoomsView";
 import { TicketsView } from "@/components/features/views/TicketsView";
 import { UrgentTicketsPanel } from "@/components/features/views/UrgentTicketsPanel";
@@ -29,10 +30,12 @@ import { useTicketMutations } from "@/hooks/useTicketMutations";
 import { isUrgentOpenTicket } from "@/lib/tickets";
 import { roomStatusCounts, STAY_MESSAGE, STAY_RESULT, type StayState } from "@/lib/rooms";
 import { percent, plural } from "@/lib/format";
-import { updateRoomStayState } from "@/app/actions";
+import { updateRoomHeadcount, updateRoomStayState } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
+  /** For reassigning requests in the request editor. */
+  staffList?: Staff[];
   departmentsList?: Department[];
   reclamationsList?: Reclamation[];
   isLiveSupabase?: boolean;
@@ -42,8 +45,9 @@ type Tab = "OVERVIEW" | "ROOMS" | "RECLAMATIONS" | "STATS";
 
 const NO_DEPARTMENTS: Department[] = [];
 const NO_TICKETS: Reclamation[] = [];
+const NO_STAFF: Staff[] = [];
 
-function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamationsList = NO_TICKETS, isLiveSupabase = false }: Props) {
+function ReceptionPortalView({ rooms, staffList = NO_STAFF, departmentsList = NO_DEPARTMENTS, reclamationsList = NO_TICKETS, isLiveSupabase = false }: Props) {
   const p = usePortalState<Tab>({ initialTab: "OVERVIEW", rooms, reclamations: reclamationsList });
   const { activeTab, tickets, liveRooms, patchRoom, isPending, run, flash, openRoom, openCount, showRooms, showTickets } = p;
 
@@ -57,6 +61,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
   /* ───────────── actions ───────────── */
   const ticketMutations = useTicketMutations(p, "Réception");
   const ticketActions = useTicketActions({ pending: isPending, onAcknowledge: ticketMutations.acknowledge, onResolve: ticketMutations.resolve });
+  const ticketEditor = useTicketEditor(ticketMutations, staffList, isPending);
   const cycleCleaning = useCleaningCycle(p);
   const setStayState = useCallback(
     (room: HotelRoom, state: StayState) =>
@@ -66,6 +71,21 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
           patchRoom(room.id, STAY_RESULT[state]);
           flash("success", `Chambre ${room.room_number} : ${STAY_MESSAGE[state]}.`);
         } else flash("danger", "Impossible de mettre à jour le statut du séjour.");
+      }),
+    [run, patchRoom, flash]
+  );
+
+  // Guest count: shown at once, put back if the server refuses.
+  const setHeadcount = useCallback(
+    (room: HotelRoom, adults: number, children: number) =>
+      run(async () => {
+        const before = { adult_count: room.adult_count, child_count: room.child_count };
+        patchRoom(room.id, { adult_count: adults, child_count: children });
+        const res = await updateRoomHeadcount(room.id, adults, children);
+        if (!res.success) {
+          patchRoom(room.id, before);
+          flash("danger", `Impossible de mettre à jour le nombre de clients de la chambre ${room.room_number}.`);
+        }
       }),
     [run, patchRoom, flash]
   );
@@ -131,6 +151,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
             tickets={urgentOpen}
             actions={ticketActions}
             onViewAll={showTickets}
+            onOpenTicket={ticketEditor.openTicket}
           />
         </TabPanel>
 
@@ -139,7 +160,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
         </TabPanel>
 
         <TabPanel active={activeTab === "RECLAMATIONS"}>
-          <TicketsView tickets={tickets} actions={ticketActions} departments={departmentCodes} />
+          <TicketsView tickets={tickets} actions={ticketActions} departments={departmentCodes} onOpenTicket={ticketEditor.openTicket} />
         </TabPanel>
 
         <TabPanel active={activeTab === "STATS"}>
@@ -159,7 +180,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
         controls={
           p.selectedRoom && (
             <div className="flex flex-col gap-4">
-              <StayControl room={p.selectedRoom} pending={isPending} onChange={setStayState} />
+              <StayControl room={p.selectedRoom} pending={isPending} onChange={setStayState} onHeadcount={setHeadcount} />
               <HousekeepingControl room={p.selectedRoom} pending={isPending} onCycle={cycleCleaning} />
             </div>
           )
@@ -175,6 +196,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
       <ResponsiveSheet open={backfillOpen} onOpenChange={setBackfillOpen} title="Saisir un incident passé" description="Ajoutez une demande antérieure à l’historique d’une chambre, avec sa date réelle.">
         <PastIncidentForm withRoom onSubmit={backfill} pending={isPending} />
       </ResponsiveSheet>
+      {ticketEditor.editor}
     </AppShell>
   );
 }

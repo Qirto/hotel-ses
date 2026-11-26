@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 /*
  * Toolbar controls. They only live inside <FilterBar>, so each one carries its own
  * toolbar sizing (plain utilities: `md:` always overrides the phone value):
- * - phones: every control at least 9rem, sharing rows and wrapping as needed
- *   (search + one dropdown fit one row; four controls make two rows);
+ * - phones: one control per full-width row. Their text is 16px (no iOS zoom on
+ *   focus), and two French labels side by side no longer fit a 375px screen;
  * - md+: one row; the search takes the free space, dropdowns are a fixed width.
  * Height: 44px touch target on phones, compact 40px from md.
  */
 const CONTROL_H = "h-11 md:h-10";
-const SEARCH_SIZE = "min-w-[9rem] flex-1 basis-[9rem] md:min-w-56 md:basis-0";
-const SELECT_SIZE = "min-w-[9rem] flex-1 basis-[9rem] md:w-52 md:flex-none md:basis-auto";
+const SEARCH_SIZE = "min-w-0 basis-full md:min-w-56 md:flex-1 md:basis-0";
+const SELECT_SIZE = "min-w-0 basis-full md:w-52 md:flex-none md:basis-auto";
 
 /** Search field with icon. 16px text on phones (no iOS zoom). */
 export function SearchInput({
@@ -48,23 +48,21 @@ export function SearchInput({
   );
 }
 
-/** Filter dropdown: easyui SpringSelect with a leading icon; the label is for screen readers. */
+/** Filter dropdown: easyui SpringSelect, text only (no icon); the label is for screen readers. */
 export function SelectField<V extends string | number>({
   value,
   onChange,
   options,
   label,
-  icon,
 }: {
   value: V;
   onChange: (value: V) => void;
   options: readonly { value: V; label: string }[];
   label: string;
-  icon?: ReactNode;
 }) {
   return (
     <div className={SELECT_SIZE}>
-      <SpringSelect aria-label={label} icon={icon} value={value} onChange={onChange} options={options} triggerClassName={CONTROL_H} />
+      <SpringSelect aria-label={label} value={value} onChange={onChange} options={options} triggerClassName={CONTROL_H} />
     </div>
   );
 }

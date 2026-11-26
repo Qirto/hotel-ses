@@ -141,8 +141,13 @@ export const Brand = memo(function Brand({ portal, className }: { portal: Portal
         <p className="truncate text-sm font-semibold tracking-tight">Hotel SES</p>
         <p className="truncate text-xs text-fg-muted">
           <span className={cn("font-semibold uppercase tracking-wide", TONE_TEXT[portal.tone])}>{portal.code}</span>
-          <span aria-hidden> · </span>
-          {portal.name}
+          {/* Reception's code and name are the same word: show it once. */}
+          {portal.name.toLocaleLowerCase("fr") !== portal.code.toLocaleLowerCase("fr") && (
+            <>
+              <span aria-hidden> · </span>
+              {portal.name}
+            </>
+          )}
         </p>
       </div>
     </div>
@@ -188,7 +193,15 @@ function FooterRow({
       {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
     </>
   );
-  const a11y = { "aria-label": collapsed ? label : undefined, title: collapsed ? label : undefined };
+  // Collapsed: the rail's styled tooltip (same as nav items), never the browser's `title`.
+  const { showTip, hideTip } = useSidebar();
+  const a11y = {
+    "aria-label": collapsed ? label : undefined,
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => showTip(e.currentTarget, label),
+    onFocus: (e: React.FocusEvent<HTMLElement>) => showTip(e.currentTarget, label),
+    onMouseLeave: hideTip,
+    onBlur: hideTip,
+  };
   return href ? (
     <Link href={href} className={cls} {...a11y}>
       {content}

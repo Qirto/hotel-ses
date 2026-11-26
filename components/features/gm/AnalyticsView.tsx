@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState } from "react";
-import { BedDouble, Building2, ChartColumn, ClipboardList, Clock, Layers, ListFilter, Repeat } from "lucide-react";
+import { BedDouble, ChartColumn, ClipboardList, Clock, Repeat } from "lucide-react";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Panel } from "@/components/features/Panel";
@@ -10,17 +10,11 @@ import { FilterBar, SearchInput, SelectField } from "@/components/features/Filte
 import { ProblemBars } from "@/components/features/RoomDetail";
 import { ToneBadge } from "@/components/features/StatusBadges";
 import { countOpenTickets } from "@/lib/tickets";
-import { floorOptions as floorOptionsFor, roomHeadline, roomLocation, ticketStatsByRoom } from "@/lib/rooms";
+import { blockOptions, floorOptions as floorOptionsFor, roomHeadline, roomLocation, ticketStatsByRoom } from "@/lib/rooms";
 import { formatMinutes, plural } from "@/lib/format";
 import { computeAllRoomsAnalytics, type RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 
 type AnalyticsSort = "MOST_TICKETS" | "OPEN_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER";
-
-const BLOCK_OPTIONS = [
-  { value: "ALL", label: "Tous les blocs" },
-  { value: "BLOCK_A", label: "Bloc A" },
-  { value: "BLOCK_B", label: "Bloc B" },
-];
 
 const SORT_OPTIONS = [
   { value: "MOST_TICKETS", label: "Plus de demandes" },
@@ -53,6 +47,7 @@ export const AnalyticsView = memo(function AnalyticsView({
   const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
   const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
   const floorOptions = useMemo(() => floorOptionsFor(rooms), [rooms]);
+  const blockOptionsList = useMemo(() => blockOptions(rooms), [rooms]);
 
   const listed = useMemo(() => {
     if (!analytics) return [];
@@ -107,9 +102,9 @@ export const AnalyticsView = memo(function AnalyticsView({
         <div className="mb-5">
           <FilterBar>
             <SearchInput label="Rechercher une chambre" placeholder="Numéro de chambre" value={search} onChange={setSearch} />
-            <SelectField label="Étage" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
-            <SelectField label="Bloc" icon={<Building2 />} value={block} onChange={setBlock} options={BLOCK_OPTIONS} />
-            <SelectField label="Trier" icon={<ListFilter />} value={sort} onChange={setSort} options={SORT_OPTIONS} />
+            <SelectField label="Étage" value={floor} onChange={setFloor} options={floorOptions} />
+            <SelectField label="Bloc" value={block} onChange={setBlock} options={blockOptionsList} />
+            <SelectField label="Trier" value={sort} onChange={setSort} options={SORT_OPTIONS} />
           </FilterBar>
         </div>
 

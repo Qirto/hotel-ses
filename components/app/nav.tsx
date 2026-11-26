@@ -4,6 +4,8 @@ import { BedDouble, ClipboardList } from "lucide-react";
 export interface NavTabItem {
   id: string;
   label: string;
+  /** Label for the mobile bottom bar when `label` is too long for its narrow tabs. */
+  shortLabel?: string;
   /** A lucide icon element, e.g. <BedDouble aria-hidden /> */
   icon: ReactNode;
   /** Omitted or 0 hides the badge. */
@@ -20,7 +22,7 @@ export function navItem<Tab extends string>(
   id: Tab,
   label: string,
   icon: ReactNode,
-  extra?: Pick<NavTabItem, "badge" | "badgeTone">
+  extra?: Pick<NavTabItem, "badge" | "badgeTone" | "shortLabel">
 ): NavTabItem {
   return { id, label, icon, ...extra, isActive: p.activeTab === id, onClick: () => p.go(id) };
 }

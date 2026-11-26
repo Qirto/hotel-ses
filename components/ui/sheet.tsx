@@ -33,7 +33,8 @@ function useControllableState<T>(
 
 const spring = { type: "spring", stiffness: 380, damping: 38, mass: 0.9 } as const;
 
-export type SheetSide = "right" | "left" | "top" | "bottom";
+/** Hotel SES: "center" is a modal dialog (desktop); the edges are drawers / bottom sheets. */
+export type SheetSide = "right" | "left" | "top" | "bottom" | "center";
 
 const SIDES = {
   right: {
@@ -68,7 +69,18 @@ const SIDES = {
     elastic: { top: 0, bottom: 0.6 },
     dismiss: (i: PanInfo) => i.offset.y > 96 || i.velocity.y > 500,
   },
+  // Centred and as tall as its content (scrolls past 85dvh); fades and scales in, no drag.
+  center: {
+    pos: "inset-0 m-auto h-fit max-h-[85dvh] w-[calc(100%-2rem)] max-w-lg rounded-2xl border",
+    from: { opacity: 0, scale: 0.96, y: 8 },
+    to: { opacity: 1, scale: 1, y: 0 },
+    axis: false,
+    elastic: {},
+    dismiss: () => false,
+  },
 } as const;
+
+const modalTransition = { duration: 0.18, ease: [0.23, 1, 0.32, 1] } as const;
 
 /* ───────────── root + context ───────────── */
 
@@ -247,7 +259,7 @@ export function SheetContent({
             initial={cfg.from}
             animate={cfg.to}
             exit={cfg.from}
-            transition={spring}
+            transition={side === "center" ? modalTransition : spring}
             drag={cfg.axis}
             dragControls={controls}
             dragListener={false}

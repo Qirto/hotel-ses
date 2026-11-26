@@ -46,7 +46,13 @@ export type SidebarItem = {
 };
 export type SidebarSection = { title?: string; items: SidebarItem[] };
 
-const SidebarContext = React.createContext({ collapsed: false });
+/** Hotel SES: `showTip` / `hideTip` let footer rows use the same rail tooltip as nav items
+ *  (the rail clips overflow, so the tooltip is fixed-positioned and owned by the panel). */
+const SidebarContext = React.createContext<{
+  collapsed: boolean;
+  showTip: (el: HTMLElement, label: string) => void;
+  hideTip: () => void;
+}>({ collapsed: false, showTip: () => {}, hideTip: () => {} });
 /** Use inside `header` / `footer` to adapt to the icon-only state. */
 export const useSidebar = () => React.useContext(SidebarContext);
 
@@ -202,6 +208,17 @@ function Panel({
       )
   );
 
+  const showTip = React.useCallback(
+    (el: HTMLElement, label: string) => {
+      if (!collapsed) return;
+      const r = el.getBoundingClientRect();
+      setTip({ label, x: r.right + 10, y: r.top + r.height / 2 });
+    },
+    [collapsed]
+  );
+  const hideTip = React.useCallback(() => setTip(null), []);
+  const ctx = React.useMemo(() => ({ collapsed, showTip, hideTip }), [collapsed, showTip, hideTip]);
+
   const enter = (e: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>, label: string) => {
     const el = e.currentTarget;
     setHoverBox({ y: el.offsetTop, h: el.offsetHeight });
@@ -347,7 +364,7 @@ function Panel({
   };
 
   return (
-    <SidebarContext.Provider value={{ collapsed }}>
+    <SidebarContext.Provider value={ctx}>
       <div className="flex h-full flex-col">
         {/* Hotel SES: brand + collapse toggle in the header. Collapsed, the brand is
             hidden and the (expand) toggle takes its place. */}
@@ -357,16 +374,12 @@ function Panel({
             {onToggle && (
               <button
                 type="button"
-                onClick={onToggle}
-                onMouseEnter={(e) => {
-                  if (!collapsed) return;
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setTip({ label: "Déplier la barre latérale", x: r.right + 10, y: r.top + r.height / 2 });
+                onClick={() => {
+                  setTip(null);
+                  onToggle();
                 }}
-                onMouseLeave={() => setTip(null)}
                 aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}
                 aria-expanded={!collapsed}
-                title={collapsed ? undefined : "Replier la barre latérale"}
                 className="focus-ring grid size-9 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
               >
                 {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}

@@ -15,12 +15,15 @@ export const UrgentTicketsPanel = memo(function UrgentTicketsPanel({
   tickets,
   actions,
   onViewAll,
+  onOpenTicket,
 }: {
   title: string;
   description: string;
   tickets: readonly Reclamation[];
   actions?: TicketActionsRender;
   onViewAll: () => void;
+  /** Opens the request editor. */
+  onOpenTicket?: (ticket: Reclamation) => void;
 }) {
   return (
     <Panel
@@ -38,7 +41,7 @@ export const UrgentTicketsPanel = memo(function UrgentTicketsPanel({
       ) : (
         <ul className="flex flex-col gap-3">
           {tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t} actions={actions?.(t)} />
+            <TicketCard key={t.id} ticket={t} actions={actions?.(t)} onEdit={onOpenTicket} />
           ))}
         </ul>
       )}

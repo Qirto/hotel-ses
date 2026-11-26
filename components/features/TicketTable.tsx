@@ -2,8 +2,9 @@
 
 import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, useMemo, type ReactNode } from "react";
-import { ClipboardList } from "lucide-react";
-import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { ClipboardList, Pencil } from "lucide-react";
+import { DataTable, DataTableActions, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
 import type { Reclamation } from "@/utils/roomsData";
 import { categoryIcon, departmentIcon } from "@/lib/icons";
 import { categoryLabel, departmentLabel, formatIncidentDate } from "@/lib/format";
@@ -21,6 +22,7 @@ export const TicketTable = memo(function TicketTable({
   tickets,
   actions,
   onRowClick,
+  onEdit,
   pageSize = 25,
   emptyTitle = "Aucune demande",
   emptyDescription = "Aucune demande ne correspond à ces filtres.",
@@ -29,6 +31,8 @@ export const TicketTable = memo(function TicketTable({
   tickets: readonly Reclamation[];
   actions?: TicketActionsRender;
   onRowClick?: (ticket: Reclamation) => void;
+  /** Adds the pencil (edit) button to each row. */
+  onEdit?: (ticket: Reclamation) => void;
   pageSize?: number;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -71,6 +75,7 @@ export const TicketTable = memo(function TicketTable({
         header: "Service",
         minWidth: 8,
         grow: 1.1,
+        priority: 3,
         accessor: (t) => departmentLabel(t.department),
         cell: (t) => {
           const Icon = departmentIcon(t.department);
@@ -87,6 +92,7 @@ export const TicketTable = memo(function TicketTable({
         header: "Priorité",
         minWidth: 7, // « Urgente » badge + cell padding
         grow: 0.7,
+        priority: 2,
         accessor: (t) => TICKET_PRIORITY[t.priority]?.order ?? 9,
         cell: (t) => <PriorityBadge priority={t.priority} />,
       },
@@ -102,6 +108,7 @@ export const TicketTable = memo(function TicketTable({
         key: "created_at",
         header: "Signalée",
         minWidth: 8,
+        priority: 4,
         accessor: (t) => (t.created_at ? new Date(t.created_at).getTime() : 0),
         // Date with the assignee underneath: one column instead of two keeps the
         // Issue column readable next to the sidebar on laptop widths.
@@ -118,26 +125,38 @@ export const TicketTable = memo(function TicketTable({
         },
       },
     ];
-    if (actions) {
+    // Same row-action format as every table: labelled small buttons, then the pencil.
+    // Minimum width from what this portal can show (measured, small buttons at 12px).
+    if (actions || onEdit) {
+      const buttons = actions?.maxButtons ?? 0;
       cols.push({
         key: "actions",
         header: "Actions",
         sortable: false,
         align: "right",
-        // Room for the buttons this portal can show; never `auto` (each row is its own grid).
-        minWidth: actions.maxButtons > 1 ? 15.5 : 8.5,
-        grow: 0.8,
+        minWidth: [0, 6, 13.5][buttons] + (onEdit ? 2.75 : 0) + 1.5,
+        grow: buttons > 1 ? 1.4 : 0.8,
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (t) => {
-          const node = actions(t);
-          return node ? <div className="flex justify-end gap-2">{node}</div> : null;
+        cell: (t, { layout }) => {
+          const node = actions?.(t, layout);
+          if (!node && !onEdit) return null;
+          return (
+            <DataTableActions layout={layout}>
+              {node}
+              {onEdit && (
+                <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title="Modifier la demande" aria-label={`Modifier la demande ${t.id}`} onClick={() => onEdit(t)}>
+                  <Pencil className="size-3.5" aria-hidden />
+                </Button>
+              )}
+            </DataTableActions>
+          );
         },
       });
     }
     return cols;
-  }, [actions]);
+  }, [actions, onEdit]);
 
   return (
     <DataTable<Reclamation>

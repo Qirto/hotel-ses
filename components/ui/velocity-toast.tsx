@@ -30,6 +30,8 @@ export interface VelocityToastProps {
   position?: VelocityToastPosition;
   showProgress?: boolean;
   icon?: React.ReactNode;
+  /** Hotel SES: one inline action, e.g. « Annuler » to undo; it also closes the toast. */
+  action?: { label: string; onClick: () => void };
   className?: string;
 }
 
@@ -64,6 +66,7 @@ export const VelocityToast: React.FC<VelocityToastProps> = ({
   position = "top-center",
   showProgress = true,
   icon,
+  action,
   className,
 }) => {
   const [isVisible, setIsVisible] = useState(open);
@@ -147,6 +150,18 @@ export const VelocityToast: React.FC<VelocityToastProps> = ({
                 <p className="text-sm font-medium text-fg">{title}</p>
                 {description && <p className="mt-0.5 text-sm text-fg-secondary">{description}</p>}
               </div>
+              {action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    action.onClick();
+                    handleDismiss();
+                  }}
+                  className="focus-ring -my-1 h-8 shrink-0 cursor-pointer self-center rounded-md px-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-hover"
+                >
+                  {action.label}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleDismiss}

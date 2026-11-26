@@ -131,6 +131,53 @@ export function floorOptions(rooms: readonly Pick<HotelRoom, "floor">[]): { valu
   return [{ value: "ALL", label: "Tous les étages" }, ...floors.map((f) => ({ value: f, label: `Étage ${f}` }))];
 }
 
+/** Block filter options from the rooms present (« Tous les blocs », « Bloc A », …). */
+export function blockOptions(rooms: readonly Pick<HotelRoom, "block">[]): { value: string; label: string }[] {
+  const blocks = [...new Set(rooms.map((r) => r.block).filter(Boolean))].sort();
+  return [{ value: "ALL", label: "Tous les blocs" }, ...blocks.map((b) => ({ value: b, label: blockLabel(b) }))];
+}
+
+export type RoomSide = { side: "even" | "odd"; label: string; from: string; to: string; rooms: HotelRoom[] };
+export type RoomBlock = { block: string; label: string; rooms: HotelRoom[]; sides: RoomSide[] };
+export type RoomFloor = { floor: number; rooms: HotelRoom[]; blocks: RoomBlock[] };
+
+/** Corridor sides: even numbers on the left, odd on the right (hotel floor plan). */
+const SIDES = [
+  { side: "even", label: "Côté gauche · pairs" },
+  { side: "odd", label: "Côté droit · impairs" },
+] as const;
+
+/**
+ * Rooms as they are built: floor → block → corridor side, each in number order.
+ * Works for any numbering (gaps, exceptions): it reads floor, block and the number.
+ */
+export function roomLayout(rooms: readonly HotelRoom[]): RoomFloor[] {
+  const byNumber = (a: HotelRoom, b: HotelRoom) => Number(a.room_number) - Number(b.room_number);
+  const floors = new Map<number, Map<string, HotelRoom[]>>();
+  for (const r of rooms) {
+    const blocks = floors.get(r.floor) ?? new Map<string, HotelRoom[]>();
+    const list = blocks.get(r.block) ?? [];
+    list.push(r);
+    blocks.set(r.block, list);
+    floors.set(r.floor, blocks);
+  }
+  return [...floors.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([floor, blocks]) => {
+      const blockList = [...blocks.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([block, list]) => {
+          const sorted = [...list].sort(byNumber);
+          const sides = SIDES.map(({ side, label }) => {
+            const sideRooms = sorted.filter((r) => (Number(r.room_number) % 2 === 0) === (side === "even"));
+            return { side, label, from: sideRooms[0]?.room_number ?? "", to: sideRooms.at(-1)?.room_number ?? "", rooms: sideRooms };
+          }).filter((s) => s.rooms.length > 0);
+          return { block, label: blockLabel(block), rooms: sorted, sides };
+        });
+      return { floor, rooms: blockList.flatMap((b) => b.rooms), blocks: blockList };
+    });
+}
+
 /** "Étage 1 · Bloc A". */
 export const roomLocation = (room: Pick<HotelRoom, "floor" | "block">) => `Étage ${room.floor} · ${blockLabel(room.block)}`;
 

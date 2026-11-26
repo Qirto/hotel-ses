@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { HOTEL_NAME, isPortalRole, PORTALS, ROLE_COOKIE, type PortalRole } from "@/lib/portals";
+import { isPortalRole, PORTALS, ROLE_COOKIE, type PortalRole } from "@/lib/portals";
 import { hotelWallTimeToISO } from "@/lib/datetime";
 
 // =====================================================================
@@ -258,6 +258,44 @@ export async function resolveReclamation(reclamationId: number) {
   return ok();
 }
 
+const PRIORITIES = ["STANDARD", "HIGH", "EMERGENCY"] as const;
+
+/** Edits a request's subject, priority, details and assignee. Status changes stay with
+ *  acknowledge / resolve, so the timeline (acknowledged_at, resolved_at) stays right. */
+export async function updateReclamation(
+  reclamationId: number,
+  data: { department: string; category: string; priority: string; description: string; assignedStaffId: number | null }
+) {
+  if (!data.department.trim() || !data.category.trim()) return { success: false as const, error: "Service et problème sont obligatoires." };
+  if (!(PRIORITIES as readonly string[]).includes(data.priority)) return { success: false as const, error: "Priorité non valide." };
+  const supabase = await db();
+
+  const { error } = await supabase
+    .from("reclamations")
+    .update({
+      department: data.department,
+      category: data.category,
+      priority: data.priority,
+      description: data.description.trim(),
+      assigned_staff_id: data.assignedStaffId,
+    })
+    .eq("id", reclamationId);
+  if (error) return failed("update reclamation", error);
+
+  revalidatePortals();
+  return ok();
+}
+
+/** Deletes a request for good (entered by mistake, duplicate). */
+export async function deleteReclamation(reclamationId: number) {
+  const supabase = await db();
+  const { error } = await supabase.from("reclamations").delete().eq("id", reclamationId);
+  if (error) return failed("delete reclamation", error);
+
+  revalidatePortals();
+  return ok();
+}
+
 // =====================================================================
 // GOUVERNANTE (HOUSEKEEPING) ACTIONS
 // =====================================================================
@@ -301,50 +339,8 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
 }
 
 // =====================================================================
-// GENERAL MANAGER ACTIONS
-// =====================================================================
-
-export async function resolveConfidentialGrievance(reclamationId: number, remedyNotes: string) {
-  const supabase = await db();
-
-  const { error } = await supabase
-    .from("reclamations")
-    .update({
-      status: "RESOLVED",
-      resolved_at: new Date().toISOString(),
-      description: remedyNotes
-        ? `[RÉSOLUE PAR LA DIRECTION] : ${remedyNotes}`
-        : undefined,
-    })
-    .eq("id", reclamationId);
-
-  if (error) {
-    return failed("resolve confidential grievance", error);
-  }
-
-  revalidatePortals();
-  return ok();
-}
-
-// =====================================================================
 // HR (RH) ACTIONS
 // =====================================================================
-
-export async function updateStaffSkills(staffId: number, skillTags: string[]) {
-  const supabase = await db();
-
-  const { error } = await supabase
-    .from("staff")
-    .update({ skill_tags: skillTags })
-    .eq("id", staffId);
-
-  if (error) {
-    return failed("update staff skills", error);
-  }
-
-  revalidatePortals();
-  return ok();
-}
 
 export async function toggleStaffShift(staffId: number, currentShift: string) {
   const supabase = await db();
@@ -369,35 +365,88 @@ export async function toggleStaffShift(staffId: number, currentShift: string) {
   return ok();
 }
 
+const OPEN_TICKET_STATUSES = ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"];
+const SHIFT_STATUSES = ["ON_SHIFT", "OFF_SHIFT", "ON_BREAK"] as const;
+type ShiftStatus = (typeof SHIFT_STATUSES)[number];
+
+/**
+ * Marks a staff member absent and hands their open requests to a present colleague of
+ * the same department. Returns what changed, so the HR screen can offer an undo.
+ * With nobody present in that department, the requests stay assigned and are counted.
+ */
 export async function markStaffAbsentAndRedistribute(staffId: number) {
   const supabase = await db();
 
-  // 1. Mark staff as absent (OFF_SHIFT & not present)
-  await supabase
+  const { data: member, error: readError } = await supabase
     .from("staff")
-    .update({ shift_status: "OFF_SHIFT", is_present: false })
-    .eq("id", staffId);
+    .select("department, shift_status, is_present")
+    .eq("id", staffId)
+    .single();
+  if (readError || !member) return failed("read staff member", readError ?? { message: "Employé introuvable" });
 
-  // 2. Find another on-shift staff member
-  const { data: availableTech } = await supabase
-    .from("staff")
-    .select("id")
-    .neq("id", staffId)
-    .eq("is_present", true)
-    .limit(1)
-    .maybeSingle();
+  const { error: absentError } = await supabase.from("staff").update({ shift_status: "OFF_SHIFT", is_present: false }).eq("id", staffId);
+  if (absentError) return failed("mark staff absent", absentError);
 
-  if (availableTech) {
-    // 3. Reassign open/in_progress tickets
-    await supabase
+  const substituteId = await findStaffId(supabase, "department", member.department);
+  let movedTicketIds: number[] = [];
+  let unassignedCount = 0;
+  if (substituteId) {
+    const { data: moved, error: moveError } = await supabase
       .from("reclamations")
-      .update({ assigned_staff_id: availableTech.id })
+      .update({ assigned_staff_id: substituteId })
       .eq("assigned_staff_id", staffId)
-      .in("status", ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"]);
+      .in("status", OPEN_TICKET_STATUSES)
+      .select("id");
+    if (moveError) return failed("reassign open requests", moveError);
+    movedTicketIds = (moved ?? []).map((t) => t.id as number);
+  } else {
+    const { count, error: countError } = await supabase
+      .from("reclamations")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_staff_id", staffId)
+      .in("status", OPEN_TICKET_STATUSES);
+    if (countError) return failed("count open requests", countError);
+    unassignedCount = count ?? 0;
   }
 
   revalidatePortals();
-  return { success: true, reassignedTo: availableTech?.id || null };
+  return ok({
+    previousShift: member.shift_status as ShiftStatus,
+    previousPresent: Boolean(member.is_present),
+    substituteId,
+    movedTicketIds,
+    unassignedCount,
+  });
+}
+
+/**
+ * Undo of markStaffAbsentAndRedistribute: restores the previous shift status and takes
+ * back the moved requests that are still open and still with the substitute.
+ */
+export async function undoStaffAbsence(
+  staffId: number,
+  previous: { shift: string; present: boolean },
+  substituteId: number | null,
+  movedTicketIds: number[]
+) {
+  const supabase = await db();
+  const shift: ShiftStatus = (SHIFT_STATUSES as readonly string[]).includes(previous.shift) ? (previous.shift as ShiftStatus) : "OFF_SHIFT";
+
+  const { error } = await supabase.from("staff").update({ shift_status: shift, is_present: previous.present }).eq("id", staffId);
+  if (error) return failed("restore staff status", error);
+
+  if (substituteId && movedTicketIds.length) {
+    const { error: backError } = await supabase
+      .from("reclamations")
+      .update({ assigned_staff_id: staffId })
+      .in("id", movedTicketIds)
+      .eq("assigned_staff_id", substituteId)
+      .in("status", OPEN_TICKET_STATUSES);
+    if (backError) return failed("return reassigned requests", backError);
+  }
+
+  revalidatePortals();
+  return ok();
 }
 
 export async function createStaffMember(data: {
@@ -471,16 +520,11 @@ export async function updateStaffMember(
 export async function deleteStaffMember(staffId: number) {
   const supabase = await db();
 
-  // Clear references in reclamations before deleting
-  await supabase
-    .from("reclamations")
-    .update({ assigned_staff_id: null })
-    .eq("assigned_staff_id", staffId);
-
-  await supabase
-    .from("reclamations")
-    .update({ created_by_staff_id: null })
-    .eq("created_by_staff_id", staffId);
+  // Clear references in reclamations before deleting (requests keep their history)
+  const { error: assignedError } = await supabase.from("reclamations").update({ assigned_staff_id: null }).eq("assigned_staff_id", staffId);
+  if (assignedError) return failed("unassign staff requests", assignedError);
+  const { error: createdError } = await supabase.from("reclamations").update({ created_by_staff_id: null }).eq("created_by_staff_id", staffId);
+  if (createdError) return failed("clear staff request authorship", createdError);
 
   const { error } = await supabase
     .from("staff")
@@ -499,33 +543,48 @@ export async function deleteStaffMember(staffId: number) {
 // DEPARTMENT CRUD ACTIONS
 // =====================================================================
 
-export async function createDepartment(data: {
-  code: string;
-  name: string;
-  icon?: string;
-  description?: string;
-  head_of_department?: string;
-}) {
+/** Stable department code from its name: « Spa & thalasso » -> "SPA_THALASSO". */
+function departmentCode(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/** Creates a department. Its code (stored on staff and requests) comes from the name and never changes. */
+export async function createDepartment(data: { name: string; description?: string; head_of_department?: string }) {
+  const name = data.name.trim();
+  const code = departmentCode(name);
+  if (!code) return { success: false as const, error: "Le nom du service est obligatoire." };
   const supabase = await db();
 
-  const cleanCode = data.code.trim().toUpperCase().replace(/\s+/g, "_");
+  // Explicit check: does not rely on a unique constraint existing on departments.code.
+  const { data: existing, error: existsError } = await supabase.from("departments").select("id").eq("code", code).maybeSingle();
+  if (existsError) return failed("check department code", existsError);
+  if (existing) return { success: false as const, error: "Un service portant ce nom existe déjà." };
 
-  const { error } = await supabase.from("departments").insert([
-    {
-      code: cleanCode,
-      name: data.name.trim(),
-      icon: data.icon?.trim() || "building-2",
-      description: data.description?.trim() || null,
-      head_of_department: data.head_of_department?.trim() || null,
-    },
-  ]);
+  const { data: row, error } = await supabase
+    .from("departments")
+    .insert([
+      {
+        code,
+        name,
+        icon: "building-2",
+        description: data.description?.trim() || null,
+        head_of_department: data.head_of_department?.trim() || null,
+      },
+    ])
+    .select("*")
+    .single();
 
-  if (error) {
-    return failed("create department", error);
-  }
+  // 23505 = unique violation: a department with this code already exists
+  if (error?.code === "23505") return { success: false as const, error: "Un service portant ce nom existe déjà." };
+  if (error) return failed("create department", error);
 
   revalidatePortals();
-  return ok();
+  return ok(row);
 }
 
 export async function updateDepartment(
@@ -560,8 +619,19 @@ export async function updateDepartment(
   return ok();
 }
 
+/** Deletes a department, refused while employees are still attached to it. */
 export async function deleteDepartment(departmentId: number) {
   const supabase = await db();
+
+  const { data: dept, error: readError } = await supabase.from("departments").select("code").eq("id", departmentId).single();
+  if (readError || !dept) return failed("read department", readError ?? { message: "Service introuvable" });
+  const { count, error: countError } = await supabase.from("staff").select("id", { count: "exact", head: true }).eq("department", dept.code);
+  if (countError) return failed("count department staff", countError);
+  if (count)
+    return {
+      success: false as const,
+      error: `${count} ${count < 2 ? "employé est rattaché" : "employés sont rattachés"} à ce service : réaffectez-${count < 2 ? "le" : "les"} d’abord.`,
+    };
 
   const { error } = await supabase
     .from("departments")
@@ -601,55 +671,4 @@ export async function anonymizeStaffRecord(staffId: number) {
   revalidatePortals();
   return ok();
 }
-
-export async function exportStaffData(staffId: number) {
-  const supabase = await db();
-
-  const { data: staff, error: staffError } = await supabase
-    .from("staff")
-    .select("*")
-    .eq("id", staffId)
-    .single();
-
-  if (staffError || !staff) {
-    return { success: false, error: staffError?.message || "Employé introuvable" };
-  }
-
-  const { data: tickets } = await supabase
-    .from("reclamations")
-    .select("id, room_id, department, category, status, priority, created_at, resolved_at")
-    .eq("assigned_staff_id", staffId);
-
-  return {
-    success: true,
-    data: {
-      profile: staff,
-      assignedTickets: tickets || [],
-      exportedAt: new Date().toISOString(),
-      entity: HOTEL_NAME,
-    },
-  };
-}
-
-export async function purgeCheckedOutResidentData(residentId: number) {
-  const supabase = await db();
-
-  const { error } = await supabase
-    .from("residents")
-    .update({
-      first_name: "Client",
-      last_name: "archivé",
-      phone_number: null,
-    })
-    .eq("id", residentId)
-    .eq("status", "CHECKED_OUT");
-
-  if (error) {
-    return failed("purge checked-out resident data", error);
-  }
-
-  revalidatePortals();
-  return ok();
-}
-
 
