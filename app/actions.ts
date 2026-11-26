@@ -4,36 +4,73 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { HOTEL_NAME, isPortalRole, PORTALS, ROLE_COOKIE, type PortalRole } from "@/lib/portals";
+import { hotelWallTimeToISO } from "@/lib/datetime";
+
+// =====================================================================
+// SHARED HELPERS (not exported: only exported async functions are server actions)
+// =====================================================================
+
+/** Supabase client bound to this request's cookies. */
+async function db() {
+  return createClient(await cookies());
+}
+
+/** Standard success result; `data` is the written row when the caller needs it. */
+function ok<T = undefined>(data?: T) {
+  return { success: true as const, data: data as T, error: undefined };
+}
+
+/** Logs a failed write and returns the standard failure result. */
+function failed(what: string, error: { message: string }) {
+  console.error(`Failed to ${what}:`, error);
+  return { success: false as const, error: error.message };
+}
+
+type Db = Awaited<ReturnType<typeof db>>;
+
+/** First staff member with `column = value` (present today unless `presentOnly` is false), or null. */
+async function findStaffId(supabase: Db, column: "role" | "department", value: string, presentOnly = true): Promise<number | null> {
+  let query = supabase.from("staff").select("id").eq(column, value);
+  if (presentOnly) query = query.eq("is_present", true);
+  const { data } = await query.limit(1).maybeSingle();
+  return data?.id ?? null;
+}
+
+/** Department codes the forms send, mapped to the department that handles them. */
+const DEPARTMENT_ALIAS: Record<string, string> = { TECHNICAL: "MAINTENANCE", GOVERNANCE: "HOUSEKEEPING" };
+/** Who to assign when nobody from the department is present. */
+const FALLBACK_ROLE: Record<string, string> = { MAINTENANCE: "maintenance", HOUSEKEEPING: "governance" };
+
+/** Portal pages are dynamic; this refreshes their client router cache after a write. */
+function revalidatePortals() {
+  for (const portal of Object.values(PORTALS)) revalidatePath(portal.path);
+}
 
 // =====================================================================
 // AUTHENTICATION & ROLE ACCESS CONTROL ACTIONS
 // =====================================================================
 
-export async function loginAsRole(role: "reception" | "rh" | "gm", passcode?: string) {
-  const cookieStore = await cookies();
+/** Department passcodes. Fallbacks match .env; to be replaced by per-staff sign-in. */
+const PASSCODES: Record<PortalRole, string> = {
+  reception: process.env.PASSCODE_RECEPTION || "1111",
+  rh: process.env.PASSCODE_RH || "2222",
+  gm: process.env.PASSCODE_GM || "3333",
+};
 
-  const VALID_CODES: Record<string, string> = {
-    reception: process.env.PASSCODE_RECEPTION || "1111",
-    rh: process.env.PASSCODE_RH || "2222",
-    gm: process.env.PASSCODE_GM || "3333",
-  };
+const ROLE_COOKIE_OPTIONS = { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" } as const;
 
-  const expectedCode = VALID_CODES[role];
-  if (!passcode || (passcode.trim() !== expectedCode && passcode.trim() !== role)) {
-    return {
-      success: false,
-      error: `Invalid passcode for ${role.toUpperCase()} portal!`,
-    };
-  }
+/** Signs the browser into a portal: sets the role cookie and refreshes that portal. */
+async function setRoleCookie(role: PortalRole) {
+  (await cookies()).set(ROLE_COOKIE, role, ROLE_COOKIE_OPTIONS);
+  revalidatePath(PORTALS[role].path);
+}
 
-  cookieStore.set("hotel_role", role, {
-    path: "/",
-    maxAge: 31536000, // 1 Year Persistent Login (Keeps logged in until explicit logout)
-    sameSite: "lax",
-  });
-
-  revalidatePath(`/${role}`);
-  return { success: true, redirectUrl: `/${role}` };
+/** Role for a passcode, or null. (Typing the role name is also accepted, as before.) */
+function roleForPasscode(passcode: string): PortalRole | null {
+  const code = passcode.trim();
+  if (!code) return null;
+  return (Object.keys(PASSCODES) as PortalRole[]).find((role) => code === PASSCODES[role] || code.toLowerCase() === role) ?? null;
 }
 
 export type SignInState = { error: string } | null;
@@ -44,69 +81,22 @@ export type SignInState = { error: string } | null;
  * passcode never ends up in the URL.
  */
 export async function signInWithForm(_prev: SignInState, formData: FormData): Promise<SignInState> {
-  const res = await loginWithPasscode(String(formData.get("passcode") ?? ""));
-  if (!res.success || !res.redirectUrl) {
-    return { error: res.error ?? "Authentication failed. Please verify your passcode." };
-  }
-  redirect(res.redirectUrl);
+  const passcode = String(formData.get("passcode") ?? "");
+  if (!passcode.trim()) return { error: "Please enter your access passcode." };
+  const role = roleForPasscode(passcode);
+  if (!role) return { error: "Invalid access passcode. Please check your credentials." };
+  await setRoleCookie(role);
+  redirect(PORTALS[role].path);
 }
 
-export async function loginWithPasscode(passcode: string) {
-  const cookieStore = await cookies();
-  const trimmed = (passcode || "").trim();
-
-  if (!trimmed) {
-    return {
-      success: false,
-      error: "Please enter your access passcode.",
-    };
-  }
-
-  const VALID_CODES: Record<"reception" | "rh" | "gm", string> = {
-    reception: process.env.PASSCODE_RECEPTION || "1111",
-    rh: process.env.PASSCODE_RH || "2222",
-    gm: process.env.PASSCODE_GM || "3333",
-  };
-
-  const ROLES: Array<"reception" | "rh" | "gm"> = ["reception", "rh", "gm"];
-  const matchedRole = ROLES.find(
-    (role) => trimmed === VALID_CODES[role] || trimmed.toLowerCase() === role
-  );
-
-  if (!matchedRole) {
-    return {
-      success: false,
-      error: "Invalid access passcode. Please check your credentials.",
-    };
-  }
-
-  cookieStore.set("hotel_role", matchedRole, {
-    path: "/",
-    maxAge: 31536000, // 1 Year Persistent Login (Keeps logged in until explicit logout)
-    sameSite: "lax",
-  });
-
-  revalidatePath(`/${matchedRole}`);
-  return { success: true, redirectUrl: `/${matchedRole}`, role: matchedRole };
-}
-
-export async function restorePersistedSession(role: "reception" | "rh" | "gm") {
-  const cookieStore = await cookies();
-  if (role === "reception" || role === "rh" || role === "gm") {
-    cookieStore.set("hotel_role", role, {
-      path: "/",
-      maxAge: 31536000, // 1 Year Persistent Login
-      sameSite: "lax",
-    });
-    revalidatePath(`/${role}`);
-    return { success: true, redirectUrl: `/${role}`, role };
-  }
-  return { success: false, error: "Invalid portal role." };
+export async function restorePersistedSession(role: PortalRole) {
+  if (!isPortalRole(role)) return { success: false, error: "Invalid portal role." } as const;
+  await setRoleCookie(role);
+  return { success: true, redirectUrl: PORTALS[role].path, role } as const;
 }
 
 export async function logoutRole() {
-  const cookieStore = await cookies();
-  cookieStore.delete("hotel_role");
+  (await cookies()).delete(ROLE_COOKIE);
   revalidatePath("/login");
   return { success: true, redirectUrl: "/login" };
 }
@@ -124,59 +114,24 @@ export async function createRapidReclamation(data: {
   priority?: "EMERGENCY" | "HIGH" | "STANDARD";
   residentId?: number | null;
 }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
+  const targetDepartment = DEPARTMENT_ALIAS[data.department] ?? data.department;
 
-  // Auto-find receptionist ID
-  const { data: staffMember } = await supabase
-    .from("staff")
-    .select("id")
-    .eq("role", "receptionist")
-    .limit(1)
-    .single();
-
-  // Normalize department code
-  let targetDepartment = data.department;
-  if (data.department === "TECHNICAL") targetDepartment = "MAINTENANCE";
-  if (data.department === "GOVERNANCE") targetDepartment = "HOUSEKEEPING";
-
-  // Smart dispatch: find an on-shift staff member matching the department or role
-  let assignedStaffId = null;
-  const { data: deptStaff } = await supabase
-    .from("staff")
-    .select("id")
-    .eq("department", targetDepartment)
-    .eq("is_present", true)
-    .limit(1)
-    .single();
-
-  if (deptStaff) {
-    assignedStaffId = deptStaff.id;
-  } else if (targetDepartment === "MAINTENANCE") {
-    const { data: tech } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("role", "maintenance")
-      .eq("is_present", true)
-      .limit(1)
-      .single();
-    if (tech) assignedStaffId = tech.id;
-  } else if (targetDepartment === "HOUSEKEEPING") {
-    const { data: gov } = await supabase
-      .from("staff")
-      .select("id")
-      .eq("role", "governance")
-      .eq("is_present", true)
-      .limit(1)
-      .single();
-    if (gov) assignedStaffId = gov.id;
-  }
+  // Smart dispatch: the reporter (a receptionist) and the first present member of the
+  // target department, looked up in parallel; failing that, a present member with the
+  // department's fallback role.
+  const [reporterId, departmentStaffId] = await Promise.all([
+    findStaffId(supabase, "role", "receptionist", false),
+    findStaffId(supabase, "department", targetDepartment),
+  ]);
+  const fallbackRole = FALLBACK_ROLE[targetDepartment];
+  const assignedStaffId = departmentStaffId ?? (fallbackRole ? await findStaffId(supabase, "role", fallbackRole) : null);
 
   const { data: inserted, error } = await supabase.from("reclamations").insert([
     {
       room_id: data.roomId,
       resident_id: data.residentId || null,
-      created_by_staff_id: staffMember?.id || null,
+      created_by_staff_id: reporterId,
       assigned_staff_id: assignedStaffId,
       department: targetDepartment,
       category: data.category,
@@ -189,16 +144,11 @@ export async function createRapidReclamation(data: {
   ]).select().single();
 
   if (error) {
-    console.error("Failed to create rapid reclamation:", error);
-    return { success: false, error: error.message };
+    return failed("create rapid reclamation", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  revalidatePath("/rh");
-  revalidatePath("/governance");
-  revalidatePath("/maintenance");
-  return { success: true, data: inserted };
+  revalidatePortals();
+  return ok(inserted);
 }
 
 /**
@@ -214,41 +164,36 @@ export async function createHistoricalReclamation(data: {
   resolvedAt?: string | null;
   isConfidential?: boolean;
 }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
+  // form values are hotel wall-clock times ("YYYY-MM-DDTHH:mm"); the server runs in UTC
+  const createdAt = data.createdAt ? hotelWallTimeToISO(data.createdAt) : new Date().toISOString();
   const newRecord = {
     room_id: data.roomId,
     department: data.department,
     category: data.category,
     description: data.description,
     status: data.status,
-    created_at: data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString(),
-    resolved_at: data.resolvedAt ? new Date(data.resolvedAt).toISOString() : data.status === "RESOLVED" ? (data.createdAt ? new Date(data.createdAt).toISOString() : new Date().toISOString()) : null,
+    created_at: createdAt,
+    resolved_at: data.resolvedAt ? hotelWallTimeToISO(data.resolvedAt) : data.status === "RESOLVED" ? createdAt : null,
     is_confidential: Boolean(data.isConfidential),
   };
 
   const { data: inserted, error } = await supabase.from("reclamations").insert([newRecord]).select().single();
 
   if (error) {
-    console.error("Failed to create historical reclamation:", error);
-    return { success: false, error: error.message };
+    return failed("create historical reclamation", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  revalidatePath("/rh");
-  revalidatePath("/governance");
-  revalidatePath("/maintenance");
-  return { success: true, data: inserted || newRecord };
+  revalidatePortals();
+  return ok(inserted || newRecord);
 }
 
 export async function updateRoomStayState(
   roomId: number,
   stayState: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED"
 ) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   let updateData: { is_occupied: boolean; cleaning_status?: "DIRTY" | "CLEAN" } = {
     is_occupied: false,
@@ -266,13 +211,11 @@ export async function updateRoomStayState(
   const { error } = await supabase.from("rooms").update(updateData).eq("id", roomId);
 
   if (error) {
-    console.error("Failed to update stay state:", error);
-    return { success: false, error: error.message };
+    return failed("update stay state", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -280,8 +223,7 @@ export async function updateRoomStayState(
 // =====================================================================
 
 export async function acknowledgeReclamation(reclamationId: number, staffId?: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("reclamations")
@@ -293,18 +235,15 @@ export async function acknowledgeReclamation(reclamationId: number, staffId?: nu
     .eq("id", reclamationId);
 
   if (error) {
-    console.error("Failed to acknowledge reclamation:", error);
-    return { success: false, error: error.message };
+    return failed("acknowledge reclamation", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function resolveReclamation(reclamationId: number, resolutionNotes?: string) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("reclamations")
@@ -318,13 +257,11 @@ export async function resolveReclamation(reclamationId: number, resolutionNotes?
     .eq("id", reclamationId);
 
   if (error) {
-    console.error("Failed to resolve reclamation:", error);
-    return { success: false, error: error.message };
+    return failed("resolve reclamation", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -335,8 +272,7 @@ export async function cycleRoomCleaning(
   roomId: number,
   nextStatus: "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"
 ) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("rooms")
@@ -344,18 +280,15 @@ export async function cycleRoomCleaning(
     .eq("id", roomId);
 
   if (error) {
-    console.error("Failed to update cleaning status:", error);
-    return { success: false, error: error.message };
+    return failed("update cleaning status", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function updateRoomHeadcount(roomId: number, adultCount: number, childCount: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("rooms")
@@ -366,13 +299,11 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
     .eq("id", roomId);
 
   if (error) {
-    console.error("Failed to update guest headcount:", error);
-    return { success: false, error: error.message };
+    return failed("update guest headcount", error);
   }
 
-  revalidatePath("/reception");
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -380,8 +311,7 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
 // =====================================================================
 
 export async function resolveConfidentialGrievance(reclamationId: number, remedyNotes: string) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("reclamations")
@@ -395,12 +325,11 @@ export async function resolveConfidentialGrievance(reclamationId: number, remedy
     .eq("id", reclamationId);
 
   if (error) {
-    console.error("Failed to resolve confidential grievance:", error);
-    return { success: false, error: error.message };
+    return failed("resolve confidential grievance", error);
   }
 
-  revalidatePath("/gm");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -408,8 +337,7 @@ export async function resolveConfidentialGrievance(reclamationId: number, remedy
 // =====================================================================
 
 export async function updateStaffSkills(staffId: number, skillTags: string[]) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("staff")
@@ -417,17 +345,15 @@ export async function updateStaffSkills(staffId: number, skillTags: string[]) {
     .eq("id", staffId);
 
   if (error) {
-    console.error("Failed to update staff skills:", error);
-    return { success: false, error: error.message };
+    return failed("update staff skills", error);
   }
 
-  revalidatePath("/rh");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function toggleStaffShift(staffId: number, currentShift: string) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const nextShift = currentShift === "ON_SHIFT" ? "OFF_SHIFT" : "ON_SHIFT";
   const isPresent = nextShift === "ON_SHIFT";
@@ -442,18 +368,15 @@ export async function toggleStaffShift(staffId: number, currentShift: string) {
     .eq("id", staffId);
 
   if (error) {
-    console.error("Failed to toggle staff shift:", error);
-    return { success: false, error: error.message };
+    return failed("toggle staff shift", error);
   }
 
-  revalidatePath("/rh");
-  revalidatePath("/reception");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function markStaffAbsentAndRedistribute(staffId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   // 1. Mark staff as absent (OFF_SHIFT & not present)
   await supabase
@@ -461,14 +384,14 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
     .update({ shift_status: "OFF_SHIFT", is_present: false })
     .eq("id", staffId);
 
-  // 2. Find another on-shift technician
+  // 2. Find another on-shift staff member
   const { data: availableTech } = await supabase
     .from("staff")
     .select("id")
     .neq("id", staffId)
     .eq("is_present", true)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (availableTech) {
     // 3. Reassign open/in_progress tickets
@@ -479,9 +402,7 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
       .in("status", ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"]);
   }
 
-  revalidatePath("/rh");
-  revalidatePath("/reception");
-  revalidatePath("/gm");
+  revalidatePortals();
   return { success: true, reassignedTo: availableTech?.id || null };
 }
 
@@ -493,8 +414,7 @@ export async function createStaffMember(data: {
   skill_tags?: string[];
   shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
 }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase.from("staff").insert([
     {
@@ -510,12 +430,11 @@ export async function createStaffMember(data: {
   ]);
 
   if (error) {
-    console.error("Failed to create staff member:", error);
-    return { success: false, error: error.message };
+    return failed("create staff member", error);
   }
 
-  revalidatePath("/rh");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function updateStaffMember(
@@ -529,8 +448,7 @@ export async function updateStaffMember(
     shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
   }
 ) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const updatePayload: Record<string, unknown> = {};
   if (data.full_name !== undefined) updatePayload.full_name = data.full_name;
@@ -549,17 +467,15 @@ export async function updateStaffMember(
     .eq("id", staffId);
 
   if (error) {
-    console.error("Failed to update staff member:", error);
-    return { success: false, error: error.message };
+    return failed("update staff member", error);
   }
 
-  revalidatePath("/rh");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function deleteStaffMember(staffId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   // Clear references in reclamations before deleting
   await supabase
@@ -578,12 +494,11 @@ export async function deleteStaffMember(staffId: number) {
     .eq("id", staffId);
 
   if (error) {
-    console.error("Failed to delete staff member:", error);
-    return { success: false, error: error.message };
+    return failed("delete staff member", error);
   }
 
-  revalidatePath("/rh");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -597,8 +512,7 @@ export async function createDepartment(data: {
   description?: string;
   head_of_department?: string;
 }) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const cleanCode = data.code.trim().toUpperCase().replace(/\s+/g, "_");
 
@@ -613,13 +527,11 @@ export async function createDepartment(data: {
   ]);
 
   if (error) {
-    console.error("Failed to create department:", error);
-    return { success: false, error: error.message };
+    return failed("create department", error);
   }
 
-  revalidatePath("/rh");
-  revalidatePath("/reception");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function updateDepartment(
@@ -631,8 +543,7 @@ export async function updateDepartment(
     head_of_department?: string;
   }
 ) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const updatePayload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -648,18 +559,15 @@ export async function updateDepartment(
     .eq("id", departmentId);
 
   if (error) {
-    console.error("Failed to update department:", error);
-    return { success: false, error: error.message };
+    return failed("update department", error);
   }
 
-  revalidatePath("/rh");
-  revalidatePath("/reception");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function deleteDepartment(departmentId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("departments")
@@ -667,13 +575,11 @@ export async function deleteDepartment(departmentId: number) {
     .eq("id", departmentId);
 
   if (error) {
-    console.error("Failed to delete department:", error);
-    return { success: false, error: error.message };
+    return failed("delete department", error);
   }
 
-  revalidatePath("/rh");
-  revalidatePath("/reception");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 // =====================================================================
@@ -681,8 +587,7 @@ export async function deleteDepartment(departmentId: number) {
 // =====================================================================
 
 export async function anonymizeStaffRecord(staffId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("staff")
@@ -696,17 +601,15 @@ export async function anonymizeStaffRecord(staffId: number) {
     .eq("id", staffId);
 
   if (error) {
-    console.error("Failed to anonymize staff record:", error);
-    return { success: false, error: error.message };
+    return failed("anonymize staff record", error);
   }
 
-  revalidatePath("/rh");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 export async function exportStaffData(staffId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { data: staff, error: staffError } = await supabase
     .from("staff")
@@ -729,14 +632,13 @@ export async function exportStaffData(staffId: number) {
       profile: staff,
       assignedTickets: tickets || [],
       exportedAt: new Date().toISOString(),
-      entity: "Hôtel Méditerranée Thalasso Golf Hammamet",
+      entity: HOTEL_NAME,
     },
   };
 }
 
 export async function purgeCheckedOutResidentData(residentId: number) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = await db();
 
   const { error } = await supabase
     .from("residents")
@@ -749,12 +651,11 @@ export async function purgeCheckedOutResidentData(residentId: number) {
     .eq("status", "CHECKED_OUT");
 
   if (error) {
-    console.error("Failed to purge checked-out resident data:", error);
-    return { success: false, error: error.message };
+    return failed("purge checked-out resident data", error);
   }
 
-  revalidatePath("/reception");
-  return { success: true };
+  revalidatePortals();
+  return ok();
 }
 
 

@@ -5,7 +5,7 @@ import { Building2, CalendarDays } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
-import { SelectField } from "@/components/features/Filters";
+import { FilterBar, SelectField } from "@/components/features/Filters";
 import { Select } from "@/components/features/Forms";
 import { MD_UP, useMediaQuery } from "@/hooks/useMediaQuery";
 import { departmentLabel } from "@/lib/format";
@@ -81,10 +81,10 @@ export const ShiftsView = memo(function ShiftsView({
         title="Weekly roster"
         description="Plan daily shifts for the week. Changes stay on this device and are not saved."
         icon={<CalendarDays />}
-        actions={
-          <SelectField label="Roster department" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} className="w-full sm:w-56" />
-        }
       >
+        <FilterBar className="mb-4">
+          <SelectField label="Roster department" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
+        </FilterBar>
         {rows.length === 0 ? (
           <EmptyState icon={<CalendarDays />} title="No staff in this department" />
         ) : isDesktop ? (

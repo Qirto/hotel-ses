@@ -1,8 +1,9 @@
 "use client";
 
+import { INPUT_ICON } from "@/lib/styles";
 import { useId, useState } from "react";
 import { Phone, UserPlus } from "lucide-react";
-import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
+import { ResponsiveSheet, SheetActions } from "@/components/app/ResponsiveSheet";
 import { Button } from "@/components/ui/button";
 import { Field, Select, TextInput } from "@/components/features/Forms";
 import { ROLE_OPTIONS, type NewStaffInput } from "./staff";
@@ -34,14 +35,11 @@ export function AddStaffSheet({
       title="Add employee"
       description="Create a staff profile. New employees start on shift."
       footer={
-        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="justify-center">
-            Cancel
-          </Button>
+        <SheetActions onCancel={() => onOpenChange(false)}>
           <Button type="submit" form={`${id}-form`} variant="primary" isLoading={pending} loadingText="Saving" leftIcon={<UserPlus className="size-4" aria-hidden />} className="justify-center">
             Create profile
           </Button>
-        </div>
+        </SheetActions>
       }
     >
       <form
@@ -71,7 +69,7 @@ export function AddStaffSheet({
         </div>
         <Field label="Phone number" htmlFor={`${id}-phone`} hint="Optional">
           <div className="relative">
-            <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+            <Phone className={INPUT_ICON} aria-hidden />
             <TextInput id={`${id}-phone`} type="tel" placeholder="+33 6 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" />
           </div>
         </Field>

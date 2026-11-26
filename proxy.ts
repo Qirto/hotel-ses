@@ -1,35 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/middleware";
+import { isPortalRole, PORTALS, ROLE_COOKIE } from "@/lib/portals";
 
-const ROLE_ROUTES: Record<string, string> = {
-  "/reception": "reception",
-  "/rh": "rh",
-  "/gm": "gm",
-};
+const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const matchedRoute = Object.keys(ROLE_ROUTES).find(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
-  );
-
-  if (matchedRoute) {
-    const role = request.cookies.get("hotel_role")?.value;
-    if (role !== ROLE_ROUTES[matchedRoute]) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  const role = request.cookies.get(ROLE_COOKIE)?.value;
+  // A portal only for its own role.
+  const portal = Object.values(PORTALS).find((p) => under(pathname, p.path));
+  if (portal && role !== portal.role) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  // Pages for any signed-in portal (not tied to one role).
+  if (under(pathname, "/settings") && !isPortalRole(role)) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return createClient(request);
 }
 
-export async function middleware(request: NextRequest) {
-  return proxy(request);
-}
-
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|offline|icons|splash|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|serwist/|manifest.webmanifest|offline|icons|splash|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)",
   ],
 };
 

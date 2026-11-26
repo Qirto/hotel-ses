@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import ServiceWorkerRegistrar from "@/app/components/ServiceWorkerRegistrar";
+import { PwaProvider } from "@/components/app/pwa";
 import InstallBannerAndroid from "@/app/components/InstallBannerAndroid";
 import InstallBannerIOS from "@/app/components/InstallBannerIOS";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
+import { THEME_INIT_SCRIPT } from "@/lib/theme-script";
 import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +82,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem("ses-theme");var t=s||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
       </head>
@@ -90,13 +91,10 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ThemeProvider>
-          <>
-            {children}
-          </>
+          <PwaProvider>{children}</PwaProvider>
         </ThemeProvider>
 
-        {/* PWA Components */}
-        <ServiceWorkerRegistrar />
+        {/* PWA install prompts */}
         <InstallBannerAndroid />
         <InstallBannerIOS />
       </body>

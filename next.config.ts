@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSerwist } from "@serwist/turbopack";
 
 const nextConfig: NextConfig = {
   // Dev server only: also serve dev assets (scripts, HMR) to http://127.0.0.1:3000,
@@ -32,11 +33,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/sw.js",
-        headers: [
-          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
-        ],
+        // the service worker script must always be revalidated, so updates are found
+        source: "/serwist/:path*",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
       },
       {
         source: "/manifest.webmanifest",
@@ -49,4 +48,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

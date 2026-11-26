@@ -3,24 +3,21 @@
 import { memo, useMemo } from "react";
 import { ClipboardList } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
-import { BarChart } from "@/components/ui/bar-chart";
 import { EmptyState } from "@/components/features/Panel";
 import { ticketsByDepartment } from "@/lib/tickets";
+import { RankedBreakdown, type Series } from "./Breakdown";
 
-const SERIES = [
-  { key: "open", label: "Open", color: "var(--danger)" },
+const SERIES: Series[] = [
+  { key: "open", label: "Open", color: "var(--warning)" },
   { key: "resolved", label: "Resolved", color: "var(--success)" },
 ];
 
-/** Stacked open / resolved bars for the six busiest departments. */
-export const TicketsByDepartmentChart = memo(function TicketsByDepartmentChart({
-  tickets,
-  height = 220,
-}: {
-  tickets: readonly Reclamation[];
-  height?: number;
-}) {
-  const data = useMemo(() => ticketsByDepartment(tickets), [tickets]);
-  if (data.length === 0) return <EmptyState icon={<ClipboardList />} title="No tickets yet" />;
-  return <BarChart data={data} series={SERIES} variant="stacked" height={height} ariaLabel="Tickets by department" />;
+/** Open / resolved tickets for every department, busiest first. */
+export const TicketsByDepartmentChart = memo(function TicketsByDepartmentChart({ tickets }: { tickets: readonly Reclamation[] }) {
+  const rows = useMemo(
+    () => ticketsByDepartment(tickets, Infinity).map((d) => ({ label: d.label, values: { open: d.open, resolved: d.resolved } })),
+    [tickets]
+  );
+  if (rows.length === 0) return <EmptyState icon={<ClipboardList />} title="No tickets yet" />;
+  return <RankedBreakdown rows={rows} series={SERIES} label="Tickets by department" unit={["ticket", "tickets"]} />;
 });

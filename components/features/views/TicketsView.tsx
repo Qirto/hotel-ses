@@ -1,17 +1,17 @@
 "use client";
 
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { Building2, ClipboardList, ListFilter } from "lucide-react";
+import { Building2, CalendarRange, ClipboardList, ListFilter } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
 import { Panel } from "@/components/features/Panel";
-import { FilterBar, PillGroup, SelectField } from "@/components/features/Filters";
+import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
 import { TicketTable } from "@/components/features/TicketTable";
-import { countOpenTickets, DATE_RANGES, inDateRange, TICKET_STATUS_OPTIONS, type DateRange, type TicketStatusFilter } from "@/lib/tickets";
+import { countOpenTickets, DATE_RANGES, inDateRange, matchesTicketQuery, TICKET_STATUS_OPTIONS, type DateRange, type TicketStatusFilter } from "@/lib/tickets";
 import { departmentLabel, plural } from "@/lib/format";
 
 /**
  * Tickets tab shared by every portal: department (with counts), status and
- * date-range filters over `TicketTable`. Text search is the table's own.
+ * date-range filters and the text search, all in one toolbar over `TicketTable`.
  */
 export const TicketsView = memo(function TicketsView({
   tickets,
@@ -30,6 +30,7 @@ export const TicketsView = memo(function TicketsView({
   const [department, setDepartment] = useState("ALL");
   const [status, setStatus] = useState<TicketStatusFilter>("ALL");
   const [range, setRange] = useState<DateRange>("ALL");
+  const [query, setQuery] = useState("");
 
   const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
 
@@ -49,19 +50,22 @@ export const TicketsView = memo(function TicketsView({
   const filtered = useMemo(() => {
     const now = Date.now();
     return tickets.filter(
-      (t) => (department === "ALL" || t.department === department) && (status === "ALL" || t.status === status) && inDateRange(t, range, now)
+      (t) =>
+        (department === "ALL" || t.department === department) &&
+        (status === "ALL" || t.status === status) &&
+        inDateRange(t, range, now) &&
+        matchesTicketQuery(t, query)
     );
-  }, [tickets, department, status, range]);
+  }, [tickets, department, status, range, query]);
 
   return (
     <Panel title="Tickets" description={`${plural(filtered.length, "ticket")} · ${openCount} open`} icon={<ClipboardList />}>
-      <div className="mb-4 flex flex-col gap-3">
-        <FilterBar>
-          <SelectField label="Department" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
-          <SelectField label="Status" icon={<ListFilter />} value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
-        </FilterBar>
-        <PillGroup<DateRange> label="Date range" value={range} onChange={setRange} options={DATE_RANGES} />
-      </div>
+      <FilterBar className="mb-4">
+        <SearchInput label="Search tickets by room, issue or assignee" placeholder="Search tickets" value={query} onChange={setQuery} />
+        <SelectField label="Department" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
+        <SelectField label="Status" icon={<ListFilter />} value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
+        <SelectField<DateRange> label="Date range" icon={<CalendarRange />} value={range} onChange={setRange} options={DATE_RANGES} />
+      </FilterBar>
       <TicketTable tickets={filtered} actions={actions} />
     </Panel>
   );

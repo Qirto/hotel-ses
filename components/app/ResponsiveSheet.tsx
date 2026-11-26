@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { MD_UP, useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface ResponsiveSheetProps {
   open: boolean;
@@ -56,5 +57,26 @@ export function ResponsiveSheet({
         {footer && <SheetFooter className="border-border px-4 md:px-6">{footer}</SheetFooter>}
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** Sheet footer: Cancel plus the primary action; stacked on phones (primary on top), a row from sm. */
+export function SheetActions({
+  onCancel,
+  cancelDisabled,
+  children,
+}: {
+  onCancel: () => void;
+  cancelDisabled?: boolean;
+  /** The primary button. */
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onClick={onCancel} disabled={cancelDisabled} className="justify-center">
+        Cancel
+      </Button>
+      {children}
+    </div>
   );
 }

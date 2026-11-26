@@ -49,4 +49,3 @@ export const SHIFT_LABELS: Record<ShiftType, { label: string; time: string; tone
   OFF: { label: "Off / rest", time: "Rest day", tone: "neutral" },
 };
 
-export const PRIORITY_ORDER = { EMERGENCY: 0, HIGH: 1, STANDARD: 2 } as const;

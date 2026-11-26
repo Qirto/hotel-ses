@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
+import { ResponsiveSheet, SheetActions } from "@/components/app/ResponsiveSheet";
 import { Button } from "@/components/ui/button";
 
 /** Confirmation step for a consequential action. Cannot be dismissed while the action runs. */
@@ -33,10 +33,7 @@ export function ConfirmSheet({
       onOpenChange={(o) => !o && !pending && onCancel()}
       title={title}
       footer={
-        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={onCancel} disabled={pending} className="justify-center">
-            Cancel
-          </Button>
+        <SheetActions onCancel={onCancel} cancelDisabled={pending}>
           <Button
             variant={tone === "danger" ? "destructive" : "primary"}
             onClick={onConfirm}
@@ -46,7 +43,7 @@ export function ConfirmSheet({
           >
             {confirmLabel}
           </Button>
-        </div>
+        </SheetActions>
       }
     >
       <p className="text-sm text-fg-secondary">{description}</p>

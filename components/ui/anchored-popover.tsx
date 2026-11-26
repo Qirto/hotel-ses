@@ -150,7 +150,7 @@ export function AnchoredPopover({
           onPointerDown={(e) => e.stopPropagation()}
           style={{ position: "fixed", visibility: "hidden", top: 0, left: 0 }}
           className={cn(
-            "z-[70] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-surface text-fg shadow-float",
+            "z-[70] overflow-y-auto overscroll-y-contain rounded-xl border border-border-strong bg-surface text-fg shadow-float",
             className
           )}
         >

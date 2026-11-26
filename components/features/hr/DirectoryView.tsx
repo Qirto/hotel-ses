@@ -11,7 +11,7 @@ import { FilterBar, SearchInput, SelectField } from "@/components/features/Filte
 import { ToneBadge } from "@/components/features/StatusBadges";
 import { departmentIcon } from "@/lib/icons";
 import { plural } from "@/lib/format";
-import { roleLabel, SHIFT_STATUS } from "./staff";
+import { roleLabel, SHIFT_STATUS, staffDepartment } from "./staff";
 
 const rowLabel = (s: Staff) => `${s.full_name}, ${roleLabel(s.role)}`;
 
@@ -81,13 +81,13 @@ export const DirectoryView = memo(function DirectoryView({
         key: "department",
         header: "Department",
         width: "minmax(0, 1.3fr)",
-        accessor: (s) => departmentName(s.department || "RECEPTION"),
+        accessor: (s) => departmentName(staffDepartment(s)),
         cell: (s) => {
-          const Icon = departmentIcon(s.department || "RECEPTION");
+          const Icon = departmentIcon(staffDepartment(s));
           return (
             <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-fg-secondary">
               <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
-              <span className="min-w-0 truncate">{departmentName(s.department || "RECEPTION")}</span>
+              <span className="min-w-0 truncate">{departmentName(staffDepartment(s))}</span>
             </span>
           );
         },

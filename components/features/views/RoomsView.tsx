@@ -7,7 +7,8 @@ import { Panel } from "@/components/features/Panel";
 import { FilterBar, PillGroup, SearchInput, SelectField } from "@/components/features/Filters";
 import { RoomGrid } from "@/components/features/RoomGrid";
 import { countRoomsNeedingAttention } from "@/lib/tickets";
-import { matchesRoomFilter, roomStatusCounts, ticketStatsByRoom, type RoomFilter } from "@/lib/rooms";
+import { floorOptions as floorOptionsFor, matchesRoomFilter, roomStatusCounts, ticketStatsByRoom, type RoomFilter } from "@/lib/rooms";
+import { plural } from "@/lib/format";
 
 /**
  * Rooms tab shared by every portal. The status filter can be controlled from
@@ -37,10 +38,7 @@ export const RoomsView = memo(function RoomsView({
   const counts = useMemo(() => roomStatusCounts(rooms), [rooms]);
   const attention = useMemo(() => countRoomsNeedingAttention(rooms, tickets), [rooms, tickets]);
 
-  const floorOptions = useMemo(() => {
-    const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
-    return [{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))];
-  }, [rooms]);
+  const floorOptions = useMemo(() => floorOptionsFor(rooms), [rooms]);
 
   const statusOptions = useMemo(
     () =>
@@ -63,8 +61,8 @@ export const RoomsView = memo(function RoomsView({
   }, [rooms, search, floor, status, stats]);
 
   return (
-    <Panel title="Rooms" description={`${filtered.length} of ${rooms.length} rooms`} icon={<BedDouble />}>
-      <div className="mb-5 flex flex-col gap-3">
+    <Panel title="Rooms" description={`${filtered.length} of ${plural(rooms.length, "room")}`} icon={<BedDouble />}>
+      <div className="mb-5 flex flex-col gap-2">
         <FilterBar>
           <SearchInput label="Search rooms" placeholder="Room number" value={search} onChange={setSearch} />
           <SelectField label="Floor" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />

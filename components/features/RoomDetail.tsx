@@ -9,9 +9,9 @@ import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { computeRoomAnalytics } from "@/utils/roomAnalytics";
 import { isOpenTicket } from "@/lib/tickets";
-import { blockLabel, CLEANING_LABEL, CLEANING_TONE, roomHeadline, ticketStatsByRoom } from "@/lib/rooms";
+import { CLEANING_LABEL, CLEANING_TONE, isTicketForRoom, roomHeadline, roomLocation, ticketStatsByRoom } from "@/lib/rooms";
 import { categoryIcon, departmentIcon } from "@/lib/icons";
-import { departmentLabel, formatIncidentDate, plural } from "@/lib/format";
+import { departmentLabel, formatIncidentDate, formatMinutes, plural } from "@/lib/format";
 import { EmptyState } from "./Panel";
 import { PriorityBadge, TicketStatusBadge, ToneBadge } from "./StatusBadges";
 
@@ -75,7 +75,7 @@ export function RoomDetail({
     () =>
       room
         ? tickets
-            .filter((t) => t.room_id === room.id || t.room?.room_number === room.room_number)
+            .filter((t) => isTicketForRoom(t, room))
             .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
         : [],
     [room, tickets]
@@ -105,7 +105,7 @@ export function RoomDetail({
       onOpenChange={(o) => !o && close()}
       size="lg"
       title={showLog ? `Log issue · Room ${room.room_number}` : `Room ${room.room_number}`}
-      description={showLog ? "Create a ticket now, or record a past incident." : `Floor ${room.floor} · ${blockLabel(room.block)}`}
+      description={showLog ? "Create a ticket now, or record a past incident." : roomLocation(room)}
       footer={
         logForm && !showLog ? (
           <Button
@@ -170,7 +170,7 @@ export function RoomDetail({
                   <Stat
                     icon={<Timer />}
                     label="Avg fix"
-                    value={analytics?.avgResolutionMinutes != null ? `${Math.round(analytics.avgResolutionMinutes)} min` : "–"}
+                    value={formatMinutes(analytics?.avgResolutionMinutes)}
                   />
                 </dl>
                 {room.is_occupied && (room.adult_count || room.child_count) ? (

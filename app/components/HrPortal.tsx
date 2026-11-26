@@ -1,37 +1,32 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { BedDouble, Building2, CalendarDays, ChartColumn, ClipboardList, UserCheck, Users } from "lucide-react";
+import { Building2, CalendarDays, ChartColumn, UserCheck, Users } from "lucide-react";
 import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 import AppShell from "@/components/app/AppShell";
-import type { NavTabItem } from "@/components/app/nav";
-import { NoticeProvider } from "@/components/app/notice";
+import { navItem, sharedNavItems, type NavTabItem } from "@/components/app/nav";
+import { withNotices } from "@/components/app/notice";
 import { TabPanel } from "@/components/app/TabPanel";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
-import { BarChart } from "@/components/ui/bar-chart";
+import { RankedBreakdown, type Series } from "@/components/features/charts/Breakdown";
 import { Panel, PageStack, EmptyState } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
-import { RoomDetail } from "@/components/features/RoomDetail";
-import type { NewTicketInput, PastIncidentInput } from "@/components/features/Forms";
+import { PortalRoomDetail } from "@/components/features/PortalRoomDetail";
 import { ConfirmSheet } from "@/components/features/ConfirmSheet";
 import { RoomsView } from "@/components/features/views/RoomsView";
 import { TicketsView } from "@/components/features/views/TicketsView";
 import { HousekeepingControl } from "@/components/features/room/HousekeepingControl";
-import { RoomLogForms } from "@/components/features/room/RoomLogForms";
 import { DirectoryView } from "@/components/features/hr/DirectoryView";
 import { initialRoster, ShiftsView, type Roster } from "@/components/features/hr/Roster";
 import { AddStaffSheet } from "@/components/features/hr/AddStaffSheet";
-import { DEFAULT_HOTEL_DEPARTMENTS, type NewStaffInput } from "@/components/features/hr/staff";
+import { DEFAULT_HOTEL_DEPARTMENTS, headcountByDepartment, type NewStaffInput } from "@/components/features/hr/staff";
 import { usePortalState, useSyncedState } from "@/hooks/usePortalState";
 import { useCleaningCycle } from "@/hooks/useCleaningCycle";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
-import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
-import { departmentLabel, plural } from "@/lib/format";
+import { useTicketMutations } from "@/hooks/useTicketMutations";
+import { departmentLabel, percent, plural } from "@/lib/format";
 import type { ShiftType } from "@/lib/constants";
-import { createHistoricalReclamation, createRapidReclamation, createStaffMember } from "@/app/actions";
-import { deleteStaffMember, markStaffAbsentAndRedistribute, toggleStaffShift } from "@/app/actions";
-
-export { DEFAULT_HOTEL_DEPARTMENTS, STANDARD_ROLES } from "@/components/features/hr/staff";
+import { createStaffMember, deleteStaffMember, markStaffAbsentAndRedistribute, toggleStaffShift } from "@/app/actions";
 
 interface Props {
   staffList: Staff[];
@@ -49,22 +44,14 @@ const NO_DEPARTMENTS: Department[] = [];
 const NO_TICKETS: Reclamation[] = [];
 const NO_ROOMS: HotelRoom[] = [];
 
-const HEADCOUNT_SERIES = [
+const HEADCOUNT_SERIES: Series[] = [
   { key: "onShift", label: "On shift", color: "var(--success)" },
-  { key: "offShift", label: "Off shift", color: "var(--info)" },
+  { key: "offShift", label: "Off shift", color: "var(--text-muted)" },
 ];
-
-export default function HrPortal(props: Props) {
-  return (
-    <NoticeProvider>
-      <HrPortalView {...props} />
-    </NoticeProvider>
-  );
-}
 
 function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamationsList = NO_TICKETS, rooms = NO_ROOMS, isLiveSupabase = false }: Props) {
   const p = usePortalState<Tab>({ initialTab: "EMPLOYEES", rooms, reclamations: reclamationsList });
-  const { activeTab, go, tickets, setTickets, liveRooms, isPending, run, runForResult, flash, selectedRoom, openRoom } = p;
+  const { activeTab, tickets, liveRooms, isPending, run, runForResult, flash, openRoom, openCount, attentionCount } = p;
   const [subTab, setSubTab] = useState<SubTab>("DIRECTORY");
   const [staff, setStaff] = useSyncedState<Staff[]>(staffList);
 
@@ -156,79 +143,26 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
   }, []);
 
   /* ───────────── rooms + tickets ───────────── */
-  const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
-  const attentionCount = useMemo(() => countRoomsNeedingAttention(liveRooms, tickets), [liveRooms, tickets]);
+  const ticketMutations = useTicketMutations(p, "HR");
   const cycleCleaning = useCleaningCycle(p);
 
-  const createTicket = useCallback(
-    async (input: NewTicketInput) => {
-      if (!selectedRoom) return false;
-      return runForResult(async () => {
-        const res = await createRapidReclamation({
-          roomId: selectedRoom.id,
-          department: input.department,
-          category: input.category,
-          priority: input.priority,
-          description: input.description || `HR ticket for room ${selectedRoom.room_number}`,
-        });
-        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
-        flash(res.success ? "success" : "danger", res.success ? `Ticket created for room ${selectedRoom.room_number}.` : "Could not create the ticket.");
-        return Boolean(res.success);
-      });
-    },
-    [selectedRoom, runForResult, setTickets, flash]
-  );
-
-  const recordPast = useCallback(
-    async (input: PastIncidentInput) => {
-      if (!selectedRoom) return false;
-      return runForResult(async () => {
-        const res = await createHistoricalReclamation({
-          roomId: selectedRoom.id,
-          department: input.department,
-          category: input.category,
-          description: input.description || `Historical log for room ${selectedRoom.room_number}`,
-          status: input.status,
-          createdAt: input.createdAt,
-          isConfidential: false,
-        });
-        if (res.success && res.data) setTickets((prev) => [res.data as Reclamation, ...prev]);
-        flash(res.success ? "success" : "danger", res.success ? `Past incident recorded for room ${selectedRoom.room_number}.` : res.error || "Could not record the incident.");
-        return Boolean(res.success);
-      });
-    },
-    [selectedRoom, runForResult, setTickets, flash]
-  );
-
   /* ───────────── analytics ───────────── */
-  const headcount = useMemo(() => {
-    const counts = new Map<string, { on: number; off: number }>();
-    for (const s of staff) {
-      const dept = s.department || "RECEPTION";
-      const c = counts.get(dept) ?? { on: 0, off: 0 };
-      if (s.shift_status === "ON_SHIFT") c.on++;
-      else c.off++;
-      counts.set(dept, c);
-    }
-    return [...counts.entries()]
-      .sort((a, b) => b[1].on + b[1].off - (a[1].on + a[1].off))
-      .map(([dept, c]) => ({ label: departmentLabel(dept), onShift: c.on, offShift: c.off }));
-  }, [staff]);
+  const headcount = useMemo(() => headcountByDepartment(staff, deptName), [staff, deptName]);
   const largest = headcount[0];
 
   /* ───────────── navigation ───────────── */
   const navItems = useMemo<NavTabItem[]>(
     () => [
-      { id: "EMPLOYEES", label: "Staff & Shifts", icon: <Users aria-hidden />, badge: staff.length, badgeTone: "neutral", isActive: activeTab === "EMPLOYEES", onClick: () => go("EMPLOYEES") },
-      { id: "ROOMS", label: "Rooms", icon: <BedDouble aria-hidden />, badge: attentionCount, badgeTone: "alert", isActive: activeTab === "ROOMS", onClick: () => go("ROOMS") },
-      { id: "RECLAMATIONS", label: "Tickets", icon: <ClipboardList aria-hidden />, badge: openCount, badgeTone: "alert", isActive: activeTab === "RECLAMATIONS", onClick: () => go("RECLAMATIONS") },
-      { id: "STATS", label: "Analytics", icon: <ChartColumn aria-hidden />, isActive: activeTab === "STATS", onClick: () => go("STATS") },
+      navItem(p, "EMPLOYEES", "Staff & Shifts", <Users aria-hidden />, { badge: staff.length, badgeTone: "neutral" }),
+      ...sharedNavItems(p),
+      navItem(p, "STATS", "Analytics", <ChartColumn aria-hidden />),
     ],
-    [activeTab, staff.length, attentionCount, openCount, go]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTab, staff.length, attentionCount, openCount, p.go]
   );
 
   return (
-    <AppShell role="rh" items={navItems} departmentName="Human Resources & Roster" departmentCode="HR" tone="success">
+    <AppShell role="rh" items={navItems}>
       <PageStack>
         <TabPanel active={activeTab === "EMPLOYEES"}>
           <AnimatedTabs
@@ -268,7 +202,7 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         </TabPanel>
 
         <TabPanel active={activeTab === "ROOMS"}>
-          <RoomsView rooms={liveRooms} tickets={tickets} onSelectRoom={openRoom} />
+          <RoomsView rooms={liveRooms} tickets={tickets} onSelectRoom={openRoom} filter={p.roomFilter} onFilterChange={p.setRoomFilter} />
         </TabPanel>
 
         <TabPanel active={activeTab === "RECLAMATIONS"}>
@@ -278,13 +212,13 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         <TabPanel active={activeTab === "STATS"}>
           <KpiGrid>
             <Kpi label="Total staff" value={staff.length} icon={<Users />} />
-            <Kpi label="On shift" value={onShiftCount} hint={staff.length ? `${Math.round((onShiftCount / staff.length) * 100)}% of staff` : "–"} tone="success" icon={<UserCheck />} />
-            <Kpi label="Staffed departments" value={headcount.length} hint={`of ${activeDepartments.length} departments`} icon={<Building2 />} />
-            <Kpi label="Largest department" value={largest ? largest.label : "–"} hint={largest ? plural(largest.onShift + largest.offShift, "employee") : "No staff yet"} icon={<ChartColumn />} />
+            <Kpi label="On shift" value={onShiftCount} hint={`${percent(onShiftCount, staff.length)} of staff`} tone="success" icon={<UserCheck />} />
+            <Kpi label="Staffed departments" value={headcount.length} hint={`of ${plural(activeDepartments.length, "department")}`} icon={<Building2 />} />
+            <Kpi label="Largest department" value={largest ? largest.label : "–"} hint={largest ? plural(largest.values.onShift + largest.values.offShift, "employee") : "No staff yet"} icon={<ChartColumn />} />
           </KpiGrid>
           <Panel title="Headcount per department" description="Employees on and off shift" icon={<ChartColumn />}>
             {headcount.length > 0 ? (
-              <BarChart data={headcount} series={HEADCOUNT_SERIES} variant="stacked" height={260} ariaLabel="Staff headcount per department" />
+              <RankedBreakdown rows={headcount} series={HEADCOUNT_SERIES} label="Staff headcount per department" unit={["employee", "employees"]} />
             ) : (
               <EmptyState icon={<Users />} title="No staff yet" description="Headcount appears once employees are added." />
             )}
@@ -292,21 +226,10 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         </TabPanel>
       </PageStack>
 
-      <RoomDetail
-        room={selectedRoom}
-        tickets={tickets}
-        onClose={p.closeRoom}
-        controls={selectedRoom && <HousekeepingControl room={selectedRoom} pending={isPending} onCycle={cycleCleaning} />}
-        logForm={
-          <RoomLogForms
-            mode={p.logMode}
-            onModeChange={p.setLogMode}
-            onCreate={createTicket}
-            onRecordPast={recordPast}
-            pending={isPending}
-            submitLabel="Create ticket"
-          />
-        }
+      <PortalRoomDetail
+        p={p}
+        tickets={ticketMutations}
+        controls={p.selectedRoom && <HousekeepingControl room={p.selectedRoom} pending={isPending} onCycle={cycleCleaning} />}
       />
 
       <AddStaffSheet open={showCreate} onOpenChange={setShowCreate} departments={deptOptions} pending={isPending} onSubmit={createStaff} />
@@ -329,3 +252,5 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
     </AppShell>
   );
 }
+
+export default withNotices(HrPortalView);

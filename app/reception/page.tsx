@@ -1,26 +1,12 @@
-import { loadHotelData } from "@/utils/loadHotelData";
 import ReceptionPortal from "@/app/components/ReceptionPortal";
-import AccessDenied from "@/app/components/AccessDenied";
+import { denyUnlessPortal } from "@/lib/server/portal-access";
+import { loadHotelData } from "@/utils/loadHotelData";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReceptionPage() {
-  const { rooms, isLiveSupabase, departmentsList, staffList, residentsList, reclamationsList, userRole } = await loadHotelData();
-
-  if (userRole !== "reception") {
-    return <AccessDenied requiredRole="reception" currentRole={userRole} />;
-  }
-
-  return (
-    <>
-      <ReceptionPortal
-        rooms={rooms}
-        residents={residentsList}
-        departmentsList={departmentsList}
-        reclamationsList={reclamationsList}
-        staffList={staffList}
-        isLiveSupabase={isLiveSupabase}
-      />
-    </>
-  );
+  const denied = await denyUnlessPortal("reception");
+  if (denied) return denied;
+  const { rooms, departmentsList, reclamationsList, isLiveSupabase } = await loadHotelData({ departments: true });
+  return <ReceptionPortal rooms={rooms} departmentsList={departmentsList} reclamationsList={reclamationsList} isLiveSupabase={isLiveSupabase} />;
 }

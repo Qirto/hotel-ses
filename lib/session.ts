@@ -1,7 +1,8 @@
 "use client";
 
 import { logoutRole } from "@/app/actions";
-import { forgetPersistedRole } from "@/lib/pwa";
+import { forgetRememberedRole } from "@/lib/remembered-role";
+import { ROLE_COOKIE } from "@/lib/portals";
 
 /**
  * Ends the portal session and goes to /login. If the server action cannot be
@@ -12,12 +13,12 @@ import { forgetPersistedRole } from "@/lib/pwa";
  * the session cookie is hardened, the server action is the only path.
  */
 export async function signOutToLogin(): Promise<void> {
-  forgetPersistedRole();
+  forgetRememberedRole();
   try {
     await logoutRole();
   } catch (err) {
     console.warn("Sign-out request failed; clearing the session cookie locally.", err);
-    document.cookie = "hotel_role=; Max-Age=0; path=/; SameSite=Lax";
+    document.cookie = `${ROLE_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
   }
   window.location.assign("/login");
 }

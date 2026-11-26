@@ -1,5 +1,6 @@
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { isOpenTicket } from "@/lib/tickets";
+import { plural } from "@/lib/format";
 
 export type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "special";
 
@@ -42,7 +43,7 @@ export const CLEANING_TONE: Record<HotelRoom["cleaning_status"], Tone> = {
 /** The one status a room tile shows first: what needs action wins. */
 export function roomHeadline(room: HotelRoom, stats?: RoomTicketStats): { label: string; tone: Tone } {
   if (stats?.urgent) return { label: "Urgent issue", tone: "danger" };
-  if (stats && stats.open > 0) return { label: stats.open === 1 ? "1 open issue" : `${stats.open} open issues`, tone: "warning" };
+  if (stats && stats.open > 0) return { label: plural(stats.open, "open issue"), tone: "warning" };
   if (room.cleaning_status !== "CLEAN") return { label: CLEANING_LABEL[room.cleaning_status], tone: CLEANING_TONE[room.cleaning_status] };
   return { label: room.is_occupied ? "Occupied" : "Ready", tone: room.is_occupied ? "info" : "success" };
 }
@@ -123,3 +124,16 @@ export const STAY_MESSAGE: Record<StayState, string> = {
   OCCUPIED: "checked in",
   VACANT_DIRTY: "checked out and marked dirty",
 };
+
+/** Floor filter options: "All floors" plus every floor present, ascending. */
+export function floorOptions(rooms: readonly Pick<HotelRoom, "floor">[]): { value: "ALL" | number; label: string }[] {
+  const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
+  return [{ value: "ALL", label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))];
+}
+
+/** "Floor 1 · Block A". */
+export const roomLocation = (room: Pick<HotelRoom, "floor" | "block">) => `Floor ${room.floor} · ${blockLabel(room.block)}`;
+
+/** Whether a ticket belongs to a room (by id, or by room number for joined rows without an id). */
+export const isTicketForRoom = (t: Pick<Reclamation, "room_id"> & { room?: { room_number?: string | null } | null }, room: Pick<HotelRoom, "id" | "room_number">) =>
+  t.room_id === room.id || t.room?.room_number === room.room_number;

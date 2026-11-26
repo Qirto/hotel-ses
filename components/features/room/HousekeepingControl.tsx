@@ -1,5 +1,6 @@
 "use client";
 
+import { ControlSection } from "./ControlSection";
 import { memo } from "react";
 import type { HotelRoom } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,7 @@ export const HousekeepingControl = memo(function HousekeepingControl({
 }) {
   const next = CLEANING_LABEL[NEXT_CLEANING[room.cleaning_status]].toLowerCase();
   return (
-    <section className="flex flex-col gap-2 rounded-lg border border-border p-4">
-      <p className="text-sm font-medium">Housekeeping</p>
+    <ControlSection title="Housekeeping">
       <p className="text-sm text-fg-muted">
         Currently {CLEANING_LABEL[room.cleaning_status].toLowerCase()}. Next step: {next}.
       </p>
@@ -32,6 +32,6 @@ export const HousekeepingControl = memo(function HousekeepingControl({
       >
         Mark as {next}
       </Button>
-    </section>
+    </ControlSection>
   );
 });

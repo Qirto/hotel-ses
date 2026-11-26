@@ -1,9 +1,12 @@
-import { Reclamation, HotelRoom } from "./roomsData";
+import type { Reclamation, HotelRoom } from "./roomsData";
+import { resolutionMs } from "@/lib/tickets";
+import { formatWallDate, hotelParts, pad2 } from "@/lib/datetime";
+import { isTicketForRoom } from "@/lib/rooms";
 
 export interface RoomRushHour {
   hour: number; // 0-23
   hourRange: string; // e.g. "14:00 – 15:00"
-  date: string; // e.g. "2026-09-25"
+  date: string; // e.g. "25/09/2026" (hotel calendar day)
   count: number;
   totalForHourOfDay: number; // Total reclamations across all days at this hour
 }
@@ -32,9 +35,7 @@ export interface RoomAnalyticsSummary {
  * Formats a 24-hour integer into "HH:00 – HH:00"
  */
 export function formatHourRange(hour: number): string {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  const nextHour = (hour + 1) % 24;
-  return `${pad(hour)}:00 – ${pad(nextHour)}:00`;
+  return `${pad2(hour)}:00 – ${pad2((hour + 1) % 24)}:00`;
 }
 
 /**
@@ -44,9 +45,7 @@ export function computeRoomAnalytics(
   room: HotelRoom,
   allReclamations: Reclamation[]
 ): RoomAnalyticsSummary {
-  const roomReclamations = allReclamations.filter(
-    (r) => r.room_id === room.id || (r.room && r.room.room_number === room.room_number)
-  );
+  const roomReclamations = allReclamations.filter((r) => isTicketForRoom(r, room));
 
   const totalTickets = roomReclamations.length;
   let resolvedTickets = 0;
@@ -68,13 +67,10 @@ export function computeRoomAnalytics(
     const isResolved = rec.status === "RESOLVED";
     if (isResolved) {
       resolvedTickets++;
-      if (rec.created_at && rec.resolved_at) {
-        const start = new Date(rec.created_at).getTime();
-        const end = new Date(rec.resolved_at).getTime();
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
-          totalResolutionTimeMs += end - start;
-          resolvedWithDurationCount++;
-        }
+      const ms = resolutionMs(rec);
+      if (ms != null) {
+        totalResolutionTimeMs += ms;
+        resolvedWithDurationCount++;
       }
     } else {
       openTickets++;
@@ -90,11 +86,10 @@ export function computeRoomAnalytics(
     if (rec.created_at) {
       const d = new Date(rec.created_at);
       if (!isNaN(d.getTime())) {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        const dateStr = `${year}-${month}-${day}`;
-        const hour = d.getHours();
+        // bucket by the hotel's calendar day and hour, not the device's
+        const wall = hotelParts(d);
+        const dateStr = formatWallDate(wall); // dd/MM/yyyy
+        const hour = wall.hour;
 
         hourOfDayCounts[hour]++;
 

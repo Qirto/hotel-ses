@@ -1,24 +1,12 @@
-import { loadHotelData } from "@/utils/loadHotelData";
 import ManagerPortal from "@/app/components/ManagerPortal";
-import AccessDenied from "@/app/components/AccessDenied";
+import { denyUnlessPortal } from "@/lib/server/portal-access";
+import { loadHotelData } from "@/utils/loadHotelData";
 
 export const dynamic = "force-dynamic";
 
 export default async function GmPage() {
-  const { rooms, isLiveSupabase, staffList, reclamationsList, userRole } = await loadHotelData();
-
-  if (userRole !== "gm") {
-    return <AccessDenied requiredRole="gm" currentRole={userRole} />;
-  }
-
-  return (
-    <>
-      <ManagerPortal
-        rooms={rooms}
-        reclamations={reclamationsList}
-        staff={staffList}
-        isLiveSupabase={isLiveSupabase}
-      />
-    </>
-  );
+  const denied = await denyUnlessPortal("gm");
+  if (denied) return denied;
+  const { rooms, reclamationsList, isLiveSupabase } = await loadHotelData();
+  return <ManagerPortal rooms={rooms} reclamations={reclamationsList} isLiveSupabase={isLiveSupabase} />;
 }

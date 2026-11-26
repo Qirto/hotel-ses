@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
-import { ChevronRight, PanelLeft } from "lucide-react";
+import { ChevronRight, PanelLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 function useControllableState<T>(
@@ -349,14 +349,29 @@ function Panel({
   return (
     <SidebarContext.Provider value={{ collapsed }}>
       <div className="flex h-full flex-col">
-        {header && (
-          <div
-            className={cn(
-              "flex h-14 shrink-0 items-center overflow-hidden px-4 transition-all",
-              collapsed && "w-14 justify-center px-0 [&>div>*:not(:first-child)]:hidden [&>div]:gap-0 [&>*:not(:first-child)]:hidden"
+        {/* Hotel SES: brand + collapse toggle in the header. Collapsed, the brand is
+            hidden and the (expand) toggle takes its place. */}
+        {(header || onToggle) && (
+          <div className={cn("flex h-14 shrink-0 items-center gap-2 overflow-hidden", collapsed ? "justify-center px-2" : "pl-4 pr-2")}>
+            {header && !collapsed && <div className="min-w-0 flex-1">{header}</div>}
+            {onToggle && (
+              <button
+                type="button"
+                onClick={onToggle}
+                onMouseEnter={(e) => {
+                  if (!collapsed) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setTip({ label: "Expand sidebar", x: r.right + 10, y: r.top + r.height / 2 });
+                }}
+                onMouseLeave={() => setTip(null)}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-expanded={!collapsed}
+                title={collapsed ? undefined : "Collapse sidebar"}
+                className="focus-ring grid size-9 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
+              >
+                {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}
+              </button>
             )}
-          >
-            {header}
           </div>
         )}
 
@@ -393,42 +408,7 @@ function Panel({
           ))}
         </nav>
 
-        {(footer || onToggle) && (
-          <div className="shrink-0 space-y-1 border-t border-neutral-200 p-2 dark:border-neutral-800">
-            {footer}
-            {onToggle && (
-              <button
-                type="button"
-                onClick={onToggle}
-                onMouseEnter={(e) => {
-                  if (!collapsed) return;
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setTip({ label: "Expand", x: r.right + 10, y: r.top + r.height / 2 });
-                }}
-                onMouseLeave={() => setTip(null)}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                className="flex h-9 w-full items-center gap-3 rounded-lg px-2.5 text-sm text-neutral-500 outline-none transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white dark:focus-visible:ring-neutral-600/60"
-              >
-                <span className="grid size-5 shrink-0 place-items-center">
-                  <PanelLeft className="size-[18px]" />
-                </span>
-                <motion.span
-                  initial={false}
-                  animate={{ opacity: collapsed ? 0 : 1 }}
-                  transition={{ duration: 0.15 }}
-                  className="flex-1 whitespace-nowrap text-left"
-                >
-                  Collapse
-                </motion.span>
-                {!collapsed && (
-                  <kbd className="rounded border border-neutral-200 px-1 font-sans text-[10px] text-neutral-400 dark:border-neutral-800">
-                    ⌘B
-                  </kbd>
-                )}
-              </button>
-            )}
-          </div>
-        )}
+        {footer && <div className="shrink-0 space-y-1 border-t border-border p-2">{footer}</div>}
       </div>
 
       <AnimatePresence>

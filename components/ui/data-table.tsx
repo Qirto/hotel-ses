@@ -12,13 +12,15 @@ import React, {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { SpringSelect } from "./spring-select";
+import { useElementWidth } from "@/hooks/useElementWidth";
+import { formatDate } from "@/lib/datetime";
 
 /* -------------------------------------------------------------------------- */
 /*  DataTable — the other half of every dashboard.                             */
 /*                                                                             */
 /*  • Sortable columns (click: asc → desc → off) · sticky header               */
 /*  • Row selection with select-all, shift-click ranges and a bulk-action bar  */
-/*  • <Sparkline /> and <DeltaPill /> ready to drop into any cell              */
+
 /*  • Sorting makes rows glide to their new place instead of jumping           */
 /*  • Under 640px the table becomes stacked cards (with a sort menu)           */
 /*  • Search, "show more" paging, empty state, keyboard + screen-reader support */
@@ -104,20 +106,6 @@ const muted = "text-neutral-500 dark:text-neutral-400"; // Hotel SES: >= 4.5:1 o
 const focus =
   "outline-none focus-visible:ring-2 focus-visible:ring-neutral-400/70 dark:focus-visible:ring-white/40";
 
-function useElementWidth<T extends HTMLElement>(initial: number) {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState(initial);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => setWidth(Math.round(el.clientWidth) || initial);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [initial]);
-  return [ref, width] as const;
-}
 
 /** Nulls last, numbers numerically, dates by time, strings naturally ("item 2" < "item 10") */
 function compareValues(a: Primitive, b: Primitive): number {
@@ -139,149 +127,6 @@ function sortRows<T>(rows: T[], get: (row: T) => Primitive, dir: "asc" | "desc")
       return compareValues(p.v, q.v) * sign || p.i - q.i; // stable
     })
     .map((x) => x.row);
-}
-
-function monotonePath(p: [number, number][]): string {
-  const n = p.length;
-  if (n < 2) return "";
-  const dx: number[] = [], m: number[] = [];
-  for (let i = 0; i < n - 1; i++) {
-    dx[i] = p[i + 1][0] - p[i][0];
-    m[i] = (p[i + 1][1] - p[i][1]) / (dx[i] || 1e-9);
-  }
-  const t: number[] = new Array(n);
-  t[0] = m[0];
-  t[n - 1] = m[n - 2];
-  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
-  for (let i = 0; i < n - 1; i++) {
-    if (m[i] === 0) {
-      t[i] = 0;
-      t[i + 1] = 0;
-    } else {
-      const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
-      if (s > 9) {
-        const k = 3 / Math.sqrt(s);
-        t[i] = k * a * m[i];
-        t[i + 1] = k * b * m[i];
-      }
-    }
-  }
-  let d = `M${p[0][0].toFixed(2)} ${p[0][1].toFixed(2)}`;
-  for (let i = 0; i < n - 1; i++) {
-    const h = dx[i] / 3;
-    d += `C${(p[i][0] + h).toFixed(2)} ${(p[i][1] + t[i] * h).toFixed(2)} ${(p[i + 1][0] - h).toFixed(2)} ${(p[i + 1][1] - t[i + 1] * h).toFixed(2)} ${p[i + 1][0].toFixed(2)} ${p[i + 1][1].toFixed(2)}`;
-  }
-  return d;
-}
-
-/* ========================================================================== */
-/*  Cell helpers: Sparkline + DeltaPill                                       */
-/* ========================================================================== */
-
-export interface SparklineProps {
-  data: number[];
-  width?: number;
-  height?: number;
-  /** Stretch to the width of its container (for mobile cards) */
-  fill?: boolean;
-  /** auto: green if it ended higher than it started, red if lower */
-  trend?: "auto" | "up" | "down" | "neutral";
-  color?: string;
-  animated?: boolean;
-  className?: string;
-}
-
-export function Sparkline({
-  data,
-  width = 96,
-  height = 28,
-  fill = false,
-  trend = "auto",
-  color,
-  animated = true,
-  className,
-}: SparklineProps) {
-  const reduce = useReducedMotion();
-  const anim = animated && !reduce;
-  const uid = useId().replace(/:/g, "");
-  const n = data.length;
-  if (n < 2) return <span className={muted}>—</span>;
-
-  const W = fill ? 200 : width;
-  const pad = 3;
-  const min = Math.min(...data);
-  const span = Math.max(...data) - min || 1;
-  const pts = data.map((v, i) => [pad + (i / (n - 1)) * (W - pad * 2), pad + (1 - (v - min) / span) * (height - pad * 2)] as [number, number]);
-  const line = monotonePath(pts);
-  const area = `${line}L${pts[n - 1][0].toFixed(2)} ${height}L${pts[0][0].toFixed(2)} ${height}Z`;
-  const dir = trend === "auto" ? (data[n - 1] >= data[0] ? "up" : "down") : trend;
-  const c = color ?? (dir === "up" ? "#10b981" : dir === "down" ? "#f43f5e" : "#a3a3a3");
-
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${height}`}
-      width={fill ? "100%" : width}
-      height={height}
-      preserveAspectRatio={fill ? "none" : undefined}
-      role="img"
-      aria-label={`Trend from ${data[0]} to ${data[n - 1]}`}
-      className={cx("block overflow-visible", className)}
-    >
-      <defs>
-        <linearGradient id={`${uid}-g`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={c} stopOpacity="0.22" />
-          <stop offset="1" stopColor={c} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${uid}-g)`} />
-      <motion.path
-        d={line}
-        fill="none"
-        stroke={c}
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-        initial={anim ? { pathLength: 0 } : false}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 0.9, ease: EASE_OUT }}
-      />
-      {!fill && <circle cx={pts[n - 1][0]} cy={pts[n - 1][1]} r={2.2} fill={c} />}
-    </svg>
-  );
-}
-
-export function DeltaPill({
-  value,
-  goodWhen = "up",
-  className,
-}: {
-  /** Percent change, e.g. 12.4 or -3.1 */
-  value: number;
-  /** Which direction is good news. "down" for churn, latency, cost */
-  goodWhen?: "up" | "down";
-  className?: string;
-}) {
-  const r = Math.round(value * 10) / 10;
-  const good = r === 0 ? null : goodWhen === "up" ? r > 0 : r < 0;
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-medium tabular-nums",
-        good === null && "bg-black/[0.05] text-neutral-500 dark:bg-white/[0.06]",
-        good === true && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-        good === false && "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-        className,
-      )}
-    >
-      {r !== 0 && (
-        <svg viewBox="0 0 10 10" className={cx("h-2 w-2", r < 0 && "rotate-180")} fill="currentColor" aria-hidden>
-          <path d="M5 1.5 9 7.5H1Z" />
-        </svg>
-      )}
-      {Math.abs(r).toFixed(1)}%
-    </span>
-  );
 }
 
 /* ========================================================================== */
@@ -379,6 +224,8 @@ export function DataTable<T extends { id: Id }>({
     return total;
   }, [columns, selectable]);
   const cards = width < Math.max(cardBreakpoint, minTableWidth);
+  /** Table mode with a height cap: the body is its own vertical scroller. */
+  const scrollsY = !cards && maxHeight != null;
 
   const [query, setQuery] = useState("");
   const [innerSort, setInnerSort] = useState<SortState>(defaultSort);
@@ -535,7 +382,7 @@ export function DataTable<T extends { id: Id }>({
   const renderCell = (row: T, col: DataTableColumn<T>): ReactNode => {
     if (col.cell) return col.cell(row);
     const v = read(row, col);
-    return v == null ? <span className="text-neutral-400">—</span> : String(v instanceof Date ? v.toLocaleDateString() : v);
+    return v == null ? <span className="text-neutral-400">—</span> : String(v instanceof Date ? formatDate(v) : v); // Hotel SES: dd/MM/yyyy, hotel time
   };
 
   /* ------------------------------ render: header ---------------------------- */
@@ -747,25 +594,32 @@ export function DataTable<T extends { id: Id }>({
 
   return (
     <div ref={rootRef} className={cx("w-full text-neutral-700 antialiased dark:text-neutral-300", className)}>
-      {/* toolbar / selection bar (same height so nothing jumps) */}
-      <div className="relative mb-3 h-11">
-        <AnimatePresence mode="wait" initial={false}>
-          {selectedIds.length > 0 && selectable ? selectionBar : normalBar}
-        </AnimatePresence>
-      </div>
+      {/* toolbar / selection bar (same height so nothing jumps). Hotel SES: omitted when
+          there is nothing to put in it (no search, tools or selection), e.g. when the
+          page already filters the rows in its own toolbar. */}
+      {(searchable || toolbar || selectable) && (
+        <div className="relative mb-3 h-11">
+          <AnimatePresence mode="wait" initial={false}>
+            {selectedIds.length > 0 && selectable ? selectionBar : normalBar}
+          </AnimatePresence>
+        </div>
+      )}
 
       <div
         className={cx(!cards && "overflow-hidden rounded-2xl bg-white dark:bg-surface", !cards && ring)}
         style={!cards ? { boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.2)" } : undefined}
       >
         {cards && header}
+        {/* Hotel SES: only a height-capped table is its own vertical scroller (and may
+            contain its scroll). Uncapped, it must let vertical wheel/touch scrolling
+            pass to the page: containing it there froze the page under the cursor. */}
         <motion.div
           layoutScroll
           onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
-          className={cx(!cards && "overflow-auto overscroll-contain")}
-          style={!cards && maxHeight != null ? { maxHeight } : undefined}
-          tabIndex={!cards ? 0 : undefined}
-          aria-label={!cards ? `${ariaLabel} (scrollable)` : undefined}
+          className={cx(!cards && (scrollsY ? "overflow-auto overscroll-contain" : "overflow-x-auto overscroll-x-contain"))}
+          style={scrollsY ? { maxHeight } : undefined}
+          tabIndex={scrollsY ? 0 : undefined}
+          aria-label={scrollsY ? `${ariaLabel} (scrollable)` : undefined}
         >
           <div
             role="table"
@@ -809,113 +663,3 @@ export function DataTable<T extends { id: Id }>({
 
 export default DataTable;
 
-/* ========================================================================== */
-/*  Demo                                                                      */
-/* ========================================================================== */
-
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  revenue: number;
-  orders: number;
-  conversion: number;
-  trend: number[];
-  change: number;
-}
-
-function rng(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const NAMES: [string, string][] = [
-  ["Aero Desk Lamp", "Lighting"], ["Linen Throw", "Textiles"], ["Oak Side Table", "Furniture"], ["Ceramic Mug Set", "Kitchen"],
-  ["Studio Headphones", "Audio"], ["Merino Beanie", "Apparel"], ["Brass Planter", "Home"], ["Walnut Tray", "Kitchen"],
-  ["Canvas Tote", "Accessories"], ["Pocket Notebook", "Stationery"], ["Noise Speaker", "Audio"], ["Wool Rug", "Textiles"],
-  ["Pour-over Kit", "Kitchen"], ["Floor Lamp", "Lighting"], ["Leather Wallet", "Accessories"], ["Desk Mat", "Stationery"],
-  ["Glass Carafe", "Kitchen"], ["Linen Shirt", "Apparel"], ["Wall Clock", "Home"], ["Bamboo Shelf", "Furniture"],
-  ["Soy Candle", "Home"], ["Travel Mug", "Kitchen"], ["Camp Blanket", "Textiles"], ["Cork Coasters", "Home"],
-];
-
-const PRODUCTS: Product[] = (() => {
-  const r = rng(42);
-  return NAMES.map(([name, category], i) => {
-    const base = 800 + r() * 9200;
-    const trend = Array.from({ length: 14 }, (_, k) => Math.round(base / 14 + (r() - 0.45) * (base / 22) + k * (r() - 0.35) * 18));
-    const revenue = Math.round(trend.reduce((a, b) => a + b, 0) * 7.2);
-    return {
-      id: i + 1,
-      name,
-      category,
-      revenue,
-      orders: Math.round(revenue / (28 + r() * 70)),
-      conversion: Math.round((1.2 + r() * 5.6) * 10) / 10,
-      trend,
-      change: Math.round((trend[13] / Math.max(1, trend[0]) - 1) * 1000) / 10,
-    };
-  });
-})();
-
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
-const DEMO_COLUMNS: DataTableColumn<Product>[] = [
-  {
-    key: "name",
-    header: "Product",
-    primary: true,
-    cell: (r) => (
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate">{r.name}</span>
-        <span className="mt-0.5 truncate text-[12px] font-normal text-neutral-500">{r.category}</span>
-      </span>
-    ),
-  },
-  { key: "revenue", header: "Revenue", align: "right", cell: (r) => <span className="tabular-nums">{usd.format(r.revenue)}</span> },
-  { key: "orders", header: "Orders", align: "right", cell: (r) => <span className="tabular-nums">{r.orders.toLocaleString("en-US")}</span> },
-  { key: "conversion", header: "Conv.", align: "right", cell: (r) => <span className="tabular-nums">{r.conversion.toFixed(1)}%</span>, hideOnMobile: true },
-  {
-    key: "trend",
-    header: "14-day trend",
-    sortable: false,
-    width: "132px",
-    fullWidthOnMobile: true,
-    cell: (r) => <Sparkline data={r.trend} width={104} />,
-    // on mobile cards the sparkline stretches to the full card width
-  },
-  { key: "change", header: "Change", align: "right", width: "96px", cell: (r) => <DeltaPill value={r.change} /> },
-];
-
-export function DataTableDemo() {
-  return (
-    <div className="min-h-dvh bg-neutral-100 px-3 py-6 antialiased dark:bg-black sm:px-8 sm:py-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-5">
-          <h1 className="text-[20px] font-semibold tracking-[-0.02em] text-neutral-900 dark:text-neutral-50">Top products</h1>
-          <p className="mt-1 text-[13.5px] text-neutral-500">Sort any column, select rows, or search. On a phone it turns into cards.</p>
-        </div>
-        <DataTable
-          rows={PRODUCTS}
-          columns={DEMO_COLUMNS}
-          getRowLabel={(r) => r.name}
-          defaultSort={{ key: "revenue", dir: "desc" }}
-          pageSize={12}
-          ariaLabel="Top products"
-          bulkActions={(ids) => (
-            <button
-              type="button"
-              onClick={() => alert(`Exporting ${ids.length} products`)}
-              className={`h-9 rounded-xl bg-neutral-900 px-3.5 text-[12.5px] font-medium text-white transition-transform active:scale-[0.97] dark:bg-white dark:text-neutral-900 ${focus}`}
-            >
-              Export
-            </button>
-          )}
-        />
-      </div>
-    </div>
-  );
-}

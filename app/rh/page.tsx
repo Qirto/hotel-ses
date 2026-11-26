@@ -1,25 +1,12 @@
-import { loadHotelData } from "@/utils/loadHotelData";
 import HrPortal from "@/app/components/HrPortal";
-import AccessDenied from "@/app/components/AccessDenied";
+import { denyUnlessPortal } from "@/lib/server/portal-access";
+import { loadHotelData } from "@/utils/loadHotelData";
 
 export const dynamic = "force-dynamic";
 
 export default async function RhPage() {
-  const { rooms, isLiveSupabase, departmentsList, staffList, reclamationsList, userRole } = await loadHotelData();
-
-  if (userRole !== "rh") {
-    return <AccessDenied requiredRole="rh" currentRole={userRole} />;
-  }
-
-  return (
-    <>
-      <HrPortal
-        staffList={staffList}
-        departmentsList={departmentsList}
-        reclamationsList={reclamationsList}
-        rooms={rooms}
-        isLiveSupabase={isLiveSupabase}
-      />
-    </>
-  );
+  const denied = await denyUnlessPortal("rh");
+  if (denied) return denied;
+  const { rooms, departmentsList, staffList, reclamationsList, isLiveSupabase } = await loadHotelData({ departments: true, staff: true });
+  return <HrPortal staffList={staffList} departmentsList={departmentsList} reclamationsList={reclamationsList} rooms={rooms} isLiveSupabase={isLiveSupabase} />;
 }

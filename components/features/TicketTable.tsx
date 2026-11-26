@@ -6,11 +6,10 @@ import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Reclamation } from "@/utils/roomsData";
 import { categoryIcon, departmentIcon } from "@/lib/icons";
 import { departmentLabel, formatIncidentDate } from "@/lib/format";
-import { PRIORITY_ORDER } from "@/lib/constants";
+import { TICKET_PRIORITY, TICKET_STATUS } from "@/lib/tickets";
 import { EmptyState } from "./Panel";
 import { PriorityBadge, TicketStatusBadge } from "./StatusBadges";
 
-const STATUS_ORDER = { OPEN: 0, ACKNOWLEDGED: 1, IN_PROGRESS: 2, RESOLVED: 3 } as const;
 
 /**
  * Ticket list shared by every portal: sortable table on wide screens,
@@ -83,14 +82,14 @@ export const TicketTable = memo(function TicketTable({
         key: "priority",
         header: "Priority",
         width: "minmax(7rem, 0.7fr)", // "Emergency" badge (86px) + cell padding
-        accessor: (t) => PRIORITY_ORDER[t.priority] ?? 9,
+        accessor: (t) => TICKET_PRIORITY[t.priority]?.order ?? 9,
         cell: (t) => <PriorityBadge priority={t.priority} />,
       },
       {
         key: "status",
         header: "Status",
         width: "minmax(8.5rem, 0.8fr)", // "Acknowledged" badge with dot (108px) + padding
-        accessor: (t) => STATUS_ORDER[t.status] ?? 9,
+        accessor: (t) => TICKET_STATUS[t.status]?.order ?? 9,
         cell: (t) => <TicketStatusBadge status={t.status} />,
       },
       {
@@ -137,11 +136,9 @@ export const TicketTable = memo(function TicketTable({
       rows={tickets as Reclamation[]}
       columns={columns}
       getRowLabel={(t) => `Ticket ${t.id}, room ${t.room?.room_number ?? t.room_id}, ${t.category}`}
-      searchable
+      searchable={false}
       selectable={false}
       maxHeight={null}
-      searchPlaceholder="Search room, issue, assignee"
-      searchText={(t) => `${t.room?.room_number ?? ""} ${t.description ?? ""} ${t.assigned_to?.full_name ?? ""}`}
       defaultSort={{ key: "created_at", dir: "desc" }}
       pageSize={pageSize}
       density="comfortable"

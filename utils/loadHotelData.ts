@@ -1,87 +1,46 @@
-import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { HotelRoom, Staff, Resident, Reclamation, Department, INITIAL_ROOMS } from "@/utils/roomsData";
+import { createClient } from "@/utils/supabase/server";
+import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
 
-export async function loadHotelData() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+/** Tickets with the relations every ticket list shows (room number, reporter, assignee). */
+const TICKET_SELECT =
+  "*, room:rooms(room_number), resident:residents(first_name, last_name), created_by:staff!created_by_staff_id(full_name, role), assigned_to:staff!assigned_staff_id(full_name, role)";
 
-  // Fetch all rooms
-  let rooms: HotelRoom[] = INITIAL_ROOMS;
-  let isLiveSupabase = false;
+type Result<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
+/** Runs one query; a failure is logged and yields null, so one table never takes the page down. */
+async function rows<T>(label: string, query: Result<T>): Promise<T[] | null> {
   try {
-    const { data: dbRooms, error: roomsError } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("room_number", { ascending: true });
-
-    if (!roomsError && dbRooms && dbRooms.length > 0) {
-      rooms = dbRooms as HotelRoom[];
-      isLiveSupabase = true;
-    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return data ?? [];
   } catch (err) {
-    console.error("Failed to fetch rooms from Supabase:", err);
+    console.error(`Failed to load ${label}:`, err);
+    return null;
   }
+}
 
-  // Fetch departments
-  let departmentsList: Department[] = [];
-  try {
-    const { data: dbDepts } = await supabase
-      .from("departments")
-      .select("*")
-      .order("id", { ascending: true });
-    if (dbDepts) departmentsList = dbDepts as Department[];
-  } catch (err) {
-    console.error("Failed to fetch departments from Supabase:", err);
-  }
+/**
+ * Server-side data for a portal page. Rooms and tickets are always loaded;
+ * departments and staff only when the portal shows them. All queries run in
+ * parallel. `isLiveSupabase` is false when rooms could not be loaded (the
+ * portal then skips realtime).
+ */
+export async function loadHotelData({ departments = false, staff = false }: { departments?: boolean; staff?: boolean } = {}) {
+  const supabase = createClient(await cookies());
 
-  // Fetch staff
-  let staffList: Staff[] = [];
-  try {
-    const { data: dbStaff } = await supabase
-      .from("staff")
-      .select("*")
-      .order("id", { ascending: true });
-    if (dbStaff) staffList = dbStaff as Staff[];
-  } catch (err) {
-    console.error("Failed to fetch staff from Supabase:", err);
-  }
-
-  // Fetch residents
-  let residentsList: Resident[] = [];
-  try {
-    const { data: dbResidents } = await supabase
-      .from("residents")
-      .select("*")
-      .order("id", { ascending: true });
-    if (dbResidents) residentsList = dbResidents as Resident[];
-  } catch (err) {
-    console.error("Failed to fetch residents from Supabase:", err);
-  }
-
-  // Fetch reclamations
-  let reclamationsList: Reclamation[] = [];
-  try {
-    const { data: dbReclamations } = await supabase
-      .from("reclamations")
-      .select("*, room:rooms(room_number), resident:residents(first_name, last_name), created_by:staff!created_by_staff_id(full_name, role), assigned_to:staff!assigned_staff_id(full_name, role)")
-      .order("id", { ascending: true });
-    if (dbReclamations) reclamationsList = dbReclamations as unknown as Reclamation[];
-  } catch (err) {
-    console.error("Failed to fetch reclamations from Supabase:", err);
-  }
-
-  // Get logged-in role
-  const userRole = cookieStore.get("hotel_role")?.value || null;
+  const [rooms, tickets, departmentRows, staffRows] = await Promise.all([
+    rows<HotelRoom>("rooms", supabase.from("rooms").select("*").order("room_number", { ascending: true })),
+    rows<Reclamation>("tickets", supabase.from("reclamations").select(TICKET_SELECT).order("id", { ascending: true }) as unknown as Result<Reclamation>),
+    departments ? rows<Department>("departments", supabase.from("departments").select("*").order("id", { ascending: true })) : null,
+    staff ? rows<Staff>("staff", supabase.from("staff").select("*").order("id", { ascending: true })) : null,
+  ]);
 
   return {
-    rooms,
-    isLiveSupabase,
-    departmentsList,
-    staffList,
-    residentsList,
-    reclamationsList,
-    userRole,
+    rooms: rooms ?? [],
+    isLiveSupabase: Boolean(rooms?.length),
+    reclamationsList: tickets ?? [],
+    departmentsList: departmentRows ?? [],
+    staffList: staffRows ?? [],
   };
 }

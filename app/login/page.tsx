@@ -1,13 +1,15 @@
 "use client";
 
+import { INPUT_ICON } from "@/lib/styles";
 import React, { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Eye, EyeOff, KeyRound, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, KeyRound } from "lucide-react";
 import { restorePersistedSession, signInWithForm, type SignInState } from "@/app/actions";
+import { HOTEL_NAME } from "@/lib/portals";
+import { forgetRememberedRole, readRememberedRole } from "@/lib/remembered-role";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { clearCachesAndReload, forgetPersistedRole } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -18,22 +20,19 @@ export default function LoginPage() {
 
   // Auto-restore login on phones/browsers if previously logged in
   useEffect(() => {
-    try {
-      const savedRole = localStorage.getItem("hotel_persisted_role");
-      if (savedRole === "reception" || savedRole === "rh" || savedRole === "gm") {
-        setSuccessRole(savedRole);
-        startTransition(async () => {
-          const res = await restorePersistedSession(savedRole);
-          if (res.success && res.redirectUrl) {
-            router.push(res.redirectUrl);
-            router.refresh();
-          } else {
-            localStorage.removeItem("hotel_persisted_role");
-            setSuccessRole(null);
-          }
-        });
+    const savedRole = readRememberedRole();
+    if (!savedRole) return;
+    setSuccessRole(savedRole);
+    startTransition(async () => {
+      const res = await restorePersistedSession(savedRole);
+      if (res.success) {
+        router.push(res.redirectUrl);
+        router.refresh();
+      } else {
+        forgetRememberedRole();
+        setSuccessRole(null);
       }
-    } catch (_) {}
+    });
   }, [router]);
 
   // Real form action: submits (POST + redirect) even before hydration, and reads
@@ -49,11 +48,11 @@ export default function LoginPage() {
         <header className="mb-8 flex flex-col items-center text-center">
           <img
             src="/hotel-logo.png"
-            alt="Hôtel Méditerranée Thalasso Golf Hammamet"
+            alt={HOTEL_NAME}
             className="mb-4 size-16 rounded-2xl object-cover shadow-float ring-1 ring-border"
           />
           <h1 className="text-2xl font-semibold tracking-tight">Hotel SES</h1>
-          <p className="mt-1 text-sm text-fg-muted">Hôtel Méditerranée Thalasso Golf Hammamet</p>
+          <p className="mt-1 text-sm text-fg-muted">{HOTEL_NAME}</p>
         </header>
 
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-float sm:p-6">
@@ -66,7 +65,7 @@ export default function LoginPage() {
                 Passcode
               </label>
               <div className="relative">
-                <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+                <KeyRound className={INPUT_ICON} aria-hidden />
                 <input
                   id="passcode-input"
                   name="passcode"
@@ -131,21 +130,6 @@ export default function LoginPage() {
               Terms
             </Link>
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-1">
-            <Link href="/offline" className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 hover:bg-surface-hover hover:text-fg">
-              <WifiOff className="size-3.5" aria-hidden /> Offline help
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                forgetPersistedRole();
-                void clearCachesAndReload();
-              }}
-              className="focus-ring inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 hover:bg-surface-hover hover:text-fg"
-            >
-              <RefreshCw className="size-3.5" aria-hidden /> Clear cache and reload
-            </button>
-          </div>
         </footer>
       </div>
     </main>

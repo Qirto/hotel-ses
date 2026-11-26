@@ -1,15 +1,11 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { getPortalRole } from "@/lib/server/session";
+import { PORTALS } from "@/lib/portals";
 
 export const dynamic = "force-dynamic";
 
+/** Entry point: the signed-in portal, or the login page. */
 export default async function Page() {
-  const cookieStore = await cookies();
-  const role = cookieStore.get("hotel_role")?.value;
-
-  if (role === "reception" || role === "rh" || role === "gm") {
-    redirect(`/${role}`);
-  } else {
-    redirect("/login");
-  }
+  const role = await getPortalRole();
+  redirect(role ? PORTALS[role].path : "/login");
 }

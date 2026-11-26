@@ -1,28 +1,23 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, LogOut, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusScreen } from "@/components/app/StatusScreen";
 import { signOutToLogin } from "@/lib/session";
+import { useRouter } from "next/navigation";
+import { PORTALS, type PortalRole } from "@/lib/portals";
 
 interface Props {
-  requiredRole: "reception" | "rh" | "gm";
-  currentRole: string | null;
+  requiredRole: PortalRole;
+  currentRole: PortalRole | null;
 }
-
-const ROLE_NAMES: Record<string, string> = {
-  reception: "Reception",
-  rh: "Human Resources",
-  gm: "General Manager",
-};
 
 export default function AccessDenied({ requiredRole, currentRole }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const required = ROLE_NAMES[requiredRole] ?? requiredRole;
-  const current = currentRole ? ROLE_NAMES[currentRole] ?? currentRole : null;
+  const required = PORTALS[requiredRole].name;
+  const current = currentRole ? PORTALS[currentRole].name : null;
 
   return (
     <StatusScreen
@@ -32,13 +27,7 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
       actions={
         <>
           {currentRole && currentRole !== requiredRole && (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => router.push(`/${currentRole}`)}
-              leftIcon={<ArrowLeft className="size-4" aria-hidden />}
-              className="w-full justify-center"
-            >
+            <Button variant="primary" size="lg" onClick={() => router.push(PORTALS[currentRole].path)} leftIcon={<ArrowLeft className="size-4" aria-hidden />} className="w-full justify-center">
               Go to {current}
             </Button>
           )}

@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
-
-const DAY_MS = 864e5;
+import { DAY_MS } from "@/lib/format";
 
 /** True when the banner was dismissed less than `days` ago. Storage failures count as "not dismissed". */
 export function dismissedRecently(key: string, days = 7): boolean {

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { SpringSelect, type SpringSelectProps } from "@/components/ui/spring-select";
 import { DEFAULT_PRESETS, DISPATCH_DEPARTMENTS, PRESET_ISSUES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { DAY_MS, toHotelDateTimeValue } from "@/lib/datetime";
+import { TICKET_PRIORITY, TICKET_STATUS } from "@/lib/tickets";
+import type { Reclamation } from "@/utils/roomsData";
 import { DateTimeField } from "./DateTimeField";
 
 /* ───────────── field primitives (same look in every form) ───────────── */
@@ -38,21 +41,24 @@ export function Select<V extends string>(props: SpringSelectProps<V> & { value: 
   return <SpringSelect {...props} />;
 }
 
-/** Segmented single choice (priority, status). */
+/** Segmented single choice (priority, status, theme). */
 export function Segmented<V extends string>({
   value,
   onChange,
   options,
   label,
+  hideLabel = false,
 }: {
   value: V;
   onChange: (v: V) => void;
-  options: readonly { value: V; label: string; tone?: "danger" | "warning" }[];
+  options: readonly { value: V; label: string; tone?: "danger" | "warning"; icon?: ReactNode }[];
   label: string;
+  /** Keep the label for screen readers only (when a surrounding row already shows it). */
+  hideLabel?: boolean;
 }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-1.5 text-sm font-medium text-fg-secondary">{label}</legend>
+      <legend className={hideLabel ? "sr-only" : "mb-1.5 text-sm font-medium text-fg-secondary"}>{label}</legend>
       <div className="grid gap-1 rounded-lg border border-border bg-surface-raised p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((o) => {
           const active = o.value === value;
@@ -63,7 +69,7 @@ export function Segmented<V extends string>({
               aria-pressed={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "focus-ring min-h-10 truncate rounded-md px-2 text-sm font-medium transition-colors",
+                "focus-ring inline-flex min-h-10 items-center justify-center gap-1.5 truncate rounded-md px-2 text-sm font-medium transition-colors [&>svg]:size-4 [&>svg]:shrink-0",
                 active
                   ? o.tone === "danger"
                     ? "bg-danger-subtle text-danger shadow-card"
@@ -73,6 +79,7 @@ export function Segmented<V extends string>({
                   : "text-fg-muted hover:text-fg"
               )}
             >
+              {o.icon}
               {o.label}
             </button>
           );
@@ -84,7 +91,7 @@ export function Segmented<V extends string>({
 
 /* ───────────── ticket forms ───────────── */
 
-export type Priority = "STANDARD" | "HIGH" | "EMERGENCY";
+export type Priority = Reclamation["priority"];
 export interface NewTicketInput {
   department: string;
   category: string;
@@ -93,77 +100,108 @@ export interface NewTicketInput {
   room?: string;
 }
 
-const PRIORITIES = [
-  { value: "STANDARD", label: "Standard" },
-  { value: "HIGH", label: "High", tone: "warning" },
-  { value: "EMERGENCY", label: "Emergency", tone: "danger" },
-] as const;
+// Labels and tones from lib/tickets; least urgent first, so the default is the first choice.
+const PRIORITIES = (["STANDARD", "HIGH", "EMERGENCY"] as const).map((value) => {
+  const { label, tone } = TICKET_PRIORITY[value];
+  return { value, label, tone: tone === "danger" || tone === "warning" ? tone : undefined };
+});
 
-function categoriesFor(dept: string) {
-  return (PRESET_ISSUES[dept] ?? DEFAULT_PRESETS).map((p) => ({ value: p.category, label: p.label }));
+/* ───────────── shared ticket-form parts ───────────── */
+
+const DEFAULT_DEPARTMENT = "TECHNICAL";
+const issueOptionsCache = new Map<string, { value: string; label: string }[]>();
+
+/** Issue choices for a department (its presets, or the defaults); built once per department. */
+function issueOptions(dept: string) {
+  let options = issueOptionsCache.get(dept);
+  if (!options) {
+    options = (PRESET_ISSUES[dept] ?? DEFAULT_PRESETS).map((p) => ({ value: p.category, label: p.label }));
+    issueOptionsCache.set(dept, options);
+  }
+  return options;
 }
+const firstIssue = (dept: string) => issueOptions(dept)[0]?.value ?? "General";
+
+/** Department + issue state: changing the department resets the issue to its first preset. */
+function useTicketSubject(defaultDepartment = DEFAULT_DEPARTMENT) {
+  const [department, setDepartment] = useState(defaultDepartment);
+  const [category, setCategory] = useState(() => firstIssue(defaultDepartment));
+  const changeDepartment = (dept: string) => {
+    setDepartment(dept);
+    setCategory(firstIssue(dept));
+  };
+  return { department, category, setCategory, changeDepartment };
+}
+
+function DepartmentIssueFields({ id, subject }: { id: string; subject: ReturnType<typeof useTicketSubject> }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Field label="Department" htmlFor={`${id}-dept`}>
+        <Select id={`${id}-dept`} value={subject.department} options={DISPATCH_DEPARTMENTS} onChange={subject.changeDepartment} />
+      </Field>
+      <Field label="Issue" htmlFor={`${id}-cat`}>
+        <Select id={`${id}-cat`} value={subject.category} options={issueOptions(subject.department)} onChange={subject.setCategory} />
+      </Field>
+    </div>
+  );
+}
+
+function RoomNumberField({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <Field label="Room number" htmlFor={`${id}-room`}>
+      <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="e.g. 1031" value={value} onChange={(e) => onChange(e.target.value)} />
+    </Field>
+  );
+}
+
+/** Form submit that sends, then clears the free-text fields when the send succeeded. */
+function submitThenReset(send: () => Promise<boolean> | boolean, reset: () => void) {
+  return async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await send()) reset();
+  };
+}
+
+/* ───────────── new ticket ───────────── */
 
 /** New ticket form. Owns its state, so typing never re-renders the portal. */
 export function NewTicketForm({
   onSubmit,
   pending,
   withRoom = false,
-  submitLabel = "Dispatch ticket",
-  defaultDepartment = "TECHNICAL",
+  defaultDepartment,
 }: {
   onSubmit: (input: NewTicketInput) => Promise<boolean> | boolean;
   pending?: boolean;
   /** Show a room number field (when not opened from a room). */
   withRoom?: boolean;
-  submitLabel?: string;
   defaultDepartment?: string;
 }) {
   const id = useId();
+  const subject = useTicketSubject(defaultDepartment);
   const [room, setRoom] = useState("");
-  const [department, setDepartment] = useState(defaultDepartment);
-  const [category, setCategory] = useState(categoriesFor(defaultDepartment)[0]?.value ?? "General");
   const [priority, setPriority] = useState<Priority>("STANDARD");
   const [description, setDescription] = useState("");
 
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const ok = await onSubmit({ department, category, description: description.trim(), priority, room: room.trim() || undefined });
-        if (ok) {
+      onSubmit={submitThenReset(
+        () => onSubmit({ department: subject.department, category: subject.category, description: description.trim(), priority, room: room.trim() || undefined }),
+        () => {
           setDescription("");
           setRoom("");
         }
-      }}
-    >
-      {withRoom && (
-        <Field label="Room number" htmlFor={`${id}-room`}>
-          <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="e.g. 1031" value={room} onChange={(e) => setRoom(e.target.value)} />
-        </Field>
       )}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Department" htmlFor={`${id}-dept`}>
-          <Select
-            id={`${id}-dept`}
-            value={department}
-            options={DISPATCH_DEPARTMENTS}
-            onChange={(v) => {
-              setDepartment(v);
-              setCategory(categoriesFor(v)[0]?.value ?? "General");
-            }}
-          />
-        </Field>
-        <Field label="Issue" htmlFor={`${id}-cat`}>
-          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={setCategory} />
-        </Field>
-      </div>
+    >
+      {withRoom && <RoomNumberField id={id} value={room} onChange={setRoom} />}
+      <DepartmentIssueFields id={id} subject={subject} />
       <Segmented label="Priority" value={priority} onChange={setPriority} options={PRIORITIES} />
       <Field label="Details" htmlFor={`${id}-desc`}>
         <TextArea id={`${id}-desc`} placeholder="What did the guest report?" value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
       <Button type="submit" variant="primary" size="lg" isLoading={pending} loadingText="Sending" leftIcon={<Send className="size-4" aria-hidden />} className="w-full justify-center">
-        {submitLabel}
+        Dispatch ticket
       </Button>
     </form>
   );
@@ -179,22 +217,17 @@ export interface PastIncidentInput {
   room?: string;
 }
 
+// Labels from lib/tickets. Tones differ from the badges on purpose: "Resolved" is the neutral default here.
 const PAST_STATUSES = [
-  { value: "RESOLVED", label: "Resolved" },
-  { value: "IN_PROGRESS", label: "In progress", tone: "warning" },
-  { value: "OPEN", label: "Open", tone: "danger" },
+  { value: "RESOLVED", label: TICKET_STATUS.RESOLVED.label },
+  { value: "IN_PROGRESS", label: TICKET_STATUS.IN_PROGRESS.label, tone: "warning" },
+  { value: "OPEN", label: TICKET_STATUS.OPEN.label, tone: "danger" },
 ] as const;
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
-/**
- * Three days ago as local "YYYY-MM-DDTHH:mm" (datetime-local semantics, not UTC),
- * minutes rounded down to a multiple of 5 to match the minute select.
- */
+/** Three days ago in hotel time ("YYYY-MM-DDTHH:mm"), rounded down to 5 minutes to match the minute list. */
 function defaultPastIncidentDate(): string {
-  const d = new Date(Date.now() - 3 * 864e5);
-  const minutes = Math.floor(d.getMinutes() / 5) * 5;
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(minutes)}`;
+  const fiveMinutes = 5 * 60_000;
+  return toHotelDateTimeValue(Math.floor((Date.now() - 3 * DAY_MS) / fiveMinutes) * fiveMinutes);
 }
 
 /** Backfill a past incident with its real date. */
@@ -208,9 +241,8 @@ export function PastIncidentForm({
   withRoom?: boolean;
 }) {
   const id = useId();
+  const subject = useTicketSubject();
   const [room, setRoom] = useState("");
-  const [department, setDepartment] = useState("TECHNICAL");
-  const [category, setCategory] = useState(categoriesFor("TECHNICAL")[0]?.value ?? "General");
   const [createdAt, setCreatedAt] = useState(() => defaultPastIncidentDate());
   const [status, setStatus] = useState<PastStatus>("RESOLVED");
   const [description, setDescription] = useState("");
@@ -218,39 +250,19 @@ export function PastIncidentForm({
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const ok = await onSubmit({ department, category, description: description.trim(), createdAt, status, room: room.trim() || undefined });
-        if (ok) {
+      onSubmit={submitThenReset(
+        () => onSubmit({ department: subject.department, category: subject.category, description: description.trim(), createdAt, status, room: room.trim() || undefined }),
+        () => {
           setDescription("");
           setRoom("");
         }
-      }}
+      )}
     >
       <div className={cn("grid grid-cols-1 gap-4", withRoom && "sm:grid-cols-2")}>
-        {withRoom && (
-          <Field label="Room number" htmlFor={`${id}-room`}>
-            <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="e.g. 1031" value={room} onChange={(e) => setRoom(e.target.value)} />
-          </Field>
-        )}
+        {withRoom && <RoomNumberField id={id} value={room} onChange={setRoom} />}
         <DateTimeField id={`${id}-date`} label="Date and time" value={createdAt} onChange={setCreatedAt} maxDate={new Date()} required />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Department" htmlFor={`${id}-dept`}>
-          <Select
-            id={`${id}-dept`}
-            value={department}
-            options={DISPATCH_DEPARTMENTS}
-            onChange={(v) => {
-              setDepartment(v);
-              setCategory(categoriesFor(v)[0]?.value ?? "General");
-            }}
-          />
-        </Field>
-        <Field label="Issue" htmlFor={`${id}-cat`}>
-          <Select id={`${id}-cat`} value={category} options={categoriesFor(department)} onChange={setCategory} />
-        </Field>
-      </div>
+      <DepartmentIssueFields id={id} subject={subject} />
       <Segmented label="Status" value={status} onChange={setStatus} options={PAST_STATUSES} />
       <Field label="Details" htmlFor={`${id}-desc`}>
         <TextArea id={`${id}-desc`} required placeholder="What happened?" value={description} onChange={(e) => setDescription(e.target.value)} />

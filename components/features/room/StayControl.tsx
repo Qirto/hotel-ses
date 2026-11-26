@@ -1,5 +1,6 @@
 "use client";
 
+import { ControlSection } from "./ControlSection";
 import { memo, type ReactNode } from "react";
 import { LogIn, LogOut } from "lucide-react";
 import type { HotelRoom } from "@/utils/roomsData";
@@ -22,8 +23,7 @@ export const StayControl = memo(function StayControl({
   onChange: (room: HotelRoom, state: StayState) => void;
 }) {
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border p-4">
-      <p className="text-sm font-medium">Stay</p>
+    <ControlSection title="Stay">
       <div className="grid grid-cols-2 gap-2">
         {STAY_ACTIONS.map((a) => (
           <Button
@@ -39,6 +39,6 @@ export const StayControl = memo(function StayControl({
           </Button>
         ))}
       </div>
-    </section>
+    </ControlSection>
   );
 });

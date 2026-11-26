@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition, type Dispatch, type SetStateAction } from "react";
+import { useRouter } from "next/navigation";
+import { isOffline, OFFLINE_MESSAGE } from "@/lib/connection";
+import { countOpenTickets, countRoomsNeedingAttention } from "@/lib/tickets";
+import type { RoomFilter } from "@/lib/rooms";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { useFlash, type Flash } from "@/components/app/notice";
 import type { RoomLogMode } from "@/components/features/room/RoomLogForms";
@@ -26,9 +30,10 @@ export interface PortalState<Tab extends string> {
 
   /** Server-action transition. */
   isPending: boolean;
+  /** Runs a server action; refused while offline, recovers if the connection drops mid-request. */
   run: (action: () => Promise<void>) => void;
-  /** `run`, resolving with the action's result (for forms that reset on success). */
-  runForResult: <T>(action: () => Promise<T>) => Promise<T>;
+  /** `run` for forms: resolves `true` when the action succeeded (the form then resets). */
+  runForResult: (action: () => Promise<boolean>) => Promise<boolean>;
 
   flash: Flash;
 
@@ -38,13 +43,26 @@ export interface PortalState<Tab extends string> {
   closeRoom: () => void;
   logMode: RoomLogMode;
   setLogMode: (mode: RoomLogMode) => void;
+
+  /** Badge counts shown by every portal (nav + KPIs). */
+  openCount: number;
+  attentionCount: number;
+
+  /** Rooms tab status filter, and jumps from KPIs/panels to the Rooms and Tickets tabs. */
+  roomFilter: RoomFilter;
+  setRoomFilter: (filter: RoomFilter) => void;
+  showRooms: (filter: RoomFilter) => void;
+  showTickets: () => void;
 }
+
+/** Tabs every portal has; `showRooms` / `showTickets` switch to them. */
+export type SharedTab = "ROOMS" | "RECLAMATIONS";
 
 /**
  * The state plumbing every portal shares. Needs a `NoticeProvider` above the
  * calling component (for `flash`).
  */
-export function usePortalState<Tab extends string>({
+export function usePortalState<Tab extends SharedTab | (string & {})>({
   initialTab,
   rooms,
   reclamations,
@@ -70,13 +88,51 @@ export function usePortalState<Tab extends string>({
     []
   );
 
-  const [isPending, run] = useTransition();
-  const runForResult = useCallback(
-    <T,>(action: () => Promise<T>) => new Promise<T>((resolve) => run(async () => resolve(await action()))),
-    [run]
+  const flash = useFlash();
+  const router = useRouter();
+
+  // Every server action goes through these two. Offline: refuse up front, so no
+  // optimistic change is shown for something that was never sent. Connection
+  // lost mid-request: say so and refetch, so the screen shows the real state.
+  const [isPending, startAction] = useTransition();
+  const lostConnection = useCallback(() => {
+    flash("danger", "Connection lost. The change may not have been saved; showing the latest data.");
+    router.refresh();
+  }, [flash, router]);
+
+  const run = useCallback(
+    (action: () => Promise<void>) => {
+      if (isOffline()) return flash("danger", OFFLINE_MESSAGE);
+      startAction(async () => {
+        try {
+          await action();
+        } catch {
+          lostConnection();
+        }
+      });
+    },
+    [flash, lostConnection]
   );
 
-  const flash = useFlash();
+  const runForResult = useCallback(
+    (action: () => Promise<boolean>) => {
+      if (isOffline()) {
+        flash("danger", OFFLINE_MESSAGE);
+        return Promise.resolve(false);
+      }
+      return new Promise<boolean>((resolve) =>
+        startAction(async () => {
+          try {
+            resolve(await action());
+          } catch {
+            lostConnection();
+            resolve(false);
+          }
+        })
+      );
+    },
+    [flash, lostConnection]
+  );
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const selectedRoom = useMemo(() => liveRooms.find((r) => r.id === selectedRoomId) ?? null, [liveRooms, selectedRoomId]);
@@ -84,7 +140,26 @@ export function usePortalState<Tab extends string>({
   const closeRoom = useCallback(() => setSelectedRoomId(null), []);
   const [logMode, setLogMode] = useState<RoomLogMode>("NEW");
 
+  const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
+  const attentionCount = useMemo(() => countRoomsNeedingAttention(liveRooms, tickets), [liveRooms, tickets]);
+
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>("ALL");
+  const showRooms = useCallback(
+    (filter: RoomFilter) => {
+      setRoomFilter(filter);
+      go("ROOMS" as Tab);
+    },
+    [go]
+  );
+  const showTickets = useCallback(() => go("RECLAMATIONS" as Tab), [go]);
+
   return {
+    openCount,
+    attentionCount,
+    roomFilter,
+    setRoomFilter,
+    showRooms,
+    showTickets,
     activeTab,
     go,
     tickets,

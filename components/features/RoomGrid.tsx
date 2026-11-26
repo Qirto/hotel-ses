@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 import { BedDouble } from "lucide-react";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { blockLabel, roomHeadline, ticketStatsByRoom, type RoomTicketStats, type Tone } from "@/lib/rooms";
+import { plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "./Panel";
 
@@ -65,7 +66,7 @@ export const RoomGrid = memo(function RoomGrid({
         <section key={floor} className="[contain-intrinsic-size:auto_480px] [content-visibility:auto]" aria-label={`Floor ${floor}`}>
           <h3 className="mb-2 flex items-baseline gap-2 text-sm font-semibold">
             Floor {floor}
-            <span className="text-xs font-normal text-fg-muted">{list.length} rooms</span>
+            <span className="text-xs font-normal text-fg-muted">{plural(list.length, "room")}</span>
           </h3>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(5.75rem,1fr))] gap-2">
             {list.map((room) => (

@@ -1,16 +1,20 @@
+import { formatDate, formatTime, hotelDayNumber } from "@/lib/datetime";
+
+// Date primitives live in lib/datetime; re-exported for existing imports.
+export { DAY_MS, pad2 } from "@/lib/datetime";
+
 export interface IncidentDate {
-  /** e.g. "Oct 12, 2026" */
+  /** e.g. "12/10/2026" (dd/MM/yyyy, hotel time) */
   formatted: string;
-  /** e.g. "08:42 PM" */
+  /** e.g. "20:42" (hotel time) */
   time: string;
   /** e.g. "Today", "Yesterday", "3d ago", "2mo ago", "Scheduled" */
   relative: string;
-  /** e.g. "Oct 12, 2026 • 08:42 PM" */
+  /** e.g. "12/10/2026 • 20:42" */
   full: string;
 }
 
 const RECENT: IncidentDate = { formatted: "Recent", time: "", relative: "Just now", full: "Recent" };
-const DAY_MS = 1000 * 60 * 60 * 24;
 
 /** Formats a reclamation timestamp for lists, cards and timelines. */
 export function formatIncidentDate(dateStr?: string | null): IncidentDate {
@@ -18,7 +22,8 @@ export function formatIncidentDate(dateStr?: string | null): IncidentDate {
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return RECENT;
 
-  const diffDays = Math.floor((Date.now() - d.getTime()) / DAY_MS);
+  // calendar days in hotel time, so "Today" flips at the hotel's midnight
+  const diffDays = hotelDayNumber(Date.now()) - hotelDayNumber(d);
   let relative = "Today";
   if (diffDays < 0) relative = "Scheduled";
   else if (diffDays === 1) relative = "Yesterday";
@@ -26,8 +31,8 @@ export function formatIncidentDate(dateStr?: string | null): IncidentDate {
   else if (diffDays >= 30 && diffDays < 365) relative = `${Math.floor(diffDays / 30)}mo ago`;
   else if (diffDays >= 365) relative = `${Math.floor(diffDays / 365)}y ago`;
 
-  const formatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const formatted = formatDate(d);
+  const time = formatTime(d);
 
   return { formatted, time, relative, full: `${formatted} • ${time}` };
 }
@@ -64,4 +69,17 @@ export function departmentLabel(code?: string | null): string {
       .map((w) => (w === "and" ? "&" : w.charAt(0).toUpperCase() + w.slice(1)))
       .join(" ")
   );
+}
+
+/** "42%" of a whole; "<1%" for a non-zero sliver (never a misleading "0%"); "–" with no whole. */
+export function percent(part: number, total: number): string {
+  if (!total) return "–";
+  const pct = (part / total) * 100;
+  if (part > 0 && pct < 1) return "<1%";
+  return `${Math.round(pct)}%`;
+}
+
+/** Durations shown to staff: "45 min"; "–" when unknown. */
+export function formatMinutes(minutes: number | null | undefined): string {
+  return minutes == null || !Number.isFinite(minutes) ? "–" : `${Math.round(minutes)} min`;
 }

@@ -34,3 +34,21 @@ export const SHIFT_STATUS: Record<Staff["shift_status"], { label: string; tone: 
 };
 
 export type NewStaffInput = { full_name: string; role: string; department: string; phone_number?: string };
+
+/** A staff member's department code (records without one count as Reception). */
+export const staffDepartment = (s: Pick<Staff, "department">) => s.department || "RECEPTION";
+
+/** Staff on and off shift per department, largest department first. */
+export function headcountByDepartment(staff: readonly Staff[], label: (code: string) => string) {
+  const counts = new Map<string, { onShift: number; offShift: number }>();
+  for (const s of staff) {
+    const dept = staffDepartment(s);
+    const c = counts.get(dept) ?? { onShift: 0, offShift: 0 };
+    if (s.shift_status === "ON_SHIFT") c.onShift++;
+    else c.offShift++;
+    counts.set(dept, c);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1].onShift + b[1].offShift - (a[1].onShift + a[1].offShift))
+    .map(([dept, values]) => ({ label: label(dept), values }));
+}

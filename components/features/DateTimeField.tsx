@@ -1,27 +1,37 @@
 "use client";
 
+import { INPUT_ICON } from "@/lib/styles";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { CalendarClock, ChevronDown } from "lucide-react";
 import { AnchoredPopover } from "@/components/ui/anchored-popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { formatWallDate, hotelParts, pad2 as pad, parseWallTime } from "@/lib/datetime";
 
-const pad = (n: number) => String(n).padStart(2, "0");
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 
+/**
+ * The picker works in hotel wall-clock time: `date` is a calendar day (a Date at
+ * that day's local midnight, only used for its year/month/day and the Calendar),
+ * plus the hour and minute. Real moments (now, maxDate) enter through `partsAt`.
+ */
 type Parts = { date: Date | null; hour: number; minute: number };
 
-/** "YYYY-MM-DDTHH:mm" (the datetime-local format the server actions accept). */
+const roundDown5 = (minute: number) => Math.floor(minute / 5) * 5;
+
+/** The hotel calendar day and time of an instant. */
+function partsAt(instant: Date | number): Parts {
+  const w = hotelParts(instant);
+  return { date: new Date(w.year, w.month - 1, w.day), hour: w.hour, minute: roundDown5(w.minute) };
+}
+
+/** "YYYY-MM-DDTHH:mm" hotel wall-clock value (converted to an instant on save). */
 function parse(value: string): Parts {
-  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (!m) return { date: null, hour: 9, minute: 0 };
-  return {
-    date: new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])),
-    hour: Number(m[4]),
-    minute: Math.min(55, Math.round(Number(m[5]) / 5) * 5),
-  };
+  const w = parseWallTime(value);
+  if (!w) return { date: null, hour: 9, minute: 0 };
+  return { date: new Date(w.year, w.month - 1, w.day), hour: w.hour, minute: Math.min(55, Math.round(w.minute / 5) * 5) };
 }
 
 const serialize = ({ date, hour, minute }: Parts) =>
@@ -30,18 +40,18 @@ const serialize = ({ date, hour, minute }: Parts) =>
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-const dayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+const weekdayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+/** "Mon, 23/11/2026" for a calendar day. */
+const dayLabel = (d: Date) => `${weekdayFmt.format(d)}, ${formatWallDate({ year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() })}`;
 
-/** Latest allowed hour/minute for `date` (only limited on the max day). */
-function limits(date: Date | null, max?: Date) {
-  if (!date || !max || !sameDay(date, max)) return { hour: 23, minute: (_h: number) => 55 };
-  const mh = max.getHours();
-  const mm = Math.floor(max.getMinutes() / 5) * 5;
-  return { hour: mh, minute: (h: number) => (h === mh ? mm : 55) };
+/** Latest allowed hour/minute on `date` (only limited on the max day). */
+function limits(date: Date | null, max?: Parts) {
+  if (!date || !max?.date || !sameDay(date, max.date)) return { hour: 23, minute: (_h: number) => 55 };
+  return { hour: max.hour, minute: (h: number) => (h === max.hour ? max.minute : 55) };
 }
 
 /** Pull a time back inside the allowed range after the day changes. */
-function clamp(p: Parts, max?: Date): Parts {
+function clamp(p: Parts, max?: Parts): Parts {
   const l = limits(p.date, max);
   const hour = Math.min(p.hour, l.hour);
   return { ...p, hour, minute: Math.min(p.minute, l.minute(hour)) };
@@ -72,26 +82,25 @@ export function DateTimeField({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  const lim = limits(parts.date, maxDate);
+  // the latest allowed moment, in hotel time
+  const max = useMemo(() => (maxDate ? partsAt(maxDate) : undefined), [maxDate]);
+  const lim = limits(parts.date, max);
 
   const update = (next: Partial<Parts>) => {
     const merged = { ...parts, ...next };
-    // picking a time before a day: assume today (or the max day)
-    if (!merged.date) merged.date = maxDate ? new Date(maxDate) : new Date();
-    onChange(serialize(clamp(merged, maxDate)));
+    // picking a time before a day: assume the hotel's today (or the max day)
+    if (!merged.date) merged.date = (max ?? partsAt(Date.now())).date;
+    onChange(serialize(clamp(merged, max)));
   };
 
-  const setNow = () => {
-    const now = new Date();
-    onChange(serialize(clamp({ date: now, hour: now.getHours(), minute: Math.floor(now.getMinutes() / 5) * 5 }, maxDate)));
-  };
+  const setNow = () => onChange(serialize(clamp(partsAt(Date.now()), max)));
 
   const close = (focusTrigger = true) => {
     setOpen(false);
     if (focusTrigger) triggerRef.current?.focus();
   };
 
-  const text = parts.date ? `${dayFmt.format(parts.date)} · ${pad(parts.hour)}:${pad(parts.minute)}` : null;
+  const text = parts.date ? `${dayLabel(parts.date)} · ${pad(parts.hour)}:${pad(parts.minute)}` : null;
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -113,7 +122,7 @@ export function DateTimeField({
           text ? "text-fg" : "text-fg-muted"
         )}
       >
-        <CalendarClock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+        <CalendarClock className={INPUT_ICON} aria-hidden />
         <span className="truncate tabular-nums">{text ?? "Pick date and time"}</span>
         <ChevronDown
           className={cn("pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted transition-transform", open && "rotate-180")}
@@ -133,7 +142,7 @@ export function DateTimeField({
       >
         <PanelBody
           parts={parts}
-          maxDate={maxDate}
+          maxDay={max?.date ?? undefined}
           maxHour={lim.hour}
           maxMinute={lim.minute}
           onDate={(date) => update({ date })}
@@ -150,7 +159,7 @@ export function DateTimeField({
 
 function PanelBody({
   parts,
-  maxDate,
+  maxDay,
   maxHour,
   maxMinute,
   onDate,
@@ -161,7 +170,8 @@ function PanelBody({
   summary,
 }: {
   parts: Parts;
-  maxDate?: Date;
+  /** Last selectable calendar day (hotel time). */
+  maxDay?: Date;
   maxHour: number;
   maxMinute: (hour: number) => number;
   onDate: (d: Date) => void;
@@ -206,8 +216,8 @@ function PanelBody({
           mode="single"
           value={parts.date}
           onChange={(d) => d && onDate(d)}
-          defaultMonth={parts.date ?? maxDate}
-          maxDate={maxDate}
+          defaultMonth={parts.date ?? maxDay}
+          maxDate={maxDay}
           weekStartsOn={1}
           locale="en-GB"
           className="mx-auto shrink-0"
@@ -284,7 +294,7 @@ function TimeList({
         role="listbox"
         aria-labelledby={labelId}
         onKeyDown={move}
-        className="relative flex gap-1 overflow-x-auto overscroll-contain [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,#000_1.25rem,#000_calc(100%-1.25rem),transparent)] px-4 sm:[mask-image:none] sm:min-h-0 sm:flex-1 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden sm:p-1"
+        className="relative flex gap-1 overflow-x-auto overscroll-x-contain sm:overscroll-y-contain [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,#000_1.25rem,#000_calc(100%-1.25rem),transparent)] px-4 sm:[mask-image:none] sm:min-h-0 sm:flex-1 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden sm:p-1"
       >
         {options.map((o, i) => {
           const isSelected = i === selected;

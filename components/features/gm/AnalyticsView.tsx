@@ -10,8 +10,8 @@ import { FilterBar, SearchInput, SelectField } from "@/components/features/Filte
 import { ProblemBars } from "@/components/features/RoomDetail";
 import { ToneBadge } from "@/components/features/StatusBadges";
 import { countOpenTickets } from "@/lib/tickets";
-import { blockLabel, roomHeadline, ticketStatsByRoom } from "@/lib/rooms";
-import { plural } from "@/lib/format";
+import { floorOptions as floorOptionsFor, roomHeadline, roomLocation, ticketStatsByRoom } from "@/lib/rooms";
+import { formatMinutes, plural } from "@/lib/format";
 import { computeAllRoomsAnalytics, type RoomAnalyticsSummary } from "@/utils/roomAnalytics";
 
 type AnalyticsSort = "MOST_TICKETS" | "OPEN_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER";
@@ -52,10 +52,7 @@ export const AnalyticsView = memo(function AnalyticsView({
   const analytics = useMemo(() => (active ? computeAllRoomsAnalytics(rooms, tickets) : null), [active, rooms, tickets]);
   const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
   const openCount = useMemo(() => countOpenTickets(tickets), [tickets]);
-  const floorOptions = useMemo(() => {
-    const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
-    return [{ value: "ALL" as const, label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))];
-  }, [rooms]);
+  const floorOptions = useMemo(() => floorOptionsFor(rooms), [rooms]);
 
   const listed = useMemo(() => {
     if (!analytics) return [];
@@ -94,7 +91,7 @@ export const AnalyticsView = memo(function AnalyticsView({
   return (
     <>
       <KpiGrid>
-        <Kpi label="Rooms with tickets" value={summary.withIssues} hint={`of ${rooms.length} rooms`} icon={<BedDouble />} />
+        <Kpi label="Rooms with tickets" value={summary.withIssues} hint={`of ${plural(rooms.length, "room")}`} icon={<BedDouble />} />
         <Kpi label="Rush hours found" value={summary.withRush} hint="Rooms with a peak hour" icon={<Clock />} />
         <Kpi
           label="Most reported room"
@@ -145,7 +142,7 @@ const RoomPatternCard = memo(function RoomPatternCard({
     ["Total", s.totalTickets],
     ["Resolved", s.resolvedTickets],
     ["Open", s.openTickets],
-    ["Avg fix", s.avgResolutionMinutes != null ? `${Math.round(s.avgResolutionMinutes)}m` : "–"],
+    ["Avg fix", formatMinutes(s.avgResolutionMinutes)],
   ];
   return (
     <li className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4">
@@ -153,7 +150,7 @@ const RoomPatternCard = memo(function RoomPatternCard({
         <div className="min-w-0">
           <p className="text-lg font-semibold tabular-nums tracking-tight">Room {room.room_number}</p>
           <p className="text-xs text-fg-muted">
-            Floor {room.floor} · {blockLabel(room.block)}
+            {roomLocation(room)}
           </p>
         </div>
         <ToneBadge tone={headline.tone}>{headline.label}</ToneBadge>
