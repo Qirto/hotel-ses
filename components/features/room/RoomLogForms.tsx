@@ -7,7 +7,7 @@ export type RoomLogMode = "NEW" | "PAST";
 
 /**
  * "Log issue" view of the room detail: a New ticket / Past incident switch
- * over the two forms. The mode is controlled by the portal (`usePortalState`)
+ * over the two forms. The mode is controlled by the caller (`useHotelState`)
  * so it survives switching detail tabs and rooms.
  */
 export const RoomLogForms = memo(function RoomLogForms({

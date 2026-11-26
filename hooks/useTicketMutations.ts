@@ -11,7 +11,7 @@ import {
   resolveReclamation,
   updateReclamation,
 } from "@/app/actions";
-import type { PortalState } from "./usePortalState";
+import type { HotelState } from "./useHotelState";
 import { categoryLabel } from "@/lib/format";
 
 /**
@@ -28,7 +28,7 @@ import { categoryLabel } from "@/lib/format";
 /** What the request editor can change (status has its own actions). */
 export type TicketEditInput = { department: string; category: string; priority: Reclamation["priority"]; description: string };
 
-export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, actor: string) {
+export function useTicketMutations(p: HotelState, actor: string) {
   const { run, runForResult, setTickets, flash, selectedRoom } = p;
 
   const updateTicket = useCallback(

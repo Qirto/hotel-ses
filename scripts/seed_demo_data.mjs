@@ -10,6 +10,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { FIRST_NAMES, LAST_NAMES } from "./tunisian_names_data.mjs";
 
 /* ───────────── setup ───────────── */
 
@@ -61,8 +62,8 @@ async function must(label, promise) {
 
 /* ───────────── people ───────────── */
 
-const FIRST = ["Amira", "Youssef", "Salma", "Mehdi", "Ines", "Karim", "Nour", "Hamza", "Leila", "Omar", "Rania", "Sami", "Yasmine", "Anis", "Mariem", "Walid", "Sarra", "Bilel", "Hela", "Fares", "Sophie", "Lucas", "Emma", "Thomas", "Clara", "Julien", "Chloe", "Marco", "Giulia", "Hans", "Anna", "James", "Olivia"];
-const LAST = ["Ben Ali", "Trabelsi", "Gharbi", "Jlassi", "Haddad", "Mansouri", "Bouazizi", "Chaabane", "Hamdi", "Mejri", "Sassi", "Ayari", "Dubois", "Martin", "Bernard", "Rossi", "Müller", "Schmidt", "Smith", "Brown", "Moreau", "Laurent", "Ferrari", "Weber"];
+const FIRST = FIRST_NAMES;
+const LAST = LAST_NAMES;
 const fullName = () => `${pick(FIRST)} ${pick(LAST)}`;
 const phone = () => `+216 ${between(20, 99)} ${between(100, 999)} ${between(100, 999)}`;
 

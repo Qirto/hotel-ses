@@ -1,112 +1,131 @@
-import React from "react";
 import Link from "next/link";
-import { LegalLayout } from "@/components/app/LegalLayout";
 import type { Metadata } from "next";
+import { LegalLayout } from "@/components/app/LegalLayout";
+import { HOTEL_NAME } from "@/lib/roles";
 
 export const metadata: Metadata = {
-  title: "Charte d’utilisation et conditions du système | Hotel SES",
-  description: "Conditions d’utilisation et charte d’usage opérationnel de Hotel SES pour le personnel de l’hôtel.",
+  title: "Conditions d’utilisation | Hotel SES",
+  description: "Règles d’utilisation de Hotel SES par le personnel de l’hôtel  comptes, rôles, confidentialité et traçabilité.",
 };
+
+/* Keep in step with the app: roles and what they may do come from lib/permissions.ts. */
 
 export default function TermsOfServicePage() {
   return (
     <LegalLayout>
-        <p className="legal-meta">Date d’entrée en vigueur : octobre 2026 • Version 1.4</p>
+      <p className="legal-meta">En vigueur depuis le 26 novembre 2026 • Version 2.0</p>
 
-        {/* Header */}
-        <header>
-          <p className="legal-eyebrow">Gouvernance et sécurité du système</p>
-          <h1>
-            Charte d’utilisation et conditions applicables au personnel
-          </h1>
+      <header>
+        <p className="legal-eyebrow">Charte d’utilisation</p>
+        <h1>Conditions d’utilisation de Hotel SES</h1>
+        <p>
+          Hotel SES est l’outil interne de l’{HOTEL_NAME} pour suivre l’état des chambres, traiter les demandes des clients et organiser le personnel. Ces conditions s’appliquent à
+          toute personne qui s’y connecte. Se connecter vaut acceptation.
+        </p>
+      </header>
+
+      <div>
+        <section>
+          <h2>1. Comptes personnels</h2>
+          <ul>
+            <li>
+              <strong>Un compte par personne </strong> chaque membre du personnel reçoit de l’administrateur un identifiant et un mot de passe temporaire. Le compte est personnel  il ne se
+              prête pas et ne se partage pas, même entre collègues d’un même service.
+            </li>
+            <li>
+              <strong>Premier accès </strong> le mot de passe temporaire doit être remplacé à la première connexion. Aucune page n’est accessible avant ce changement.
+            </li>
+            <li>
+              <strong>Mot de passe oublié </strong> seul l’administrateur peut en générer un nouveau. Il est temporaire, lui aussi.
+            </li>
+            <li>
+              <strong>Fin de contrat ou absence longue </strong> l’administrateur désactive le compte. Un compte désactivé ne peut plus se connecter.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>2. Rôles et accès</h2>
+          <p>Le rôle du compte, fixé par l’administrateur, détermine les pages et les actions disponibles. Le serveur vérifie chaque action, indépendamment de l’écran affiché.</p>
+          <ul>
+            <li>
+              <strong>Réception </strong> tableau de bord de la réception, plan des chambres, arrivées, départs et nombre de clients, cycle de ménage, création des demandes et des incidents
+              passés, prise en charge, résolution, modification et suppression des demandes, analyses des chambres et des demandes.
+            </li>
+            <li>
+              <strong>Ressources humaines </strong> personnel (annuaire, horaires, services), consultation des chambres et des demandes, création de demandes, cycle de ménage, analyses des
+              effectifs.
+            </li>
+            <li>
+              <strong>Direction </strong> tableau de bord de direction, chambres et cycle de ménage, création, résolution, modification et suppression des demandes, analyses, dont les
+              tendances par chambre.
+            </li>
+            <li>
+              <strong>Administrateur </strong> l’ensemble des fonctions ci-dessus, plus la gestion des comptes et du parc des chambres.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>3. Bon usage</h2>
+          <ul>
+            <li>
+              <strong>Postes partagés </strong> utilisez « Se déconnecter » avant de quitter un poste de la réception ou un appareil commun.
+            </li>
+            <li>
+              <strong>Exactitude </strong> enregistrez les demandes, les arrivées, les départs et l’état des chambres au moment où ils ont lieu. Un incident découvert après coup s’enregistre
+              comme « Incident passé », avec sa date réelle.
+            </li>
+            <li>
+              <strong>Incident de sécurité </strong> un accès suspect, un mot de passe divulgué ou un appareil perdu se signale sans délai à l’administrateur, qui réinitialise ou désactive le
+              compte.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>4. Confidentialité des clients</h2>
           <p>
-            Les présentes conditions définissent les usages autorisés, les obligations de confidentialité et les responsabilités en matière de sécurité de l’ensemble du personnel de l’hôtel accédant à la plateforme Hotel SES.
+            Les informations sur les clients (chambre, séjour, nombre de personnes, demandes et réclamations) relèvent du secret professionnel. Elles servent uniquement au service rendu aux
+            clients.
           </p>
-        </header>
+          <ul>
+            <li>Ne les copiez, photographiez ou transmettez pas en dehors de l’hôtel.</li>
+            <li>N’en parlez qu’aux collègues qui en ont besoin pour traiter la demande.</li>
+          </ul>
+        </section>
 
-        {/* Content Sections */}
+        <section>
+          <h2>5. Traçabilité</h2>
+          <p>Hotel SES conserve, pour le suivi du service </p>
+          <ul>
+            <li>l’auteur de chaque demande, la personne assignée, et les heures de création, de prise en charge et de résolution </li>
+            <li>la dernière connexion de chaque compte </li>
+            <li>l’heure de début du service de chaque employé.</li>
+          </ul>
+          <p>
+            Il est interdit de contourner les contrôles d’accès, d’utiliser le compte d’un autre ou de modifier des données pour fausser les délais de traitement. Un manquement peut entraîner
+            la désactivation du compte, sans préjudice des règles internes de l’hôtel.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Données personnelles</h2>
+          <p>
+            Les données traitées, leurs finalités et vos droits sont décrits dans la <Link href="/privacy">politique de confidentialité</Link>.
+          </p>
+        </section>
+      </div>
+
+      <footer className="legal-footer">
         <div>
-          <section>
-            <h2>
-              1. Accès autorisé et périmètre par rôle
-            </h2>
-            <p>
-              Hotel SES est un système de gestion interne strictement réservé aux membres authentifiés du personnel de l’Hôtel Méditerranée Thalasso Golf Hammamet. Les accès sont attribués selon trois niveaux opérationnels :
-            </p>
-            <ul>
-              <li>
-                <strong>Réception (<code>/reception</code>) :</strong> personnel de la réception habilité à créer rapidement des demandes d’intervention, à mettre à jour l’état d’occupation des chambres et à suivre les indicateurs de propreté des chambres.
-              </li>
-              <li>
-                <strong>Ressources humaines (<code>/rh</code>) :</strong> personnel RH habilité à gérer les horaires des employés, à tenir à jour le référentiel des services et à réassigner la charge des demandes en cas d’absence.
-              </li>
-              <li>
-                <strong>Direction générale (<code>/gm</code>) :</strong> équipe de direction disposant d’une vue d’ensemble sur les 340 chambres, des analyses de SLA par service, des performances de délai moyen de résolution (MTTR) et des réclamations confidentielles des clients.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              2. Sécurité des identifiants et confidentialité des codes d’accès
-            </h2>
-            <p>
-              Chaque espace est protégé par des codes d’accès définis dans la configuration de l’environnement et par des cookies de session chiffrés. Les utilisateurs doivent respecter strictement les règles suivantes :
-            </p>
-            <ul>
-              <li>
-                <strong>Aucun partage des identifiants :</strong> les codes d’accès des services ne doivent jamais être communiqués à des tiers non autorisés ni être notés en évidence sur les postes de travail.
-              </li>
-              <li>
-                <strong>Fermeture explicite de la session :</strong> le personnel doit utiliser la fonction « Se déconnecter » avant de laisser sans surveillance un terminal partagé ou un poste de la réception.
-              </li>
-              <li>
-                <strong>Signalement des incidents :</strong> tout accès non autorisé suspecté ou toute compromission d’identifiants doit être signalé sans délai au support informatique (<a href="mailto:contact@hotelmediterraneehammamet.com">contact@hotelmediterraneehammamet.com</a>).
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              3. Vie privée des clients et confidentialité des données
-            </h2>
-            <p>
-              Toutes les informations relatives aux clients (noms, numéros de chambre, demandes d’intervention et réclamations confidentielles) enregistrées dans Hotel SES sont soumises au strict secret professionnel et à la réglementation applicable en matière de protection des données personnelles :
-            </p>
-            <ul>
-              <li>
-                Le personnel s’interdit d’extraire, de photographier ou de reproduire les fiches clients à des fins personnelles ou en vue d’une diffusion externe.
-              </li>
-              <li>
-                Les demandes marquées <strong>Confidentielles</strong> sont transmises exclusivement à la direction et ne doivent jamais être évoquées en dehors des canaux de direction prévus à cet effet.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              4. Intégrité du système et surveillance automatisée
-            </h2>
-            <p>
-              L’activité du système, notamment la création des demandes, leur prise en charge et les pointages de présence, est journalisée à des fins d’assurance qualité et de conformité opérationnelle. Toute tentative délibérée de porter atteinte à l’intégrité de la base de données, de contourner les contrôles d’accès aux pages ou de manipuler les délais de SLA est strictement interdite.
-            </p>
-          </section>
+          &copy; {new Date().getFullYear()} {HOTEL_NAME} • Hotel SES
         </div>
-
-        {/* Footer */}
-        <footer className="legal-footer">
-          <div>
-            &copy; {new Date().getFullYear()} Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
-          </div>
-          <div>
-            <Link href="/privacy">
-              Politique de confidentialité et cookies
-            </Link>
-            <Link href="/login">
-              Page de connexion
-            </Link>
-          </div>
-        </footer>
+        <div>
+          <Link href="/privacy">Politique de confidentialité</Link>
+          <Link href="/login">Page de connexion</Link>
+        </div>
+      </footer>
     </LegalLayout>
   );
 }

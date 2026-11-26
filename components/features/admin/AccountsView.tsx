@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { KeyRound, Pencil, Power, Trash2, UserPlus, UserRound, UsersRound } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import type { Account } from "@/lib/server/accounts";
@@ -11,11 +12,14 @@ import { EmptyState, Panel } from "@/components/features/Panel";
 import { ToneBadge } from "@/components/features/StatusBadges";
 import { formatDateTime } from "@/lib/datetime";
 import { plural } from "@/lib/format";
-import { PORTAL_ROLES, ROLE_LABEL, type PortalRole } from "@/lib/portals";
+import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
 import type { Tone } from "@/lib/rooms";
 
-const ROLE_TONE: Record<PortalRole, Tone> = { admin: "special", gm: "info", rh: "success", reception: "neutral" };
-const ROLE_FILTER = [{ value: "ALL", label: "Tous les rôles" }, ...PORTAL_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))];
+/** In the URL (/admin/accounts?q=…&role=…): kept on refresh, Back and shared links. */
+const ACCOUNT_FILTERS = { q: "", role: "ALL" };
+
+const ROLE_TONE: Record<Role, Tone> = { admin: "special", gm: "info", rh: "success", reception: "neutral" };
+const ROLE_FILTER = [{ value: "ALL", label: "Tous les rôles" }, ...ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }))];
 
 function status(a: Account): { label: string; tone: Tone } {
   if (!a.is_active) return { label: "Désactivé", tone: "danger" };
@@ -45,8 +49,11 @@ export const AccountsView = memo(function AccountsView({
   onToggleActive: (a: Account) => void;
   onRemove: (a: Account) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState("ALL");
+  const [filters, setFilters] = useUrlFilters(ACCOUNT_FILTERS);
+  const search = filters.q;
+  const setSearch = (q: string) => setFilters({ q });
+  const role = filters.role;
+  const setRole = (value: string) => setFilters({ role: value });
   const staffName = useMemo(() => new Map(staff.map((s) => [s.id, s.full_name])), [staff]);
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -131,7 +138,7 @@ export const AccountsView = memo(function AccountsView({
               <Button
                 variant="secondary"
                 size={rowButton(layout)}
-                className={layout === "cards" ? undefined : "w-[7.5rem]"}
+                className={layout === "list" ? undefined : "w-[7.5rem]"}
                 title={a.is_active ? "Désactiver le compte" : "Réactiver le compte"}
                 onClick={() => onToggleActive(a)}
                 disabled={pending || (self && a.is_active)}

@@ -27,8 +27,9 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=()",
           },
           {
+            // Turns off the legacy XSS auditor of old browsers, which could itself be abused (OWASP: send 0).
             key: "X-XSS-Protection",
-            value: "1; mode=block",
+            value: "0",
           },
         ],
       },

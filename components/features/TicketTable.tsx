@@ -15,7 +15,7 @@ import { PriorityBadge, TicketStatusBadge } from "./StatusBadges";
 
 /**
  * Ticket list shared by every portal: sortable table on wide screens,
- * stacked cards below 640px (easyui DataTable). Role-specific buttons go in
+ * the phone list below 640px (easyui DataTable). Role-specific buttons go in
  * `actions`.
  */
 export const TicketTable = memo(function TicketTable({

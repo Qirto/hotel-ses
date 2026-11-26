@@ -7,7 +7,8 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { GhostIconButton } from "@/components/app/AppShell";
 import { Panel } from "@/components/features/Panel";
 import { Segmented } from "@/components/features/Forms";
-import { PORTALS, ROLE_LABEL, type PortalRole } from "@/lib/portals";
+import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { homeFor } from "@/lib/routes";
 import { signOutToLogin } from "@/lib/session";
 import { setThemePreference, THEME_OPTIONS, useThemePreference, type ThemePreference } from "@/lib/theme";
 
@@ -22,15 +23,14 @@ const THEME_CHOICES = THEME_OPTIONS.map((o) => ({ ...o, icon: THEME_ICONS[o.valu
  * Settings page: per-device preferences and the signed-in account.
  * Sections are Panels of SettingRows, so new settings slot in without new layout.
  */
-export function SettingsView({ role, username, displayName }: { role: PortalRole; username: string; displayName: string }) {
-  const portal = PORTALS[role];
+export function SettingsView({ role, username, displayName }: { role: Role; username: string; displayName: string }) {
   const theme = useThemePreference();
 
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-border bg-bg/85 pt-[var(--safe-top)] backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-2 md:px-4">
-          <GhostIconButton label={`Retour à l’espace ${portal.name}`} href={portal.path}>
+          <GhostIconButton label="Retour à l’application" href={homeFor(role)}>
             <ArrowLeft aria-hidden />
           </GhostIconButton>
           <h1 className="text-base font-semibold tracking-tight">Paramètres</h1>
@@ -58,7 +58,7 @@ export function SettingsView({ role, username, displayName }: { role: PortalRole
               <span className="text-sm text-fg">{ROLE_LABEL[role]}</span>
             </SettingRow>
             <SettingRow label="Mot de passe" description="Changez-le régulièrement, et tout de suite si vous pensez qu’il est connu.">
-              <ButtonLink href="/compte/mot-de-passe" variant="outline" size="touch" leftIcon={<KeyRound className="size-4" aria-hidden />}>
+              <ButtonLink href="/account/password" variant="outline" size="touch" leftIcon={<KeyRound className="size-4" aria-hidden />}>
                 Changer le mot de passe
               </ButtonLink>
             </SettingRow>

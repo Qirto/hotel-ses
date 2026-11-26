@@ -6,81 +6,65 @@ import { LogOut, Settings } from "lucide-react";
 import { Sidebar, useSidebar, type SidebarItem, type SidebarSection } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { signOutToLogin } from "@/lib/session";
-import { HOTEL_NAME, PORTALS, type Portal, type PortalRole, type PortalTone } from "@/lib/portals";
+import { HOTEL_NAME, ROLE_BADGE, ROLE_LABEL, type Role } from "@/lib/roles";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { BottomNav } from "./BottomNav";
-import type { NavTabItem } from "./nav";
+import { useAppNav, type NavBadges, type NavTabItem } from "./nav";
 
-const TONE_TEXT: Record<PortalTone, string> = {
-  brand: "text-fg-muted",
-  success: "text-success",
-  special: "text-special",
-};
+const TONE_TEXT = { muted: "text-fg-muted", success: "text-success", special: "text-special" } as const;
 
 const signOut = () => void signOutToLogin();
 
 interface AppShellProps {
-  /** Portal this shell belongs to: its name, code and accent come from lib/portals. */
-  role: PortalRole;
-  items: NavTabItem[];
-  /** Extra actions shown in the top bar on every screen size. */
-  headerActions?: ReactNode;
+  /** The signed-in role: decides the menu (lib/routes.ts) and the brand chip. */
+  role: Role;
+  /** Counts shown on the Rooms and Requests entries. */
+  badges: NavBadges;
   children: ReactNode;
 }
 
 /**
- * Portal layout. Desktop (md+): collapsible easyui Sidebar + top bar.
- * Mobile: top bar + fixed bottom tab bar. The page itself scrolls; the
- * sidebar is sticky, so there is never a nested scroll container.
- *
- * Re-renders: the sidebar, bottom nav and brand are memoised and receive
- * stable props, so typing or filtering inside a portal only re-renders
- * the portal content, not the shell.
+ * The app's one shell, for every role. Desktop (md+): collapsible easyui Sidebar +
+ * top bar. Mobile: top bar + fixed bottom tab bar. Each menu entry is a page; the
+ * active one follows the URL. The page itself scrolls; the sidebar is sticky, so
+ * there is never a nested scroll container.
  */
-export default function AppShell({ role, items, headerActions, children }: AppShellProps) {
-  const portal = PORTALS[role];
+export default function AppShell({ role, badges, children }: AppShellProps) {
+  const { items, title } = useAppNav(role, badges);
 
-  // Latest values behind refs so the callbacks below never change identity.
+  // Latest items behind a ref so the sidebar callback never changes identity.
   const itemsRef = useRef(items);
   itemsRef.current = items;
-
   const activeId = items.find((i) => i.isActive)?.id ?? "";
-  const activeLabel = items.find((i) => i.isActive)?.label ?? portal.name;
-
   const onActiveChange = useCallback((id: string) => {
     itemsRef.current.find((i) => i.id === id)?.onClick();
   }, []);
 
   // Rebuild sidebar data only when what it displays changes.
-  const navKey = items.map((i) => `${i.id}:${i.label}:${i.badge ?? ""}:${i.badgeTone ?? ""}`).join("|");
+  // Daily work first, then « Administration » (accounts, room configuration) when the role has it.
+  const navKey = items.map((i) => `${i.id}:${i.label}:${i.badge ?? ""}`).join("|");
   const sections = useMemo<SidebarSection[]>(
-    () => [
-      {
-        items: itemsRef.current.map<SidebarItem>((i) => ({
-          id: i.id,
-          label: i.label,
-          icon: i.icon,
-          badge: i.badge ? i.badge : undefined,
-          badgeTone: i.badgeTone,
-        })),
-      },
-    ],
+    () => {
+      const toItem = (i: NavTabItem): SidebarItem => ({ id: i.id, label: i.label, icon: i.icon, badge: i.badge ? i.badge : undefined, badgeTone: i.badgeTone });
+      const daily = itemsRef.current.filter((i) => !i.group).map(toItem);
+      const admin = itemsRef.current.filter((i) => i.group === "admin").map(toItem);
+      return [{ items: daily }, ...(admin.length ? [{ title: "Administration", items: admin }] : [])];
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [navKey]
   );
 
   return (
     <div className="flex min-h-dvh">
-      <ShellSidebar sections={sections} activeId={activeId} onActiveChange={onActiveChange} portal={portal} />
+      <ShellSidebar sections={sections} activeId={activeId} onActiveChange={onActiveChange} role={role} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 border-b border-border bg-bg/85 pt-[var(--safe-top)] backdrop-blur-md">
           <div className="mx-auto flex h-14 w-full max-w-screen-2xl items-center gap-3 px-4 md:px-6 lg:px-8">
-            <Brand portal={portal} className="flex-1 md:hidden" />
-            <h1 className="hidden min-w-0 flex-1 truncate text-base font-semibold tracking-tight md:block">{activeLabel}</h1>
+            <Brand role={role} className="flex-1 md:hidden" />
+            <h1 className="hidden min-w-0 flex-1 truncate text-base font-semibold tracking-tight md:block">{title}</h1>
 
             <div className="flex shrink-0 items-center gap-1">
-              {headerActions}
               <GhostIconButton label="Paramètres" href="/settings" className="md:hidden">
                 <Settings aria-hidden />
               </GhostIconButton>
@@ -92,7 +76,7 @@ export default function AppShell({ role, items, headerActions, children }: AppSh
         </header>
 
         <main id="main" className="flex-1 px-4 pb-[calc(5rem+var(--safe-bottom))] pt-4 md:px-6 md:pb-8 md:pt-6 lg:px-8">
-          <div className="mx-auto w-full max-w-screen-2xl">
+          <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 md:gap-6">
             <ConnectionBanner />
             {children}
           </div>
@@ -110,14 +94,14 @@ const ShellSidebar = memo(function ShellSidebar({
   sections,
   activeId,
   onActiveChange,
-  portal,
+  role,
 }: {
   sections: SidebarSection[];
   activeId: string;
   onActiveChange: (id: string) => void;
-  portal: Portal;
+  role: Role;
 }) {
-  const header = useMemo(() => <Brand portal={portal} />, [portal]);
+  const header = useMemo(() => <Brand role={role} />, [role]);
   return (
     <Sidebar
       className="sticky top-0 h-dvh"
@@ -130,20 +114,22 @@ const ShellSidebar = memo(function ShellSidebar({
   );
 });
 
-/** Logo, "Hotel SES" and the portal's code and name: sidebar header and mobile top bar. */
-export const Brand = memo(function Brand({ portal, className }: { portal: Portal; className?: string }) {
+/** Logo, "Hotel SES" and the role: sidebar header and mobile top bar. */
+export const Brand = memo(function Brand({ role, className }: { role: Role; className?: string }) {
+  const badge = ROLE_BADGE[role];
+  const label = ROLE_LABEL[role];
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
       <img src="/hotel-logo.png" alt={HOTEL_NAME} className="size-8 shrink-0 rounded-lg object-cover ring-1 ring-border" />
       <div className="min-w-0 leading-tight">
         <p className="truncate text-sm font-semibold tracking-tight">Hotel SES</p>
         <p className="truncate text-xs text-fg-muted">
-          <span className={cn("font-semibold uppercase tracking-wide", TONE_TEXT[portal.tone])}>{portal.code}</span>
-          {/* Reception's code and name are the same word: show it once. */}
-          {portal.name.toLocaleLowerCase("fr") !== portal.code.toLocaleLowerCase("fr") && (
+          <span className={cn("font-semibold uppercase tracking-wide", TONE_TEXT[badge.tone])}>{badge.code}</span>
+          {/* show the full label only when it says more than the code */}
+          {label.toLocaleLowerCase("fr") !== badge.code.toLocaleLowerCase("fr") && (
             <>
               <span aria-hidden> · </span>
-              {portal.name}
+              {label}
             </>
           )}
         </p>

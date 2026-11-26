@@ -17,11 +17,11 @@ alter table public.staff
 -- Seed initial skill tags on existing technical staff
 update public.staff
 set skill_tags = array['Electrical', 'HVAC']
-where role = 'maintenance' and full_name = 'David Laurent';
+where role = 'maintenance' and full_name = 'Walid Haddad';
 
 update public.staff
 set skill_tags = array['General', 'Plumbing']
-where role = 'maintenance' and full_name != 'David Laurent';
+where role = 'maintenance' and full_name != 'Walid Haddad';
 
 -- 3. Update reclamations table
 alter table public.reclamations

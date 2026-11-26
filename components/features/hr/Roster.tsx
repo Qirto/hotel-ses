@@ -1,12 +1,13 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { CalendarDays } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
-import { FilterBar, SelectField } from "@/components/features/Filters";
+import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
 import { Select } from "@/components/features/Forms";
 import { SHIFT_ICONS } from "@/lib/icons";
 import { SHIFT_LABELS, type ShiftType } from "@/lib/constants";
@@ -18,6 +19,8 @@ type OnShiftChange = (staffId: number, day: string, shift: ShiftType) => void;
 const WEEKDAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const SHIFT_TYPES: ShiftType[] = ["MORNING", "EVENING", "NIGHT", "OFF"];
 const SHIFT_OPTIONS = SHIFT_TYPES.map((s) => ({ value: s, label: SHIFT_LABELS[s].label }));
+
+const ROSTER_FILTERS = { q: "", service: "ALL" };
 
 /** Seeded weekly pattern (client-side only, not persisted). */
 export function initialRoster(staff: readonly Staff[]): Roster {
@@ -36,7 +39,7 @@ export function initialRoster(staff: readonly Staff[]): Roster {
 
 /**
  * HR "Shifts" sub-tab: shift totals and the weekly roster. The roster is the
- * shared DataTable (seven fluid day columns; stacked cards when they no longer
+ * shared DataTable (seven fluid day columns; the phone list when they no longer
  * fit). The roster state itself is owned by the portal.
  */
 export const ShiftsView = memo(function ShiftsView({
@@ -50,8 +53,15 @@ export const ShiftsView = memo(function ShiftsView({
   onShiftChange: OnShiftChange;
   departmentOptions: readonly { value: string; label: string }[];
 }) {
-  const [department, setDepartment] = useState("ALL");
-  const rows = useMemo(() => (department === "ALL" ? [...staff] : staff.filter((s) => s.department === department)), [staff, department]);
+  // Filters in the URL (/staff/shifts?service=…&q=…): kept on refresh, Back and shared links.
+  const [filters, setFilters] = useUrlFilters(ROSTER_FILTERS);
+  const department = filters.service;
+  const rows = useMemo(() => {
+    const q = filters.q.trim().toLowerCase();
+    return staff.filter(
+      (s) => (department === "ALL" || s.department === department) && (!q || s.full_name.toLowerCase().includes(q) || roleLabel(s.role).toLowerCase().includes(q))
+    );
+  }, [staff, department, filters.q]);
   const totals = useMemo(() => {
     const counts: Record<ShiftType, number> = { MORNING: 0, EVENING: 0, NIGHT: 0, OFF: 0 };
     Object.values(roster).forEach((days) => Object.values(days).forEach((s) => counts[s]++));
@@ -111,7 +121,8 @@ export const ShiftsView = memo(function ShiftsView({
         icon={<CalendarDays />}
       >
         <FilterBar className="mb-4">
-          <SelectField label="Service du planning" value={department} onChange={setDepartment} options={departmentOptions} />
+          <SearchInput label="Rechercher un employé par nom ou poste" placeholder="Rechercher un employé" value={filters.q} onChange={(q) => setFilters({ q })} />
+          <SelectField label="Service du planning" value={department} onChange={(service) => setFilters({ service })} options={departmentOptions} />
         </FilterBar>
         <DataTable<Staff>
           rows={rows}
@@ -123,7 +134,7 @@ export const ShiftsView = memo(function ShiftsView({
           defaultSort={{ key: "full_name", dir: "asc" }}
           pageSize={25}
           density="compact"
-          emptyState={<EmptyState icon={<CalendarDays />} title="Aucun employé dans ce service" />}
+          emptyState={<EmptyState icon={<CalendarDays />} title={filters.q ? "Aucun employé ne correspond à la recherche" : "Aucun employé dans ce service"} />}
           ariaLabel="Planning hebdomadaire"
         />
       </Panel>
@@ -142,7 +153,7 @@ function ShiftSelect({
   day: string;
   shift: ShiftType;
   onChange: OnShiftChange;
-  /** Dense trigger inside table rows; full touch size on cards. */
+  /** Dense trigger inside table rows; full touch size in the phone list. */
   compact?: boolean;
 }) {
   return (

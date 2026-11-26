@@ -6,7 +6,7 @@ import { useOnline, useRealtimeState } from "@/lib/connection";
 
 /**
  * Tells staff when what they see may be out of date, above every portal page.
- * Offline: changes are refused (usePortalState). Live updates down: changes still
+ * Offline: changes are refused (useActions). Live updates down: changes still
  * work, but other people's changes are not arriving until it reconnects.
  * Both refetch automatically on recovery.
  */

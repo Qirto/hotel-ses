@@ -1,14 +1,17 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { isPortalRole, type PortalRole } from "@/lib/portals";
+import { isRole, type Role } from "@/lib/roles";
+import { can, type Capability } from "@/lib/permissions";
+import { canOpenPath, homeFor } from "@/lib/routes";
 
 export interface Session {
   userId: string;
   username: string;
   displayName: string;
-  role: PortalRole;
+  role: Role;
   mustChangePassword: boolean;
 }
 
@@ -24,7 +27,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (error || !claims) return null;
   const app = (claims.app_metadata ?? {}) as Record<string, unknown>;
   const role = app.role;
-  if (!isPortalRole(role)) return null;
+  if (!isRole(role)) return null;
   return {
     userId: claims.sub,
     username: String(app.username ?? ""),
@@ -34,21 +37,29 @@ export const getSession = cache(async (): Promise<Session | null> => {
   };
 });
 
-/** The signed-in role, or null. */
-export async function getPortalRole(): Promise<PortalRole | null> {
-  return (await getSession())?.role ?? null;
+/**
+ * First line of every page in the app: the session, or a redirect (to /login, or to
+ * the role's home when the role may not open `path`). The proxy does the same
+ * check; this keeps each page safe on its own.
+ */
+export async function requireRoute(path: string): Promise<Session> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (!canOpenPath(session.role, path)) redirect(homeFor(session.role));
+  return session;
 }
 
-/** Standard refusal returned by a server action called without the right role. */
+/** Standard refusal returned by a server action called without the right capability. */
 export const NOT_ALLOWED = { success: false as const, error: "Action non autorisée pour votre compte." };
 
 /**
- * First line of every server action: null when the caller's role is allowed,
- * otherwise the refusal to return. The admin is allowed everywhere.
- *   const denied = await deny(["rh"]); if (denied) return denied;
+ * First line of every server action: null when the caller has the capability (see
+ * lib/permissions.ts), otherwise the refusal to return. Refused too while the
+ * account still has a temporary password.
+ *   const denied = await deny("requests.delete"); if (denied) return denied;
  */
-export async function deny(roles: readonly PortalRole[]): Promise<typeof NOT_ALLOWED | null> {
+export async function deny(capability: Capability): Promise<typeof NOT_ALLOWED | null> {
   const session = await getSession();
   if (!session || session.mustChangePassword) return NOT_ALLOWED;
-  return session.role === "admin" || roles.includes(session.role) ? null : NOT_ALLOWED;
+  return can(session.role, capability) ? null : NOT_ALLOWED;
 }

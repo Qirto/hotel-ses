@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
+import { can } from "@/lib/permissions";
+import type { Role } from "@/lib/roles";
 
 /** Tickets with the relations every ticket list shows (room number, reporter, assignee). */
 const TICKET_SELECT =
@@ -21,28 +23,31 @@ async function rows<T>(label: string, query: Result<T>): Promise<T[] | null> {
 }
 
 /**
- * Server-side data for a portal page. Rooms and tickets are always loaded;
- * departments and staff only when the portal shows them. All queries run in
- * parallel.
+ * Server-side data for a page: only what it shows. All queries run in parallel.
  *
- * If any requested dataset fails to load, this throws: the route's error page
- * then offers "Try again". A portal never renders from silently missing data
- * (an empty room grid or ticket list would look real). `isLiveSupabase` is false
- * only when the rooms table is genuinely empty (realtime is then skipped).
+ * If any requested dataset fails to load, this throws: the route's error page then
+ * offers "Try again". A page never renders from silently missing data (an empty room
+ * grid or ticket list would look real). `isLiveSupabase` is false only when rooms
+ * were loaded and the table is genuinely empty (realtime is then skipped).
  */
-export async function loadHotelData({ departments = false, staff = false }: { departments?: boolean; staff?: boolean } = {}) {
+export async function loadHotelData({
+  rooms: withRooms = false,
+  tickets: withTickets = false,
+  departments = false,
+  staff = false,
+}: { rooms?: boolean; tickets?: boolean; departments?: boolean; staff?: boolean }) {
   const supabase = createClient(await cookies());
 
   const [rooms, tickets, departmentRows, staffRows] = await Promise.all([
-    rows<HotelRoom>("rooms", supabase.from("rooms").select("*").order("room_number", { ascending: true })),
-    rows<Reclamation>("tickets", supabase.from("reclamations").select(TICKET_SELECT).order("id", { ascending: true }) as unknown as Result<Reclamation>),
+    withRooms ? rows<HotelRoom>("rooms", supabase.from("rooms").select("*").order("room_number", { ascending: true })) : null,
+    withTickets ? rows<Reclamation>("tickets", supabase.from("reclamations").select(TICKET_SELECT).order("id", { ascending: true }) as unknown as Result<Reclamation>) : null,
     departments ? rows<Department>("departments", supabase.from("departments").select("*").order("id", { ascending: true })) : null,
     staff ? rows<Staff>("staff", supabase.from("staff").select("*").order("id", { ascending: true })) : null,
   ]);
 
   const failed = [
-    rooms === null && "rooms",
-    tickets === null && "tickets",
+    withRooms && rooms === null && "rooms",
+    withTickets && tickets === null && "tickets",
     departments && departmentRows === null && "departments",
     staff && staffRows === null && "staff",
   ].filter(Boolean);
@@ -55,4 +60,34 @@ export async function loadHotelData({ departments = false, staff = false }: { de
     departmentsList: departmentRows ?? [],
     staffList: staffRows ?? [],
   };
+}
+
+/** One room (by number) and its requests, for the room detail. Null when no such room. */
+export async function loadRoomDetail(number: string) {
+  const supabase = createClient(await cookies());
+  const { data: room, error } = await supabase.from("rooms").select("*").eq("room_number", number).maybeSingle();
+  if (error) throw new Error(`Could not load room ${number}: ${error.message}`);
+  if (!room) return null;
+  const tickets = await rows<Reclamation>("room tickets", supabase.from("reclamations").select(TICKET_SELECT).eq("room_id", room.id).order("id", { ascending: true }) as unknown as Result<Reclamation>);
+  if (tickets === null) throw new Error(`Could not load the requests of room ${number}.`);
+  return { room: room as HotelRoom, tickets };
+}
+
+/** One request (with its relations), for the request detail. Null when no such request. */
+export async function loadRequest(id: number) {
+  const supabase = createClient(await cookies());
+  const { data, error } = await supabase.from("reclamations").select(TICKET_SELECT).eq("id", id).maybeSingle();
+  if (error) throw new Error(`Could not load request ${id}: ${error.message}`);
+  return (data as Reclamation | null) ?? null;
+}
+
+/**
+ * A request for its detail route, plus the staff its assignee list needs (only when the
+ * role may edit it). Null for an id that isn't a positive integer or doesn't exist.
+ */
+export async function loadRequestDetail(role: Role, rawId: string) {
+  const id = Number(rawId);
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  const [ticket, data] = await Promise.all([loadRequest(id), loadHotelData({ staff: can(role, "requests.edit") })]);
+  return ticket && { ticket, staff: data.staffList };
 }

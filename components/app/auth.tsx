@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, KeyRound } from "lucide-react";
-import { HOTEL_NAME } from "@/lib/portals";
+import { HOTEL_NAME } from "@/lib/roles";
 import { INPUT_ICON } from "@/lib/styles";
 import { cn } from "@/lib/utils";
 

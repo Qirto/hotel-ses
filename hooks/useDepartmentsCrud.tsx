@@ -5,7 +5,7 @@ import type { Department } from "@/utils/roomsData";
 import { DepartmentFormSheet, type DepartmentInput } from "@/components/features/hr/DepartmentFormSheet";
 import { createDepartment, deleteDepartment, updateDepartment } from "@/app/actions";
 import { departmentLabel } from "@/lib/format";
-import { useSyncedState } from "./usePortalState";
+import { useSyncedState } from "./useActions";
 import type { ConfirmRequest, PortalRunner } from "./useConfirm";
 
 /**

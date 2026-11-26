@@ -1,181 +1,171 @@
-import React from "react";
 import Link from "next/link";
-import { LegalLayout } from "@/components/app/LegalLayout";
 import type { Metadata } from "next";
+import { LegalLayout } from "@/components/app/LegalLayout";
+import { HOTEL_NAME } from "@/lib/roles";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité du personnel et des opérations | Hotel SES",
-  description: "Information interne sur la protection des données et l’utilisation des cookies pour le personnel et la gestion opérationnelle de Hotel SES.",
+  title: "Politique de confidentialité | Hotel SES",
+  description: "Données personnelles traitées par Hotel SES, finalités, destinataires, cookies, conservation et droits des personnes.",
 };
+
+const CONTACT = "contact@hotelmediterraneehammamet.com";
+
+/* Describes what the app does today: keep in step with the database (supabase/*.sql),
+   the session cookie (utils/supabase) and browser storage (lib/theme.ts, InstallCard). */
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalLayout>
-        <p className="legal-meta">Date d’entrée en vigueur : octobre 2026 • Version 1.4</p>
+      <p className="legal-meta">En vigueur depuis le 26 novembre 2026 • Version 2.0</p>
 
-        {/* Header */}
-        <header>
-          <p className="legal-eyebrow">Conformité juridique et protection des données (RGPD / DPDP)</p>
-          <h1>
-            Politique de confidentialité du personnel et des opérations
-          </h1>
+      <header>
+        <p className="legal-eyebrow">Protection des données personnelles</p>
+        <h1>Politique de confidentialité</h1>
+        <p>
+          Cette politique décrit les données personnelles que Hotel SES, l’outil interne de l’{HOTEL_NAME}, enregistre sur le personnel et sur les clients, pourquoi, qui y a accès et
+          comment exercer vos droits.
+        </p>
+      </header>
+
+      <div>
+        <section>
+          <h2>1. Responsable du traitement</h2>
+          <div className="legal-callout">
+            <p>
+              <strong>Responsable </strong> {HOTEL_NAME}, Hammamet, Tunisie
+            </p>
+            <p>
+              <strong>Contact </strong> <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+            </p>
+          </div>
           <p>
-            La présente politique de confidentialité encadre les traitements de données réalisés au sein de Hotel SES (système de gestion des services et des opérations)
-            déployé à l’Hôtel Méditerranée Thalasso Golf Hammamet. Elle précise la manière dont sont gérés les dossiers opérationnels des employés, les demandes d’intervention et les données de séjour des clients.
+            Le traitement relève de la loi organique n° 2004-63 du 27 juillet 2004 portant sur la protection des données à caractère personnel, sous le contrôle de l’Instance nationale de
+            protection des données personnelles (INPDP).
           </p>
-        </header>
+        </section>
 
-        {/* Content Sections */}
+        <section>
+          <h2>2. Données enregistrées</h2>
+          <ul>
+            <li>
+              <strong>Comptes </strong> identifiant, nom affiché, rôle, employé rattaché, date de dernière connexion. Le mot de passe est conservé sous forme chiffrée par le service
+              d’authentification  personne, administrateur compris, ne peut le lire.
+            </li>
+            <li>
+              <strong>Personnel </strong> nom, fonction, service, numéro de téléphone professionnel, statut de service (en service, hors service, absent), heure de début du service,
+              compétences.
+            </li>
+            <li>
+              <strong>Clients </strong> nom, téléphone, chambre, dates d’arrivée et de départ, nombre d’adultes et d’enfants dans la chambre.
+            </li>
+            <li>
+              <strong>Demandes </strong> chambre, service concerné, problème, détails saisis, priorité, statut, auteur, personne assignée, heures de création, de prise en charge et de
+              résolution.
+            </li>
+          </ul>
+          <p>Hotel SES n’enregistre ni donnée bancaire, ni pièce d’identité, ni localisation.</p>
+        </section>
+
+        <section>
+          <h2>3. Finalités</h2>
+          <ul>
+            <li>traiter les demandes des clients et les transmettre au bon service </li>
+            <li>suivre l’occupation et l’entretien des chambres </li>
+            <li>organiser le personnel (annuaire, horaires, services) </li>
+            <li>mesurer la qualité du service (délais de traitement, demandes par service et par chambre) </li>
+            <li>sécuriser l’accès à l’outil (comptes personnels, rôles).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>4. Qui y a accès</h2>
+          <ul>
+            <li>
+              <strong>Le personnel de l’hôtel</strong>, selon son rôle (réception, ressources humaines, direction, administrateur)  chacun ne voit et ne modifie que ce que son rôle permet,
+              règle appliquée par la base de données elle-même. Le détail figure dans les <Link href="/tos">conditions d’utilisation</Link>.
+            </li>
+            <li>
+              <strong>Nos prestataires techniques</strong>, pour le compte de l’hôtel  Supabase (base de données et authentification) et Vercel (hébergement de l’application).
+            </li>
+          </ul>
+          <p>Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
+        </section>
+
+        <section>
+          <h2>5. Cookies et stockage sur l’appareil</h2>
+          <p>Hotel SES n’utilise aucun cookie publicitaire ni outil de mesure d’audience.</p>
+          <div className="legal-callout">
+            <h3>Cookie de session (strictement nécessaire)</h3>
+            <ul>
+              <li>
+                <strong>Nom </strong> <code>sb-…-auth-token</code> (Supabase)
+              </li>
+              <li>
+                <strong>Rôle </strong> garder votre compte connecté entre deux pages.
+              </li>
+              <li>
+                <strong>Durée </strong> supprimé à la déconnexion  sinon 400 jours au plus.
+              </li>
+            </ul>
+            <h3>Stockage local du navigateur</h3>
+            <ul>
+              <li>
+                <strong>Thème choisi</strong> (clair, sombre ou système), sur cet appareil uniquement.
+              </li>
+              <li>
+                <strong>Bandeau d’installation</strong>  la date à laquelle vous l’avez fermé, pour ne pas le réafficher pendant 7 jours.
+              </li>
+              <li>
+                <strong>Application installée</strong>  les fichiers de l’application (pas vos données), pour un démarrage rapide et une page hors connexion.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>6. Conservation</h2>
+          <ul>
+            <li>
+              <strong>Comptes </strong> jusqu’à leur suppression par l’administrateur. Un compte désactivé reste enregistré mais ne peut plus se connecter.
+            </li>
+            <li>
+              <strong>Personnel </strong> jusqu’à la suppression de l’employé par les ressources humaines.
+            </li>
+            <li>
+              <strong>Clients et demandes </strong> conservés pour l’historique des chambres et les analyses. Hotel SES ne les supprime pas automatiquement  une demande se supprime depuis
+              l’application, et toute autre suppression se demande au contact ci-dessus.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>7. Sécurité</h2>
+          <ul>
+            <li>comptes personnels, mot de passe temporaire à changer dès la première connexion </li>
+            <li>droits vérifiés par le serveur et par la base de données pour chaque action, selon le rôle </li>
+            <li>connexions chiffrées (HTTPS) </li>
+            <li>désactivation immédiate d’un compte par l’administrateur.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>8. Vos droits</h2>
+          <p>
+            Toute personne concernée, membre du personnel ou client, peut demander l’accès à ses données, leur rectification ou leur suppression, et s’opposer à leur traitement pour un motif
+            légitime. Écrivez à <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. Vous pouvez aussi saisir l’INPDP.
+          </p>
+        </section>
+      </div>
+
+      <footer className="legal-footer">
         <div>
-          <section>
-            <h2>
-              1. Responsable du traitement et contact pour la protection des données
-            </h2>
-            <p>
-              Le responsable du traitement des données personnelles et opérationnelles traitées dans Hotel SES est :
-            </p>
-            <div className="legal-callout">
-              <p><strong>Entité :</strong> Hôtel Méditerranée Thalasso Golf Hammamet</p>
-              <p><strong>Adresse :</strong> Hammamet, Tunisie</p>
-              <p>
-                <strong>Contact protection des données :</strong>{" "}
-                <a href="mailto:contact@hotelmediterraneehammamet.com">
-                  contact@hotelmediterraneehammamet.com
-                </a>
-              </p>
-              <p>
-                <strong>Support informatique et signalement d’incidents :</strong>{" "}
-                <a href="mailto:it-support@grandpalacehotel.com">
-                  it-support@grandpalacehotel.com
-                </a>
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h2>
-              2. Catégories de données collectées
-            </h2>
-            <p>Hotel SES traite des informations opérationnelles strictement limitées aux tâches de gestion hôtelière :</p>
-            <ul>
-              <li>
-                <strong>Profils et présence du personnel :</strong> nom complet, rôle attribué (réceptionniste, technicien, gouvernante, RH), code de service, numéro de poste interne ou de téléphone, statut de présence en service, compétences et horodatages de pointage.
-              </li>
-              <li>
-                <strong>Demandes d’intervention et de maintenance :</strong> numéro de chambre, description du problème, niveau de priorité (normale, haute, urgente), service destinataire, technicien assigné, notes de résolution et horodatages SLA.
-              </li>
-              <li>
-                <strong>Clients et attribution des chambres :</strong> nom du client, numéro de chambre, dates d’arrivée et de départ, nombre d’adultes et d’enfants (requis pour les protocoles de sécurité et le calcul de la taxe de séjour).
-              </li>
-              <li>
-                <strong>Réclamations confidentielles :</strong> demandes à accès restreint, consultables exclusivement par le directeur général afin de protéger la vie privée des clients et de traiter les retours sensibles.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              3. Bases légales du traitement
-            </h2>
-            <p>Conformément à l’article 6 du Règlement général sur la protection des données (RGPD), le traitement repose sur les bases suivantes :</p>
-            <ul>
-              <li>
-                <strong>Article 6(1)(b) [nécessité contractuelle] :</strong> exécution des obligations liées au contrat de travail, répartition des horaires et exécution des contrats de prestation hôtelière conclus avec les clients.
-              </li>
-              <li>
-                <strong>Article 6(1)(c) [obligation légale] :</strong> tenue des registres des clients de l’hôtel, des relevés d’effectifs à des fins de sécurité et des relevés d’horaires liés à la santé au travail exigés par la réglementation hôtelière locale.
-              </li>
-              <li>
-                <strong>Article 6(1)(f) [intérêts légitimes] :</strong> efficacité opérationnelle, traitement rapide des interventions de maintenance, protection des biens et contrôle exercé par la direction.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              4. Politique relative aux cookies et technologies de stockage
-            </h2>
-            <p>
-              Hotel SES est un outil opérationnel interne et n’utilise <strong>aucun</strong> cookie publicitaire, traceur marketing ni balise de profilage intersites.
-            </p>
-            <div className="legal-callout">
-              <h3>
-                Cookies strictement nécessaires
-              </h3>
-              <ul>
-                <li>
-                  <strong>Nom du cookie :</strong> <code>sb-…-auth-token</code> (session Supabase)
-                </li>
-                <li>
-                  <strong>Finalité :</strong> maintient la session du compte personnel connecté ; le rôle du compte (réception, RH, direction, administrateur), signé par le serveur, détermine les espaces et les actions autorisés.
-                </li>
-                <li>
-                  <strong>Durée de conservation :</strong> durée de la session, renouvelée tant que le compte est utilisé (suppression immédiate lors d’une déconnexion explicite).
-                </li>
-                <li>
-                  <strong>Exemption légale :</strong> strictement nécessaire à la sécurité des espaces au sens de l’article 5(3) de la directive ePrivacy ; aucun consentement préalable n’est requis.
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2>
-              5. Durées de conservation et calendrier d’effacement
-            </h2>
-            <p>Nous appliquons des principes stricts de minimisation des données :</p>
-            <ul>
-              <li>
-                <strong>Dossiers du personnel :</strong> conservés pendant toute la durée de l’emploi. En cas de départ ou de fin de contrat, les comptes du personnel peuvent être anonymisés depuis l’espace RH.
-              </li>
-              <li>
-                <strong>Historique des incidents :</strong> conservé 12 mois à des fins d’assurance qualité et de planification de la maintenance des installations, après quoi les informations permettant d’identifier les clients sont supprimées.
-              </li>
-              <li>
-                <strong>Données des clients partis :</strong> archivées après règlement du séjour, puis supprimées ou anonymisées dans un délai de 6 mois, sauf si une conservation plus longue est exigée par les obligations fiscales légales.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2>
-              6. Vos droits et demandes de suppression
-            </h2>
-            <p>
-              Conformément à la législation applicable en matière de protection des données (articles 15 à 22 du RGPD), toutes les personnes concernées, membres du personnel comme clients, ont le droit de :
-            </p>
-            <ul>
-              <li>Obtenir la confirmation que des données les concernant sont détenues et en recevoir une copie exportée (droit d’accès et droit à la portabilité).</li>
-              <li>Obtenir sans délai la rectification de coordonnées ou d’informations de service inexactes.</li>
-              <li>Obtenir l’effacement (droit à l’oubli) ou l’anonymisation des données non essentielles.</li>
-              <li>S’opposer à certaines opérations de traitement ou en demander la limitation.</li>
-            </ul>
-            <div className="legal-callout">
-              <p>
-                Pour exercer vos droits ou demander l’effacement des données de votre compte, contactez directement notre délégué à la protection des données (DPO) à l’adresse{" "}
-                <a href="mailto:dpo@grandpalacehotel.com">
-                  dpo@grandpalacehotel.com
-                </a>
-                . Les administrateurs RH peuvent également lancer l’anonymisation d’un dossier du personnel directement depuis l’espace RH.
-              </p>
-            </div>
-          </section>
+          &copy; {new Date().getFullYear()} {HOTEL_NAME} • Hotel SES
         </div>
-
-        {/* Footer */}
-        <footer className="legal-footer">
-          <div>
-            &copy; {new Date().getFullYear()} Hôtel Méditerranée Thalasso Golf Hammamet • Hotel SES
-          </div>
-          <div>
-            <Link href="/tos">
-              Charte d’utilisation
-            </Link>
-            <Link href="/login">
-              Page de connexion
-            </Link>
-          </div>
-        </footer>
+        <div>
+          <Link href="/tos">Conditions d’utilisation</Link>
+          <Link href="/login">Page de connexion</Link>
+        </div>
+      </footer>
     </LegalLayout>
   );
 }

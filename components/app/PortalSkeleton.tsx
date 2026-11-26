@@ -56,3 +56,18 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+/** Loading state inside the app shell (the shell stays on screen): KPI row and panels. */
+export function ContentSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-4 md:gap-6" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Chargement…</span>
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4" aria-hidden>
+        {Array.from({ length: 4 }, (_, i) => (
+          <Bone key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+      <Bone className="h-96 rounded-xl" />
+    </div>
+  );
+}

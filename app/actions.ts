@@ -1,14 +1,14 @@
 "use server";
 
 import { hotelWallTimeToISO } from "@/lib/datetime";
-import { db, failed, ok, revalidatePortals, type Db } from "@/lib/server/actions-kit";
+import { db, failed, ok, revalidateApp, type Db } from "@/lib/server/actions-kit";
 import { deny } from "@/lib/server/session";
 
 /**
- * Hotel operations. Every action starts with `deny([...roles])`: the caller's role
- * comes from the verified session, the admin is allowed everywhere, and the database
+ * Hotel operations. Every action starts with `deny(capability)` (lib/permissions.ts): the caller's
+ * role comes from the verified session, the admin has every capability, and the database
  * rules (supabase/migrations_accounts.sql) enforce the same split again.
- * Sign-in lives in app/auth-actions.ts, account and room inventory in app/admin/actions.ts.
+ * Sign-in lives in app/auth-actions.ts, account and room inventory in app/admin-actions.ts.
  */
 
 // =====================================================================
@@ -39,7 +39,7 @@ export async function createRapidReclamation(data: {
   priority?: "EMERGENCY" | "HIGH" | "STANDARD";
   residentId?: number | null;
 }) {
-  const denied = await deny(["reception", "rh", "gm"]);
+  const denied = await deny("requests.create");
   if (denied) return denied;
   const supabase = await db();
   // tickets keep the department code the form sends (the same codes as departments and staff)
@@ -75,7 +75,7 @@ export async function createRapidReclamation(data: {
     return failed("create rapid reclamation", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok(inserted);
 }
 
@@ -92,7 +92,7 @@ export async function createHistoricalReclamation(data: {
   resolvedAt?: string | null;
   isConfidential?: boolean;
 }) {
-  const denied = await deny(["reception", "rh", "gm"]);
+  const denied = await deny("requests.create");
   if (denied) return denied;
   const supabase = await db();
 
@@ -115,7 +115,7 @@ export async function createHistoricalReclamation(data: {
     return failed("create historical reclamation", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok(inserted || newRecord);
 }
 
@@ -123,7 +123,7 @@ export async function updateRoomStayState(
   roomId: number,
   stayState: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED"
 ) {
-  const denied = await deny(["reception"]);
+  const denied = await deny("rooms.stay");
   if (denied) return denied;
   const supabase = await db();
 
@@ -146,7 +146,7 @@ export async function updateRoomStayState(
     return failed("update stay state", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -155,7 +155,7 @@ export async function updateRoomStayState(
 // =====================================================================
 
 export async function acknowledgeReclamation(reclamationId: number, staffId?: number) {
-  const denied = await deny(["reception", "rh", "gm"]);
+  const denied = await deny("requests.acknowledge");
   if (denied) return denied;
   const supabase = await db();
 
@@ -172,13 +172,13 @@ export async function acknowledgeReclamation(reclamationId: number, staffId?: nu
     return failed("acknowledge reclamation", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
 /** Marks a ticket resolved. The guest's original description is kept as it is. */
 export async function resolveReclamation(reclamationId: number) {
-  const denied = await deny(["reception", "rh", "gm"]);
+  const denied = await deny("requests.resolve");
   if (denied) return denied;
   const supabase = await db();
 
@@ -191,7 +191,7 @@ export async function resolveReclamation(reclamationId: number) {
     return failed("resolve reclamation", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -203,7 +203,7 @@ export async function updateReclamation(
   reclamationId: number,
   data: { department: string; category: string; priority: string; description: string; assignedStaffId: number | null }
 ) {
-  const denied = await deny(["reception", "gm"]);
+  const denied = await deny("requests.edit");
   if (denied) return denied;
   if (!data.department.trim() || !data.category.trim()) return { success: false as const, error: "Service et problème sont obligatoires." };
   if (!(PRIORITIES as readonly string[]).includes(data.priority)) return { success: false as const, error: "Priorité non valide." };
@@ -221,19 +221,19 @@ export async function updateReclamation(
     .eq("id", reclamationId);
   if (error) return failed("update reclamation", error);
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
 /** Deletes a request for good (entered by mistake, duplicate). */
 export async function deleteReclamation(reclamationId: number) {
-  const denied = await deny(["reception", "gm"]);
+  const denied = await deny("requests.delete");
   if (denied) return denied;
   const supabase = await db();
   const { error } = await supabase.from("reclamations").delete().eq("id", reclamationId);
   if (error) return failed("delete reclamation", error);
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -245,7 +245,7 @@ export async function cycleRoomCleaning(
   roomId: number,
   nextStatus: "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"
 ) {
-  const denied = await deny(["reception", "rh", "gm"]);
+  const denied = await deny("rooms.cleaning");
   if (denied) return denied;
   const supabase = await db();
 
@@ -258,12 +258,12 @@ export async function cycleRoomCleaning(
     return failed("update cleaning status", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
 export async function updateRoomHeadcount(roomId: number, adultCount: number, childCount: number) {
-  const denied = await deny(["reception"]);
+  const denied = await deny("rooms.headcount");
   if (denied) return denied;
   const supabase = await db();
 
@@ -279,7 +279,7 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
     return failed("update guest headcount", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -288,7 +288,7 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
 // =====================================================================
 
 export async function toggleStaffShift(staffId: number, currentShift: string) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -308,7 +308,7 @@ export async function toggleStaffShift(staffId: number, currentShift: string) {
     return failed("toggle staff shift", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -322,7 +322,7 @@ type ShiftStatus = (typeof SHIFT_STATUSES)[number];
  * With nobody present in that department, the requests stay assigned and are counted.
  */
 export async function markStaffAbsentAndRedistribute(staffId: number) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -358,7 +358,7 @@ export async function markStaffAbsentAndRedistribute(staffId: number) {
     unassignedCount = count ?? 0;
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok({
     previousShift: member.shift_status as ShiftStatus,
     previousPresent: Boolean(member.is_present),
@@ -378,7 +378,7 @@ export async function undoStaffAbsence(
   substituteId: number | null,
   movedTicketIds: number[]
 ) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
   const shift: ShiftStatus = (SHIFT_STATUSES as readonly string[]).includes(previous.shift) ? (previous.shift as ShiftStatus) : "OFF_SHIFT";
@@ -396,7 +396,7 @@ export async function undoStaffAbsence(
     if (backError) return failed("return reassigned requests", backError);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -408,7 +408,7 @@ export async function createStaffMember(data: {
   skill_tags?: string[];
   shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
 }) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -429,7 +429,7 @@ export async function createStaffMember(data: {
     return failed("create staff member", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -444,7 +444,7 @@ export async function updateStaffMember(
     shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
   }
 ) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -468,12 +468,12 @@ export async function updateStaffMember(
     return failed("update staff member", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
 export async function deleteStaffMember(staffId: number) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -492,7 +492,7 @@ export async function deleteStaffMember(staffId: number) {
     return failed("delete staff member", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -512,7 +512,7 @@ function departmentCode(name: string) {
 
 /** Creates a department. Its code (stored on staff and requests) comes from the name and never changes. */
 export async function createDepartment(data: { name: string; description?: string; head_of_department?: string }) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("departments.manage");
   if (denied) return denied;
   const name = data.name.trim();
   const code = departmentCode(name);
@@ -542,7 +542,7 @@ export async function createDepartment(data: { name: string; description?: strin
   if (error?.code === "23505") return { success: false as const, error: "Un service portant ce nom existe déjà." };
   if (error) return failed("create department", error);
 
-  revalidatePortals();
+  revalidateApp();
   return ok(row);
 }
 
@@ -555,7 +555,7 @@ export async function updateDepartment(
     head_of_department?: string;
   }
 ) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("departments.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -576,13 +576,13 @@ export async function updateDepartment(
     return failed("update department", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
 /** Deletes a department, refused while employees are still attached to it. */
 export async function deleteDepartment(departmentId: number) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("departments.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -605,7 +605,7 @@ export async function deleteDepartment(departmentId: number) {
     return failed("delete department", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 
@@ -614,7 +614,7 @@ export async function deleteDepartment(departmentId: number) {
 // =====================================================================
 
 export async function anonymizeStaffRecord(staffId: number) {
-  const denied = await deny(["rh"]);
+  const denied = await deny("staff.manage");
   if (denied) return denied;
   const supabase = await db();
 
@@ -633,7 +633,7 @@ export async function anonymizeStaffRecord(staffId: number) {
     return failed("anonymize staff record", error);
   }
 
-  revalidatePortals();
+  revalidateApp();
   return ok();
 }
 

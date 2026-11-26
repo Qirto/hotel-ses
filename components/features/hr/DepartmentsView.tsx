@@ -6,11 +6,16 @@ import type { Department, Staff } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
 import { DataTable, DataTableActions, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
+import { FilterBar, SearchInput } from "@/components/features/Filters";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { departmentIcon } from "@/lib/icons";
 import { plural } from "@/lib/format";
 import { staffDepartment } from "./staff";
 
 type Row = Department & { headcount: number };
+
+/** In the URL (/staff/services?q=…). */
+const SERVICE_FILTERS = { q: "" };
 
 /** HR "Services" sub-tab: the hotel's departments with their headcount, add / edit / delete. */
 export const DepartmentsView = memo(function DepartmentsView({
@@ -28,11 +33,15 @@ export const DepartmentsView = memo(function DepartmentsView({
   onEdit: (department: Department) => void;
   onRemove: (department: Department) => void;
 }) {
+  const [filters, setFilters] = useUrlFilters(SERVICE_FILTERS);
   const rows = useMemo<Row[]>(() => {
     const counts = new Map<string, number>();
     for (const s of staff) counts.set(staffDepartment(s), (counts.get(staffDepartment(s)) ?? 0) + 1);
-    return departments.map((d) => ({ ...d, headcount: counts.get(d.code) ?? 0 }));
-  }, [departments, staff]);
+    const q = filters.q.trim().toLowerCase();
+    return departments
+      .filter((d) => !q || d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q))
+      .map((d) => ({ ...d, headcount: counts.get(d.code) ?? 0 }));
+  }, [departments, staff, filters.q]);
 
   const columns = useMemo<DataTableColumn<Row>[]>(
     () => [
@@ -108,6 +117,9 @@ export const DepartmentsView = memo(function DepartmentsView({
         </Button>
       }
     >
+      <FilterBar className="mb-4">
+        <SearchInput label="Rechercher un service par nom ou code" placeholder="Rechercher un service" value={filters.q} onChange={(q) => setFilters({ q })} />
+      </FilterBar>
       <DataTable<Row>
         rows={rows}
         columns={columns}
@@ -118,7 +130,7 @@ export const DepartmentsView = memo(function DepartmentsView({
         defaultSort={{ key: "name", dir: "asc" }}
         pageSize={50}
         density="compact"
-        emptyState={<EmptyState icon={<Building2 />} title="Aucun service" description="Ajoutez les services de l’hôtel pour y rattacher le personnel." />}
+        emptyState={filters.q ? <EmptyState icon={<Building2 />} title="Aucun service ne correspond à la recherche" /> : <EmptyState icon={<Building2 />} title="Aucun service" description="Ajoutez les services de l’hôtel pour y rattacher le personnel." />}
         ariaLabel="Services de l’hôtel"
       />
     </Panel>

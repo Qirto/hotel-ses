@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
 import { BedDouble } from "lucide-react";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { Panel } from "@/components/features/Panel";
@@ -9,31 +9,33 @@ import { RoomGrid } from "@/components/features/RoomGrid";
 import { countRoomsNeedingAttention } from "@/lib/tickets";
 import { blockOptions as blockOptionsFor, floorOptions as floorOptionsFor, matchesRoomFilter, roomStatusCounts, ticketStatsByRoom, type RoomFilter } from "@/lib/rooms";
 import { plural } from "@/lib/format";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
+
+const ROOM_FILTERS = { q: "", floor: "ALL", block: "ALL", status: "ALL" };
 
 /**
- * Rooms tab shared by every portal. The status filter can be controlled from
- * outside (`filter` / `onFilterChange`) so dashboard KPIs can deep-link into
- * it; search and floor are the view's own.
+ * The room plan with its filters. Filters live in the URL (`/rooms?status=DIRTY&floor=1`),
+ * so a refresh, Back or a shared link keeps them, and dashboard KPIs link straight
+ * to a filtered plan.
  */
 export const RoomsView = memo(function RoomsView({
   rooms,
   tickets,
   onSelectRoom,
-  filter,
-  onFilterChange,
 }: {
   rooms: readonly HotelRoom[];
   tickets: readonly Reclamation[];
   onSelectRoom: (room: HotelRoom) => void;
-  filter?: RoomFilter;
-  onFilterChange?: (filter: RoomFilter) => void;
 }) {
-  const [ownFilter, setOwnFilter] = useState<RoomFilter>("ALL");
-  const status = filter ?? ownFilter;
-  const setStatus = onFilterChange ?? setOwnFilter;
-  const [search, setSearch] = useState("");
-  const [floor, setFloor] = useState<number | "ALL">("ALL");
-  const [block, setBlock] = useState("ALL");
+  const [filters, setFilters] = useUrlFilters(ROOM_FILTERS);
+  const status = filters.status as RoomFilter;
+  const setStatus = (value: RoomFilter) => setFilters({ status: value });
+  const search = filters.q;
+  const setSearch = (value: string) => setFilters({ q: value });
+  const floor: number | "ALL" = filters.floor === "ALL" ? "ALL" : Number(filters.floor);
+  const setFloor = (value: number | "ALL") => setFilters({ floor: String(value) });
+  const block = filters.block;
+  const setBlock = (value: string) => setFilters({ block: value });
 
   const stats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);
   const counts = useMemo(() => roomStatusCounts(rooms), [rooms]);

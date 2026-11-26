@@ -31,6 +31,7 @@ export function RoomDetail({
   controls,
   ticketActions,
   logForm,
+  frame = "sheet",
 }: {
   room: HotelRoom | null;
   tickets: readonly Reclamation[];
@@ -38,6 +39,8 @@ export function RoomDetail({
   controls?: ReactNode;
   ticketActions?: (ticket: Reclamation) => ReactNode;
   logForm?: ReactNode;
+  /** "sheet": a modal (opened over a page); "page": the same content as a full page. */
+  frame?: "sheet" | "page";
 }) {
   const [tab, setTab] = useState<TabId>("overview");
   const [logging, setLogging] = useState(false);
@@ -71,15 +74,7 @@ export function RoomDetail({
   // state resets on the next open, so the closing sheet doesn't flash another view
   const close = onClose;
 
-  const roomTickets = useMemo(
-    () =>
-      room
-        ? tickets
-            .filter((t) => isTicketForRoom(t, room))
-            .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
-        : [],
-    [room, tickets]
-  );
+  const roomTickets = useMemo(() => (room ? tickets.filter((t) => isTicketForRoom(t, room)).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")) : []), [room, tickets]);
   const open = useMemo(() => roomTickets.filter(isOpenTicket), [roomTickets]);
   const analytics = useMemo(() => (room ? computeRoomAnalytics(room, roomTickets as Reclamation[]) : null), [room, roomTickets]);
 
@@ -99,160 +94,138 @@ export function RoomDetail({
   // inside the same drawer.
   const showLog = logging && Boolean(logForm);
 
-  return (
-    <ResponsiveSheet
-      open={isOpen}
-      onOpenChange={(o) => !o && close()}
-      size="lg"
-      title={showLog ? `Signaler un problème · Chambre ${room.room_number}` : `Chambre ${room.room_number}`}
-      description={showLog ? "Créez une demande maintenant ou saisissez un incident passé." : roomLocation(room)}
-      footer={
-        logForm && !showLog ? (
-          <Button
-            ref={logButton}
-            type="button"
-            variant="primary"
-            size="lg"
-            onClick={() => setLogging(true)}
-            leftIcon={<ClipboardPlus className="size-4" aria-hidden />}
-            className="w-full justify-center"
-          >
-            Signaler un problème
+  const title = showLog ? `Signaler un problème · Chambre ${room.room_number}` : `Chambre ${room.room_number}`;
+  const description = showLog ? "Créez une demande maintenant ou saisissez un incident passé." : roomLocation(room);
+  const footer =
+    logForm && !showLog ? (
+      <Button ref={logButton} type="button" variant="primary" size="lg" onClick={() => setLogging(true)} leftIcon={<ClipboardPlus className="size-4" aria-hidden />} className="w-full justify-center">
+        Signaler un problème
+      </Button>
+    ) : undefined;
+
+  const body = (
+    <motion.div key={showLog ? "log" : "room"} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }} className="flex flex-col gap-5">
+      {showLog ? (
+        <>
+          <Button ref={backButton} type="button" variant="ghost" size="touch" onClick={() => setLogging(false)} leftIcon={<ArrowLeft className="size-4" aria-hidden />} className="-ml-2 self-start">
+            Retour à la chambre
           </Button>
-        ) : undefined
-      }
-    >
-      <motion.div
-        key={showLog ? "log" : "room"}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-        className="flex flex-col gap-5"
-      >
-        {showLog ? (
-          <>
-            <Button
-              ref={backButton}
-              type="button"
-              variant="ghost"
-              size="touch"
-              onClick={() => setLogging(false)}
-              leftIcon={<ArrowLeft className="size-4" aria-hidden />}
-              className="-ml-2 self-start"
-            >
-              Retour à la chambre
-            </Button>
-            {logForm}
-          </>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {/* the headline repeats a status below when nothing more urgent applies: show it only when it adds something */}
-              {head.label !== occupancyLabel && head.label !== cleaningLabel && <ToneBadge tone={head.tone}>{head.label}</ToneBadge>}
-              <ToneBadge tone={room.is_occupied ? "info" : "success"}>{occupancyLabel}</ToneBadge>
-              <ToneBadge tone={CLEANING_TONE[room.cleaning_status]}>{cleaningLabel}</ToneBadge>
+          {logForm}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {/* the headline repeats a status below when nothing more urgent applies: show it only when it adds something */}
+            {head.label !== occupancyLabel && head.label !== cleaningLabel && <ToneBadge tone={head.tone}>{head.label}</ToneBadge>}
+            <ToneBadge tone={room.is_occupied ? "info" : "success"}>{occupancyLabel}</ToneBadge>
+            <ToneBadge tone={CLEANING_TONE[room.cleaning_status]}>{cleaningLabel}</ToneBadge>
+          </div>
+
+          <AnimatedTabs
+            tabs={tabs}
+            activeTab={tab}
+            onChange={(id) => setTab(id as TabId)}
+            renderContent={false}
+            tabsContainerClassName="no-scrollbar w-full max-w-full self-stretch overflow-x-auto [&>button]:flex-1 [&>button]:justify-center"
+          />
+
+          {tab === "overview" && (
+            <div className="flex flex-col gap-5">
+              <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Stat icon={<ListChecks />} label="Demandes" value={analytics?.totalTickets ?? 0} />
+                <Stat icon={<Clock />} label="Ouvertes" value={analytics?.openTickets ?? 0} />
+                <Stat icon={<CircleCheck />} label="Résolues" value={analytics?.resolvedTickets ?? 0} />
+                <Stat icon={<Timer />} label="Délai moyen" value={formatMinutes(analytics?.avgResolutionMinutes)} />
+              </dl>
+              {room.is_occupied && (room.adult_count || room.child_count) ? (
+                <p className="text-sm text-fg-secondary">
+                  Clients : {plural(room.adult_count ?? 0, "adulte")}, {plural(room.child_count ?? 0, "enfant")}
+                </p>
+              ) : null}
+              {controls}
             </div>
+          )}
 
-            <AnimatedTabs
-              tabs={tabs}
-              activeTab={tab}
-              onChange={(id) => setTab(id as TabId)}
-              renderContent={false}
-              tabsContainerClassName="no-scrollbar w-full max-w-full self-stretch overflow-x-auto [&>button]:flex-1 [&>button]:justify-center"
-            />
+          {tab === "open" &&
+            (open.length === 0 ? (
+              <EmptyState icon={<CircleCheck />} title="Aucune demande ouverte" description="Toutes les demandes signalées pour cette chambre sont résolues." />
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {open.map((t) => (
+                  <TicketCard key={t.id} ticket={t} actions={ticketActions?.(t)} />
+                ))}
+              </ul>
+            ))}
 
-            {tab === "overview" && (
-              <div className="flex flex-col gap-5">
-                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <Stat icon={<ListChecks />} label="Demandes" value={analytics?.totalTickets ?? 0} />
-                  <Stat icon={<Clock />} label="Ouvertes" value={analytics?.openTickets ?? 0} />
-                  <Stat icon={<CircleCheck />} label="Résolues" value={analytics?.resolvedTickets ?? 0} />
-                  <Stat
-                    icon={<Timer />}
-                    label="Délai moyen"
-                    value={formatMinutes(analytics?.avgResolutionMinutes)}
-                  />
-                </dl>
-                {room.is_occupied && (room.adult_count || room.child_count) ? (
-                  <p className="text-sm text-fg-secondary">
-                    Clients : {plural(room.adult_count ?? 0, "adulte")}, {plural(room.child_count ?? 0, "enfant")}
-                  </p>
-                ) : null}
-                {controls}
-              </div>
-            )}
-
-            {tab === "open" &&
-              (open.length === 0 ? (
-                <EmptyState icon={<CircleCheck />} title="Aucune demande ouverte" description="Toutes les demandes signalées pour cette chambre sont résolues." />
-              ) : (
-                <ul className="flex flex-col gap-3">
-                  {open.map((t) => (
-                    <TicketCard key={t.id} ticket={t} actions={ticketActions?.(t)} />
-                  ))}
-                </ul>
-              ))}
-
-            {tab === "history" &&
-              (roomTickets.length === 0 ? (
-                <EmptyState icon={<History />} title="Aucun historique" description="Les demandes enregistrées pour cette chambre apparaîtront ici." />
-              ) : (
-                <ol className="relative flex flex-col gap-4 border-l border-border pl-5">
-                  {roomTickets.map((t) => {
-                    const d = formatIncidentDate(t.created_at);
-                    return (
-                      <li key={t.id} className="relative">
-                        <span
-                          className={`absolute -left-[1.6rem] top-1.5 size-2.5 rounded-full ring-4 ring-surface ${isOpenTicket(t) ? "bg-warning" : "bg-success"}`}
-                          aria-hidden
-                        />
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-medium">{categoryLabel(t.category)}</span>
-                          <TicketStatusBadge status={t.status} />
-                        </div>
-                        {t.description && <p className="mt-1 text-sm text-fg-secondary">{t.description}</p>}
-                        <p className="mt-1 text-xs text-fg-muted">
-                          {d.full} · {departmentLabel(t.department)}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ))}
-
-            {tab === "patterns" && (
-              <div className="flex flex-col gap-5">
-                <div className="rounded-lg border border-border bg-surface-raised p-4">
-                  <p className="flex items-center gap-2 text-sm font-medium">
-                    <Clock className="size-4 text-fg-muted" aria-hidden /> Heure de pointe
-                  </p>
-                  {analytics?.rushHour ? (
-                    <>
-                      <p className="mt-2 text-xl font-semibold tabular-nums">{analytics.rushHour.hourRange}</p>
-                      <p className="mt-1 text-sm text-fg-muted">
-                        Pic de {plural(analytics.rushHour.count, "demande")} le {analytics.rushHour.date} ;{" "}
-                        {plural(analytics.rushHour.totalForHourOfDay, "demande")} sur ce créneau horaire au total.
+          {tab === "history" &&
+            (roomTickets.length === 0 ? (
+              <EmptyState icon={<History />} title="Aucun historique" description="Les demandes enregistrées pour cette chambre apparaîtront ici." />
+            ) : (
+              <ol className="relative flex flex-col gap-4 border-l border-border pl-5">
+                {roomTickets.map((t) => {
+                  const d = formatIncidentDate(t.created_at);
+                  return (
+                    <li key={t.id} className="relative">
+                      <span className={`absolute -left-[1.6rem] top-1.5 size-2.5 rounded-full ring-4 ring-surface ${isOpenTicket(t) ? "bg-warning" : "bg-success"}`} aria-hidden />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium">{categoryLabel(t.category)}</span>
+                        <TicketStatusBadge status={t.status} />
+                      </div>
+                      {t.description && <p className="mt-1 text-sm text-fg-secondary">{t.description}</p>}
+                      <p className="mt-1 text-xs text-fg-muted">
+                        {d.full} · {departmentLabel(t.department)}
                       </p>
-                    </>
-                  ) : (
-                    <p className="mt-2 text-sm text-fg-muted">Historique encore insuffisant.</p>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-                    <Repeat className="size-4 text-fg-muted" aria-hidden /> Problèmes les plus récurrents
-                  </p>
-                  {analytics && analytics.topProblems.length > 0 ? (
-                    <ProblemBars problems={analytics.topProblems} />
-                  ) : (
-                    <p className="text-sm text-fg-muted">Aucun problème récurrent.</p>
-                  )}
-                </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            ))}
+
+          {tab === "patterns" && (
+            <div className="flex flex-col gap-5">
+              <div className="rounded-lg border border-border bg-surface-raised p-4">
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <Clock className="size-4 text-fg-muted" aria-hidden /> Heure de pointe
+                </p>
+                {analytics?.rushHour ? (
+                  <>
+                    <p className="mt-2 text-xl font-semibold tabular-nums">{analytics.rushHour.hourRange}</p>
+                    <p className="mt-1 text-sm text-fg-muted">
+                      Pic de {plural(analytics.rushHour.count, "demande")} le {analytics.rushHour.date} ; {plural(analytics.rushHour.totalForHourOfDay, "demande")} sur ce créneau horaire au total.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-fg-muted">Historique encore insuffisant.</p>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </motion.div>
+              <div>
+                <p className="mb-3 flex items-center gap-2 text-sm font-medium">
+                  <Repeat className="size-4 text-fg-muted" aria-hidden /> Problèmes les plus récurrents
+                </p>
+                {analytics && analytics.topProblems.length > 0 ? <ProblemBars problems={analytics.topProblems} /> : <p className="text-sm text-fg-muted">Aucun problème récurrent.</p>}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </motion.div>
+  );
+
+  if (frame === "page")
+    return (
+      <section className="mx-auto flex w-full max-w-3xl flex-col gap-5 rounded-xl border border-border bg-surface p-4 shadow-card md:p-6" aria-label={title}>
+        <header>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <p className="mt-0.5 text-sm text-fg-muted">{description}</p>
+        </header>
+        {body}
+        {footer}
+      </section>
+    );
+
+  return (
+    <ResponsiveSheet open={isOpen} onOpenChange={(o) => !o && close()} size="lg" title={title} description={description} footer={footer}>
+      {body}
     </ResponsiveSheet>
   );
 }

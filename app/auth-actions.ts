@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { authEmail, normalizeUsername, passwordProblem } from "@/lib/accounts";
-import { isPortalRole, PORTALS } from "@/lib/portals";
+import { isRole } from "@/lib/roles";
+import { homeFor, PASSWORD_PATH } from "@/lib/routes";
 import { db } from "@/lib/server/actions-kit";
 import { getSession } from "@/lib/server/session";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -16,7 +17,6 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 export type FormState = { error: string } | null;
 
-const PASSWORD_PAGE = "/compte/mot-de-passe";
 const WRONG_CREDENTIALS = "Identifiant ou mot de passe incorrect.";
 
 export async function signInWithForm(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -31,12 +31,12 @@ export async function signInWithForm(_prev: FormState, formData: FormData): Prom
     return { error: error?.code === "user_banned" ? "Ce compte est désactivé. Contactez l’administrateur." : WRONG_CREDENTIALS };
   }
   const app = data.user.app_metadata ?? {};
-  if (!isPortalRole(app.role)) {
+  if (!isRole(app.role)) {
     await supabase.auth.signOut();
     return { error: "Ce compte n’a accès à aucun espace. Contactez l’administrateur." };
   }
   revalidatePath("/", "layout");
-  redirect(app.must_change_password === true ? PASSWORD_PAGE : PORTALS[app.role].path);
+  redirect(app.must_change_password === true ? PASSWORD_PATH : homeFor(app.role));
 }
 
 export async function signOut() {
@@ -87,5 +87,5 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   }
 
   revalidatePath("/", "layout");
-  redirect(PORTALS[session.role].path);
+  redirect(homeFor(session.role));
 }

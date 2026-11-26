@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HotelRoom } from "@/utils/roomsData";
 import { RoomFormSheet, type RoomFormInput } from "@/components/features/admin/RoomFormSheet";
-import { createRoom, deleteRoom, updateRoom } from "@/app/admin/actions";
+import { createRoom, deleteRoom, updateRoom } from "@/app/admin-actions";
 import type { ConfirmRequest, PortalRunner } from "./useConfirm";
 
 /**
@@ -37,7 +37,7 @@ export function useRoomInventory(p: PortalRunner, ask: (r: ConfirmRequest) => vo
     (room: HotelRoom) =>
       ask({
         title: "Supprimer la chambre",
-        description: `Supprimer la chambre ${room.room_number} de l’inventaire ? Refusé si elle a des demandes ou des clients. Cette action est irréversible.`,
+        description: `Supprimer la chambre ${room.room_number} du parc ? Refusé si elle a des demandes ou des clients. Cette action est irréversible.`,
         confirmLabel: "Supprimer",
         pendingLabel: "Suppression",
         tone: "danger",

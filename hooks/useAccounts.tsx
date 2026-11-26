@@ -5,8 +5,8 @@ import type { Staff } from "@/utils/roomsData";
 import type { Account } from "@/lib/server/accounts";
 import { AccountFormSheet, type AccountFormInput } from "@/components/features/admin/AccountFormSheet";
 import { TemporaryPasswordSheet } from "@/components/features/admin/TemporaryPasswordSheet";
-import { createAccount, deleteAccount, resetAccountPassword, setAccountActive, updateAccount } from "@/app/admin/actions";
-import { useSyncedState } from "./usePortalState";
+import { createAccount, deleteAccount, resetAccountPassword, setAccountActive, updateAccount } from "@/app/admin-actions";
+import { useSyncedState } from "./useActions";
 import type { ConfirmRequest, PortalRunner } from "./useConfirm";
 
 /**

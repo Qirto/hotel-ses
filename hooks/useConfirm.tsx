@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { ConfirmSheet } from "@/components/features/ConfirmSheet";
-import type { PortalState } from "./usePortalState";
+import type { Actions } from "./useActions";
 
 /** One confirmation step for any consequential action: what to say, and what to run. */
 export type ConfirmRequest = {
@@ -14,7 +14,7 @@ export type ConfirmRequest = {
   action: () => Promise<void>;
 };
 
-export type PortalRunner = Pick<PortalState<string>, "run" | "runForResult" | "flash" | "isPending">;
+export type PortalRunner = Actions;
 
 /**
  * A portal's confirmation step, shared by every feature that needs one (absence,

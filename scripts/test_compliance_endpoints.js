@@ -1,112 +1,68 @@
-const http = require("http");
+/**
+ * Compliance and access checks against a running Hotel SES (no session needed):
+ * security headers, the legal pages and their content, links from the login page,
+ * and that app pages send visitors without a session to /login.
+ *
+ *   node scripts/test_compliance_endpoints.js [base URL]     default http://localhost:3000
+ *
+ * Exits with code 1 when a check fails.
+ */
+const BASE = (process.argv[2] || "http://localhost:3000").replace(/\/$/, "");
 
-async function fetchUrl(url, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const req = http.request(
-      {
-        hostname: parsed.hostname,
-        port: parsed.port,
-        path: parsed.pathname,
-        method: "GET",
-        headers: headers,
-      },
-      (res) => {
-        let body = "";
-        res.on("data", (chunk) => (body += chunk));
-        res.on("end", () => {
-          resolve({
-            statusCode: res.statusCode,
-            headers: res.headers,
-            body,
-          });
-        });
-      }
-    );
-    req.on("error", reject);
-    req.end();
-  });
+let failures = 0;
+function check(label, ok, detail = "") {
+  if (!ok) failures++;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? `  (${detail})` : ""}`);
 }
 
-async function runTests() {
-  console.log("=== COMPLIANCE & SECURITY TEST SUITE ===\n");
-  const baseUrl = "http://localhost:3000";
-
-  // Test 1: Security Headers on /login
-  console.log("TEST 1: Security Headers on /login");
-  const loginRes = await fetchUrl(`${baseUrl}/login`);
-  console.log(`Status Code: ${loginRes.statusCode}`);
-  console.log(`x-frame-options: ${loginRes.headers["x-frame-options"]}`);
-  console.log(`x-content-type-options: ${loginRes.headers["x-content-type-options"]}`);
-  console.log(`referrer-policy: ${loginRes.headers["referrer-policy"]}`);
-  console.log(`permissions-policy: ${loginRes.headers["permissions-policy"]}`);
-  console.log(`x-xss-protection: ${loginRes.headers["x-xss-protection"]}`);
-
-  const loginHasPrivacy = loginRes.body.includes("/privacy");
-  const loginHasTos = loginRes.body.includes("/tos");
-  const loginHasSiret = loginRes.body.includes("SIRET");
-  const loginHasDpo = loginRes.body.includes("dpo@grandpalacehotel.com");
-  const loginHasSkipLink = loginRes.body.includes("skip-link");
-
-  console.log(`[PASS] Contains /privacy link: ${loginHasPrivacy}`);
-  console.log(`[PASS] Contains /tos link: ${loginHasTos}`);
-  console.log(`[PASS] Contains business SIRET: ${loginHasSiret}`);
-  console.log(`[PASS] Contains DPO contact: ${loginHasDpo}`);
-  console.log(`[PASS] Contains Skip-to-content accessibility link: ${loginHasSkipLink}`);
-  console.log("");
-
-  // Test 2: Privacy Policy /privacy
-  console.log("TEST 2: Privacy Policy Route (/privacy)");
-  const privacyRes = await fetchUrl(`${baseUrl}/privacy`);
-  console.log(`Status Code: ${privacyRes.statusCode}`);
-  const privacyHasGdpr = privacyRes.body.includes("GDPR");
-  const privacyHasCookie = privacyRes.body.includes("hotel_role");
-  const privacyHasDpo = privacyRes.body.includes("dpo@grandpalacehotel.com");
-  console.log(`[PASS] Status is 200: ${privacyRes.statusCode === 200}`);
-  console.log(`[PASS] Mentions GDPR / DPDP: ${privacyHasGdpr}`);
-  console.log(`[PASS] Mentions hotel_role cookie: ${privacyHasCookie}`);
-  console.log(`[PASS] Mentions DPO contact: ${privacyHasDpo}`);
-  console.log("");
-
-  // Test 3: Terms of Service /tos
-  console.log("TEST 3: Terms of Service Route (/tos)");
-  const tosRes = await fetchUrl(`${baseUrl}/tos`);
-  console.log(`Status Code: ${tosRes.statusCode}`);
-  const tosHasAup = tosRes.body.includes("Acceptable Use Policy");
-  const tosHasConfidentiality = tosRes.body.includes("Confidentiality");
-  console.log(`[PASS] Status is 200: ${tosRes.statusCode === 200}`);
-  console.log(`[PASS] Mentions Acceptable Use Policy: ${tosHasAup}`);
-  console.log(`[PASS] Mentions Confidentiality: ${tosHasConfidentiality}`);
-  console.log("");
-
-  // Test 4: Route Guard Protection (Unauthorized access to /reception)
-  console.log("TEST 4: Route Guard Protection (/reception without role cookie)");
-  const unauthRes = await fetchUrl(`${baseUrl}/reception`);
-  console.log(`Status Code: ${unauthRes.statusCode}`);
-  console.log(`Location Header: ${unauthRes.headers["location"]}`);
-  const isRedirectToLogin =
-    unauthRes.statusCode === 307 ||
-    unauthRes.statusCode === 302 ||
-    (unauthRes.headers["location"] && unauthRes.headers["location"].includes("/login"));
-  console.log(`[PASS] Redirects unauthenticated user to /login: ${isRedirectToLogin}`);
-  console.log("");
-
-  // Test 5: Root Route Redirection (/)
-  console.log("TEST 5: Root Route Redirection (/ without role cookie)");
-  const rootRes = await fetchUrl(`${baseUrl}/`);
-  console.log(`Status Code: ${rootRes.statusCode}`);
-  console.log(`Location Header: ${rootRes.headers["location"]}`);
-  const rootRedirects =
-    rootRes.statusCode === 307 ||
-    rootRes.statusCode === 302 ||
-    (rootRes.headers["location"] && rootRes.headers["location"].includes("/login"));
-  console.log(`[PASS] Root redirects unauthenticated user to /login: ${rootRedirects}`);
-  console.log("");
-
-  console.log("=== ALL AUTOMATED COMPLIANCE & SECURITY TESTS PASSED ===");
+/** GET without following redirects, so a redirect to /login can be checked. */
+async function get(path) {
+  const res = await fetch(`${BASE}${path}`, { redirect: "manual" });
+  return { status: res.status, headers: res.headers, body: await res.text() };
 }
 
-runTests().catch((err) => {
-  console.error("Test execution failed:", err);
+async function main() {
+  console.log(`Hotel SES compliance checks against ${BASE}\n`);
+
+  console.log("Security headers (/login)");
+  const login = await get("/login");
+  const expected = {
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  };
+  for (const [name, value] of Object.entries(expected)) check(name, login.headers.get(name) === value, login.headers.get(name) ?? "missing");
+
+  console.log("\nLogin page");
+  check("status 200", login.status === 200, String(login.status));
+  check("links to /privacy", login.body.includes('href="/privacy"'));
+  check("links to /tos", login.body.includes('href="/tos"'));
+
+  console.log("\nPrivacy policy (/privacy)");
+  const privacy = await get("/privacy");
+  check("status 200", privacy.status === 200, String(privacy.status));
+  for (const text of ["2004-63", "INPDP", "sb-…-auth-token", "Supabase", "Vercel", "contact@hotelmediterraneehammamet.com"]) check(`mentions ${text}`, privacy.body.includes(text));
+  check("links to /tos", privacy.body.includes('href="/tos"'));
+
+  console.log("\nTerms of use (/tos)");
+  const tos = await get("/tos");
+  check("status 200", tos.status === 200, String(tos.status));
+  for (const text of ["Réception", "Ressources humaines", "Direction", "Administrateur", "mot de passe temporaire"]) check(`mentions ${text}`, tos.body.includes(text));
+  check("links to /privacy", tos.body.includes('href="/privacy"'));
+
+  console.log("\nAccess without a session");
+  for (const path of ["/", "/dashboard", "/rooms", "/requests", "/staff", "/analytics", "/admin/accounts", "/settings"]) {
+    const res = await get(path);
+    const location = res.headers.get("location") ?? "";
+    check(`${path} redirects to /login`, res.status >= 300 && res.status < 400 && new URL(location, BASE).pathname === "/login", `${res.status} ${location || "no location"}`);
+  }
+
+  console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) failed.`}`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(`Could not reach ${BASE}: ${err.message}`);
   process.exit(1);
 });

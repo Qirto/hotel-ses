@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { BedDouble, ChartColumn, ClipboardList, Clock, Repeat } from "lucide-react";
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,8 @@ import { countOpenTickets } from "@/lib/tickets";
 import { blockOptions, floorOptions as floorOptionsFor, roomHeadline, roomLocation, ticketStatsByRoom } from "@/lib/rooms";
 import { formatMinutes, plural } from "@/lib/format";
 import { computeAllRoomsAnalytics, type RoomAnalyticsSummary } from "@/utils/roomAnalytics";
+
+const ANALYTICS_FILTERS = { q: "", floor: "ALL", block: "ALL", sort: "MOST_TICKETS" };
 
 type AnalyticsSort = "MOST_TICKETS" | "OPEN_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER";
 
@@ -38,10 +41,16 @@ export const AnalyticsView = memo(function AnalyticsView({
   tickets: Reclamation[];
   onOpenRoom: (room: HotelRoom) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const [floor, setFloor] = useState<number | "ALL">("ALL");
-  const [block, setBlock] = useState("ALL");
-  const [sort, setSort] = useState<AnalyticsSort>("MOST_TICKETS");
+  // In the URL (/analytics?q=…&floor=…&block=…&sort=…): kept on refresh, Back and shared links.
+  const [filters, setFilters] = useUrlFilters(ANALYTICS_FILTERS);
+  const search = filters.q;
+  const setSearch = (q: string) => setFilters({ q });
+  const floor: number | "ALL" = filters.floor === "ALL" ? "ALL" : Number(filters.floor);
+  const setFloor = (value: number | "ALL") => setFilters({ floor: String(value) });
+  const block = filters.block;
+  const setBlock = (value: string) => setFilters({ block: value });
+  const sort = filters.sort as AnalyticsSort;
+  const setSort = (value: AnalyticsSort) => setFilters({ sort: value });
 
   const analytics = useMemo(() => (active ? computeAllRoomsAnalytics(rooms, tickets) : null), [active, rooms, tickets]);
   const roomStats = useMemo(() => ticketStatsByRoom(tickets), [tickets]);

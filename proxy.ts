@@ -1,16 +1,15 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/middleware";
-import { canOpen, isPortalRole, PORTALS } from "@/lib/portals";
+import { isRole } from "@/lib/roles";
+import { ACCOUNT_PATHS, canOpenPath, homeFor, PASSWORD_PATH, routeFor } from "@/lib/routes";
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
-/** Where a signed-in account must change its temporary password. */
-const PASSWORD_PAGE = "/compte/mot-de-passe";
-
 /**
  * Every request: refresh the Supabase session, verify it (getClaims checks the JWT
- * signature) and gate the routes by role. Pages and server actions check again on
- * their own; this only keeps people out of screens they cannot use.
+ * signature) and gate the app's pages through the route table (lib/routes.ts).
+ * Pages and server actions check again on their own; this only keeps people out of
+ * screens they cannot use.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,21 +17,22 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const app = (data?.claims?.app_metadata ?? {}) as Record<string, unknown>;
-  const role = isPortalRole(app.role) ? app.role : null;
+  const role = isRole(app.role) ? app.role : null;
   const mustChangePassword = role !== null && app.must_change_password === true;
 
-  // Signed-in: the login page sends you to your space.
-  if (pathname === "/login") return role ? redirect(mustChangePassword ? PASSWORD_PAGE : PORTALS[role].path) : response();
+  // Signed-in: the login page and the root send you to your home.
+  if (pathname === "/login" || pathname === "/") {
+    if (!role) return pathname === "/" ? redirect("/login") : response();
+    return redirect(mustChangePassword ? PASSWORD_PATH : homeFor(role));
+  }
 
   // A temporary password is changed before anything else.
-  if (mustChangePassword && !under(pathname, PASSWORD_PAGE)) return redirect(PASSWORD_PAGE);
+  if (mustChangePassword && !under(pathname, PASSWORD_PATH)) return redirect(PASSWORD_PATH);
 
-  // A portal: its own role, or the admin.
-  const portal = Object.values(PORTALS).find((p) => under(pathname, p.path));
-  if (portal && !canOpen(role, portal.role)) return redirect(role ? PORTALS[role].path : "/login");
-
-  // Pages for any signed-in account.
-  if ((under(pathname, "/settings") || under(pathname, "/compte")) && !role) return redirect("/login");
+  // App pages and account pages need a session; app pages also the capability.
+  const isAppPage = routeFor(pathname) !== undefined || ACCOUNT_PATHS.some((p) => under(pathname, p));
+  if (isAppPage && !role) return redirect("/login");
+  if (role && !canOpenPath(role, pathname)) return redirect(homeFor(role));
 
   return response();
 }

@@ -8,12 +8,12 @@ import { ResponsiveSheet, SheetActions } from "@/components/app/ResponsiveSheet"
 import { Button } from "@/components/ui/button";
 import { Field, Select, TextInput } from "@/components/features/Forms";
 import { normalizeUsername } from "@/lib/accounts";
-import { PORTAL_ROLES, ROLE_LABEL, type PortalRole } from "@/lib/portals";
+import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
 import { INPUT_ICON } from "@/lib/styles";
 
-export type AccountFormInput = { username: string; displayName: string; role: PortalRole; staffId: number | null };
+export type AccountFormInput = { username: string; displayName: string; role: Role; staffId: number | null };
 
-const ROLE_OPTIONS = PORTAL_ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
 
 /**
  * Create or edit an account. The username is chosen once (it is the sign-in name);
@@ -39,7 +39,7 @@ export function AccountFormSheet({
   const editing = Boolean(account);
   const [username, setUsername] = useState(account?.username ?? "");
   const [displayName, setDisplayName] = useState(account?.display_name ?? "");
-  const [role, setRole] = useState<PortalRole>(account?.role ?? "reception");
+  const [role, setRole] = useState<Role>(account?.role ?? "reception");
   const [staffId, setStaffId] = useState(account?.staff_id ? String(account.staff_id) : "");
 
   const staffOptions = useMemo(
@@ -105,7 +105,7 @@ export function AccountFormSheet({
           <Select id={`${id}-staff`} value={staffId} options={staffOptions} onChange={linkStaff} />
         </Field>
         <Field label="Nom affiché" htmlFor={`${id}-name`}>
-          <TextInput id={`${id}-name`} required autoComplete="off" placeholder="ex. Sami Martin" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          <TextInput id={`${id}-name`} required autoComplete="off" placeholder="ex. Sami Trabelsi" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         </Field>
         <Field label="Rôle" htmlFor={`${id}-role`} hint="Détermine l’espace ouvert à la connexion et les actions permises.">
           <Select id={`${id}-role`} value={role} options={ROLE_OPTIONS} onChange={setRole} />

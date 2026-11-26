@@ -12,7 +12,7 @@ export type ButtonVariant =
   | 'link'
   | 'gradient';
 
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'touch';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'touch';
 
 export const variantStyles: Record<ButtonVariant, string> = {
   default:
@@ -41,6 +41,8 @@ export const sizeStyles: Record<ButtonSize, string> = {
   md: 'h-10 px-4.5 text-sm rounded-lg gap-2',
   lg: 'h-12 px-6 text-base rounded-lg gap-2.5',
   icon: 'h-10 w-10 p-0 rounded-lg justify-center shrink-0',
+  /** Square 32px icon button, the height of `sm`: edit / delete in list rows. */
+  'icon-sm': 'h-8 w-8 p-0 rounded-md justify-center shrink-0',
   /** Compact 40px action for rows, cards and tickets. */
   touch: 'h-10 px-3 text-sm rounded-lg gap-1.5',
 };

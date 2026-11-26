@@ -1,6 +1,8 @@
 "use client";
 
 import React, {
+  Children,
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -22,7 +24,7 @@ import { formatDate } from "@/lib/datetime";
 /*  • Row selection with select-all, shift-click ranges and a bulk-action bar  */
 
 /*  • Sorting makes rows glide to their new place instead of jumping           */
-/*  • Under 640px the table becomes stacked cards (with a sort menu)           */
+/*  • Under 640px each row stacks into a list item (with a sort menu)         */
 /*  • Search, "show more" paging, empty state, keyboard + screen-reader support */
 /*                                                                             */
 /*  One file · deps: react 19, framer-motion, tailwindcss · light + dark.      */
@@ -41,42 +43,53 @@ export interface DataTableColumn<T> {
   /** Value used for sorting + search (default: row[key]) */
   accessor?: (row: T) => Primitive;
   /** What to show in the cell (default: the accessor value as text). `layout` says
-   *  whether it renders in a table row or on a stacked card (e.g. bigger touch targets). */
+   *  whether it renders in a table row or in the phone list. */
   cell?: (row: T, ctx: CellContext) => ReactNode;
   align?: "left" | "right" | "center";
   /** Default true */
   sortable?: boolean;
   /** Hotel SES: smallest width this column can be read at, in rem, cell padding included
-   *  (default 0). The table switches to cards when the columns' minimums no longer fit,
+   *  (default 0). The table switches to the phone list when the columns' minimums no longer fit,
    *  so it never scrolls sideways. */
   minWidth?: number;
   /** Share of the remaining width (default: 1.8 for the primary column, 1 otherwise). */
   grow?: number;
   /** Hotel SES: 1 = essential (default). When the list runs out of width, columns with a
-   *  higher number are hidden first (highest first); phone cards always show them. */
+   *  higher number are hidden first (highest first); the phone list always shows them. */
   priority?: number;
   /** The card title on mobile. Usually your first column */
   primary?: boolean;
   hideOnMobile?: boolean;
-  /** Label used on mobile cards (default: header) */
+  /** Label in the phone list's details line (default: header; "" for none) */
   mobileLabel?: string;
-  /** On mobile cards, give this cell the whole row width (great for sparklines) */
+  /** In the phone list, put this cell on its own line under the details (actions, sparklines) */
   fullWidthOnMobile?: boolean;
 }
 
-export type CellContext = { layout: "table" | "cards" };
+/** "table": one row of columns; "list": the phone list (rows stacked: name, details, actions). */
+export type CellContext = { layout: "table" | "list" };
 
-/** The one row-action format of every table. List rows: small buttons with short
- *  labels (`rowButton`), then icon buttons (`rowIconButton`: edit, delete) at the far
- *  right, right-aligned so they line up down the list. Phone cards: full-size buttons. */
-export const rowButton = (layout: CellContext["layout"]) => (layout === "cards" ? "touch" : "sm") as "touch" | "sm";
-export const rowIconButton = (layout: CellContext["layout"]) => (layout === "cards" ? "icon" : "sm") as "icon" | "sm";
+/** The one row-action format of every table: small buttons with short labels
+ *  (`rowButton`), then icon buttons (`rowIconButton`: edit, delete) at the far right.
+ *  Same size in the table and the phone list. */
+export const rowButton = (_layout: CellContext["layout"]) => "sm" as const;
+export const rowIconButton = (_layout: CellContext["layout"]) => "icon-sm" as const;
 
-/** Row buttons container: right-aligned in the list, an even full-width row on phone cards.
- *  Children with `flex-none` (icon buttons) keep their size. */
+/** Row buttons: right-aligned in the table. In the phone list, on their own line under
+ *  the row's details: labelled buttons wrap on the left, icon buttons (`flex-none`: edit,
+ *  delete) stay together on the right. */
 export function DataTableActions({ layout, children }: CellContext & { children: ReactNode }) {
-  if (layout === "cards")
-    return <div className="flex flex-wrap gap-2 [&>*:not(.flex-none)]:flex-1 [&>*:not(.flex-none)]:basis-36">{children}</div>;
+  if (layout === "list") {
+    const isIcon = (c: ReactNode) => isValidElement<{ className?: string }>(c) && (c.props.className ?? "").split(" ").includes("flex-none");
+    const all = Children.toArray(children);
+    const icons = all.filter(isIcon);
+    return (
+      <div className="flex items-start gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{all.filter((c) => !isIcon(c))}</div>
+        {icons.length > 0 && <div className="flex flex-none items-center gap-1">{icons}</div>}
+      </div>
+    );
+  }
   return <div className="flex justify-end gap-2">{children}</div>;
 }
 
@@ -110,7 +123,7 @@ export interface DataTableProps<T extends { id: Id }> {
   /** Hotel SES: null = no internal scroll (the page scrolls; sticky header off) */
   maxHeight?: number | null;
   density?: "comfortable" | "compact";
-  /** Width below which rows become cards: phones only (default 640) */
+  /** Width below which rows stack into the phone list (default 640) */
   cardBreakpoint?: number;
   onRowClick?: (row: T) => void;
   emptyState?: ReactNode;
@@ -250,9 +263,9 @@ export function DataTable<T extends { id: Id }>({
     }
     return need(cs) <= room ? cs : null;
   }, [columns, width, selectable]);
-  const cards = width < cardBreakpoint || listColumns === null;
+  const stacked = width < cardBreakpoint || listColumns === null;
   /** Table mode with a height cap: the body is its own vertical scroller. */
-  const scrollsY = !cards && maxHeight != null;
+  const scrollsY = !stacked && maxHeight != null;
 
   const [query, setQuery] = useState("");
   const [innerSort, setInnerSort] = useState<SortState>(defaultSort);
@@ -301,7 +314,7 @@ export function DataTable<T extends { id: Id }>({
   useEffect(() => setLimit(pageSize), [query, pageSize]);
   const visible = processed.slice(0, limit);
 
-  const cols = cards ? columns.filter((c) => !c.hideOnMobile) : (listColumns ?? columns);
+  const cols = stacked ? columns.filter((c) => !c.hideOnMobile) : (listColumns ?? columns);
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const sortable = columns.filter((c) => c.sortable !== false);
 
@@ -409,13 +422,13 @@ export function DataTable<T extends { id: Id }>({
 
   /* ---------------------------------- cells --------------------------------- */
   const renderCell = (row: T, col: DataTableColumn<T>): ReactNode => {
-    if (col.cell) return col.cell(row, { layout: cards ? "cards" : "table" });
+    if (col.cell) return col.cell(row, { layout: stacked ? "list" : "table" });
     const v = read(row, col);
     return v == null ? <span className="text-neutral-400">—</span> : String(v instanceof Date ? formatDate(v) : v); // Hotel SES: dd/MM/yyyy, hotel time
   };
 
   /* ------------------------------ render: header ---------------------------- */
-  const header = cards ? (
+  const header = stacked ? (
     <div className="flex items-center gap-3 pb-3">
       {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />}
       <SpringSelect
@@ -511,8 +524,16 @@ export function DataTable<T extends { id: Id }>({
         }
       : {};
 
-    if (cards) {
+    if (stacked) {
+      // Phone list item: name (primary cell) on top, a wrapping line of "label value"
+      // details, then full-width cells (actions) on their own line.
       const rest = cols.filter((c) => c !== primary);
+      const details = rest.filter((c) => !c.fullWidthOnMobile);
+      const wide = rest.filter((c) => c.fullWidthOnMobile);
+      const filled = (c: DataTableColumn<T>) => {
+        const value = renderCell(row, c);
+        return value == null || value === false ? null : value;
+      };
       return (
         <motion.div
           key={row.id}
@@ -523,12 +544,9 @@ export function DataTable<T extends { id: Id }>({
           {...common}
           {...interactive}
           className={cx(
-            "rounded-2xl bg-white p-4 dark:bg-surface",
-            // Hotel SES: cells written for one-line table rows truncate; a card has the
-            // vertical room, so their text wraps instead of being cut.
-            "[&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal [&_.truncate]:[text-overflow:clip]",
-            ring,
-            isSel && "bg-neutral-50 ring-neutral-900/25 dark:bg-white/[0.04] dark:ring-white/25",
+            "flex flex-col gap-2 border-b bg-white px-4 py-3 transition-colors duration-150 last:border-b-0 dark:bg-surface",
+            hairline,
+            isSel ? "bg-neutral-50 dark:bg-white/[0.045]" : "[@media(hover:hover)]:hover:bg-neutral-50/70 dark:[@media(hover:hover)]:hover:bg-white/[0.025]",
             onRowClick && cx("cursor-pointer", focus),
           )}
         >
@@ -542,23 +560,29 @@ export function DataTable<T extends { id: Id }>({
               {renderCell(row, primary)}
             </div>
           </div>
-          {rest.length > 0 && (
-            <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-3.5 pl-0 sm:pl-0">
-              {rest.map((c) => {
-                // Hotel SES: skip empty cells (e.g. no actions) and empty labels on cards
-                const value = renderCell(row, c);
-                if (value == null || value === false) return null;
-                const label = c.mobileLabel ?? c.header;
+          {details.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
+              {details.map((c) => {
+                const value = filled(c);
+                if (value == null) return null;
+                const name = c.mobileLabel ?? c.header;
                 return (
-                  <div key={c.key} role="cell" className={cx("min-w-0", c.fullWidthOnMobile && "col-span-2")}>
-                    {label && <p className={`mb-1 text-[11.5px] ${muted}`}>{label}</p>}
-                    {/* Hotel SES: values never exceed their cell (long text wraps or truncates) */}
-                    <div className="min-w-0 max-w-full overflow-hidden text-[13.5px] text-neutral-800 [overflow-wrap:anywhere] dark:text-neutral-200 [&>*]:max-w-full">{value}</div>
+                  <div key={c.key} role="cell" className="flex min-w-0 max-w-full items-center gap-1.5">
+                    {name && <span className={muted}>{name}</span>}
+                    <span className="min-w-0 text-neutral-800 [overflow-wrap:anywhere] dark:text-neutral-200">{value}</span>
                   </div>
                 );
               })}
             </div>
           )}
+          {wide.map((c) => {
+            const value = filled(c);
+            return value == null ? null : (
+              <div key={c.key} role="cell" className="min-w-0">
+                {value}
+              </div>
+            );
+          })}
         </motion.div>
       );
     }
@@ -638,10 +662,10 @@ export function DataTable<T extends { id: Id }>({
       )}
 
       <div
-        className={cx(!cards && "overflow-hidden rounded-2xl bg-white dark:bg-surface", !cards && ring)}
-        style={!cards ? { boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.2)" } : undefined}
+        className={cx("overflow-hidden rounded-2xl bg-white dark:bg-surface", ring)}
+        style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.2)" }}
       >
-        {cards && header}
+        {stacked && header}
         {/* Hotel SES: only a height-capped table is its own vertical scroller (and may
             contain its scroll). Uncapped, it must let vertical wheel/touch scrolling
             pass to the page: containing it there froze the page under the cursor. */}
@@ -659,8 +683,8 @@ export function DataTable<T extends { id: Id }>({
             aria-rowcount={processed.length + 1}
             aria-colcount={cols.length + (selectable ? 1 : 0)}
           >
-            {!cards && header}
-            <div role="rowgroup" className={cx("relative", cards && "grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-2.5")}>
+            {!stacked && header}
+            <div role="rowgroup" className="relative">
               <AnimatePresence initial={false} mode="popLayout">
                 {rowEls}
               </AnimatePresence>
@@ -670,7 +694,7 @@ export function DataTable<T extends { id: Id }>({
         </motion.div>
 
         {processed.length > limit && (
-          <div className={cx("flex items-center justify-between gap-3 px-4 py-3 text-[12.5px]", !cards && cx("border-t", hairline), cards && "pt-4")}>
+          <div className={cx("flex items-center justify-between gap-3 border-t px-4 py-3 text-[12.5px]", hairline)}>
             <span className={`tabular-nums ${muted}`}>
               {visible.length} sur {processed.length} affichées
             </span>

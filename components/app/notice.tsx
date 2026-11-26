@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import { VelocityToast } from "@/components/ui/velocity-toast";
 
 export type NoticeTone = "success" | "danger";
@@ -55,17 +55,4 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
 /** Show a short success or error message. */
 export function useFlash(): Flash {
   return useContext(FlashContext);
-}
-
-/** Wraps a portal view in its NoticeProvider (every portal needs one for `flash`). */
-export function withNotices<P extends object>(View: ComponentType<P>) {
-  function WithNotices(props: P) {
-    return (
-      <NoticeProvider>
-        <View {...props} />
-      </NoticeProvider>
-    );
-  }
-  WithNotices.displayName = `withNotices(${View.displayName || View.name || "View"})`;
-  return WithNotices;
 }

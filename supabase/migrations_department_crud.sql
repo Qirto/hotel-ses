@@ -25,17 +25,17 @@ create policy "Allow all access to departments" on public.departments for all us
 -- 3. Seed all core hotel operational departments
 insert into public.departments (code, name, icon, description, head_of_department)
 values
-  ('RECEPTION', 'Reception & Front Desk', '🛎️', 'Guest check-in/out, switchboard, inquiries and concierge dispatches', 'Sophie Mercier'),
-  ('HOUSEKEEPING', 'Housekeeping & Gouvernante', '🧹', 'Room cleaning, linen management, amenity restocking and floor inspections', 'Martine Aubry'),
-  ('TECHNICAL', 'Technical & Maintenance', '🔧', 'Plumbing, electrical, HVAC, fixtures and preventive facilities maintenance', 'Pierre Dubois'),
-  ('FOOD_AND_BEVERAGE', 'Food & Beverage (F&B)', '🍽️', 'Kitchen, restaurants, banquets, room service and bars', 'Chef Antoine Girard'),
-  ('MANAGEMENT', 'Executive & General Management', '👔', 'Hotel operations oversight, executive decisions, VIP relations and strategy', 'Jean-Paul Bonnet'),
-  ('SECURITY', 'Security & Safety', '🛡️', 'Premises surveillance, access control, keycards, guest safety and emergency protocols', 'Marc Lambert'),
-  ('CONCIERGE', 'Concierge & Guest Relations', '🚗', 'Valet parking, luggage handling, excursions, transport and VIP guest assistance', 'Lucie Moreau'),
-  ('SPA_AND_WELLNESS', 'Spa, Wellness & Fitness', '🧖', 'Massage treatments, thermal baths, sauna, gym and wellness therapies', 'Camille Roux'),
-  ('SALES_AND_MARKETING', 'Sales, Marketing & Events', '📈', 'Group bookings, corporate events, weddings, digital marketing and PR', 'Helene Fontaine'),
-  ('FINANCE_AND_ACCOUNTING', 'Finance, Accounting & Audit', '💳', 'Night audit, billing, purchasing, payroll and revenue management', 'Bernard Leroy'),
-  ('HUMAN_RESOURCES', 'Human Resources (HR)', '👥', 'Recruitment, employee onboarding, scheduling, payroll and training', 'Claire Delacroix')
+  ('RECEPTION', 'Reception & Front Desk', '🛎️', 'Guest check-in/out, switchboard, inquiries and concierge dispatches', 'Salma Gharbi'),
+  ('HOUSEKEEPING', 'Housekeeping & Gouvernante', '🧹', 'Room cleaning, linen management, amenity restocking and floor inspections', 'Leila Mejri'),
+  ('TECHNICAL', 'Technical & Maintenance', '🔧', 'Plumbing, electrical, HVAC, fixtures and preventive facilities maintenance', 'Mourad Sassi'),
+  ('FOOD_AND_BEVERAGE', 'Food & Beverage (F&B)', '🍽️', 'Kitchen, restaurants, banquets, room service and bars', 'Chef Slim Hammami'),
+  ('MANAGEMENT', 'Executive & General Management', '👔', 'Hotel operations oversight, executive decisions, VIP relations and strategy', 'Hichem Ben Salah'),
+  ('SECURITY', 'Security & Safety', '🛡️', 'Premises surveillance, access control, keycards, guest safety and emergency protocols', 'Tarek Dridi'),
+  ('CONCIERGE', 'Concierge & Guest Relations', '🚗', 'Valet parking, luggage handling, excursions, transport and VIP guest assistance', 'Nesrine Ayari'),
+  ('SPA_AND_WELLNESS', 'Spa, Wellness & Fitness', '🧖', 'Massage treatments, thermal baths, sauna, gym and wellness therapies', 'Ines Ferchichi'),
+  ('SALES_AND_MARKETING', 'Sales, Marketing & Events', '📈', 'Group bookings, corporate events, weddings, digital marketing and PR', 'Rania Masmoudi'),
+  ('FINANCE_AND_ACCOUNTING', 'Finance, Accounting & Audit', '💳', 'Night audit, billing, purchasing, payroll and revenue management', 'Khaled Zouari'),
+  ('HUMAN_RESOURCES', 'Human Resources (HR)', '👥', 'Recruitment, employee onboarding, scheduling, payroll and training', 'Olfa Bouzid')
 on conflict (code) do update set
   name = excluded.name,
   icon = excluded.icon,

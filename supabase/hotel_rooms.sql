@@ -470,11 +470,11 @@ on conflict (room_number) do update set
 -- =====================================================================
 insert into public.staff (full_name, role, department, phone_number, shift_status)
 values
-  ('Alice Moreau', 'manager', 'MANAGEMENT', '+33 6 12 34 56 78', 'ON_SHIFT'),
-  ('Karim Benali', 'receptionist', 'RECEPTION', '+33 6 23 45 67 89', 'ON_SHIFT'),
-  ('Elena Rostova', 'governance', 'HOUSEKEEPING', '+33 6 34 56 78 90', 'ON_SHIFT'),
-  ('David Laurent', 'maintenance', 'TECHNICAL', '+33 6 45 67 89 01', 'ON_SHIFT'),
-  ('Samira Mansour', 'master', 'MANAGEMENT', '+33 6 56 78 90 12', 'OFF_SHIFT');
+  ('Amira Trabelsi', 'manager', 'MANAGEMENT', '+216 22 345 678', 'ON_SHIFT'),
+  ('Karim Ben Ali', 'receptionist', 'RECEPTION', '+216 23 456 789', 'ON_SHIFT'),
+  ('Hela Jlassi', 'governance', 'HOUSEKEEPING', '+216 24 567 890', 'ON_SHIFT'),
+  ('Walid Haddad', 'maintenance', 'TECHNICAL', '+216 25 678 901', 'ON_SHIFT'),
+  ('Samira Mansouri', 'master', 'MANAGEMENT', '+216 26 789 012', 'OFF_SHIFT');
 
 -- =====================================================================
 -- 8. SEED DATA: SAMPLE RESIDENTS & RECLAMATIONS (Connected by Foreign Keys)

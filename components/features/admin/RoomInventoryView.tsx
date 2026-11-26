@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo } from "react";
+import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { DoorOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import type { HotelRoom } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,9 @@ import { EmptyState, Panel } from "@/components/features/Panel";
 import { ToneBadge } from "@/components/features/StatusBadges";
 import { blockLabel, blockOptions, CLEANING_LABEL, CLEANING_TONE, floorOptions } from "@/lib/rooms";
 import { plural } from "@/lib/format";
+
+/** In the URL (/admin/rooms?q=…&floor=…&block=…): kept on refresh, Back and shared links. */
+const INVENTORY_FILTERS = { q: "", floor: "ALL", block: "ALL" };
 
 /** Administration: the room inventory (add, renumber, change block, delete). */
 export const RoomInventoryView = memo(function RoomInventoryView({
@@ -25,9 +29,13 @@ export const RoomInventoryView = memo(function RoomInventoryView({
   onEdit: (room: HotelRoom) => void;
   onRemove: (room: HotelRoom) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const [floor, setFloor] = useState<number | "ALL">("ALL");
-  const [block, setBlock] = useState("ALL");
+  const [filters, setFilters] = useUrlFilters(INVENTORY_FILTERS);
+  const search = filters.q;
+  const setSearch = (q: string) => setFilters({ q });
+  const floor: number | "ALL" = filters.floor === "ALL" ? "ALL" : Number(filters.floor);
+  const setFloor = (value: number | "ALL") => setFilters({ floor: String(value) });
+  const block = filters.block;
+  const setBlock = (value: string) => setFilters({ block: value });
   const floors = useMemo(() => floorOptions(rooms), [rooms]);
   const blocks = useMemo(() => blockOptions(rooms), [rooms]);
   const rows = useMemo(
@@ -90,7 +98,7 @@ export const RoomInventoryView = memo(function RoomInventoryView({
 
   return (
     <Panel
-      title="Inventaire des chambres"
+      title="Parc des chambres"
       description={`${rows.length} sur ${plural(rooms.length, "chambre")}`}
       icon={<DoorOpen />}
       actions={
@@ -115,7 +123,7 @@ export const RoomInventoryView = memo(function RoomInventoryView({
         pageSize={50}
         density="compact"
         emptyState={<EmptyState icon={<DoorOpen />} title="Aucune chambre" description="Aucune chambre ne correspond à ces filtres." />}
-        ariaLabel="Inventaire des chambres"
+        ariaLabel="Parc des chambres"
       />
     </Panel>
   );

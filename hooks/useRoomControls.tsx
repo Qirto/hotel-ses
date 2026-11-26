@@ -7,14 +7,13 @@ import { StayControl } from "@/components/features/room/StayControl";
 import { updateRoomHeadcount, updateRoomStayState } from "@/app/actions";
 import { STAY_MESSAGE, STAY_RESULT, type StayState } from "@/lib/rooms";
 import { useCleaningCycle } from "./useCleaningCycle";
-import type { PortalState } from "./usePortalState";
+import type { HotelState } from "./useHotelState";
 
 /**
- * The front-desk room controls (check-in / out, guest count, housekeeping) for the
- * open room detail. Shared by the Reception and Administration portals; pass the
- * result as PortalRoomDetail's `controls`.
+ * The room controls of the room detail, as the caller's permissions allow: check-in /
+ * out and guest count (`stay`), housekeeping cycle (`cleaning`). Null when none apply.
  */
-export function useRoomControls<Tab extends string>(p: PortalState<Tab>) {
+export function useRoomControls(p: HotelState, options: { stay: boolean; cleaning: boolean }) {
   const { run, patchRoom, flash, isPending, selectedRoom } = p;
   const cycleCleaning = useCleaningCycle(p);
 
@@ -45,12 +44,11 @@ export function useRoomControls<Tab extends string>(p: PortalState<Tab>) {
     [run, patchRoom, flash]
   );
 
+  if (!selectedRoom || (!options.stay && !options.cleaning)) return null;
   return (
-    selectedRoom && (
-      <div className="flex flex-col gap-4">
-        <StayControl room={selectedRoom} pending={isPending} onChange={setStayState} onHeadcount={setHeadcount} />
-        <HousekeepingControl room={selectedRoom} pending={isPending} onCycle={cycleCleaning} />
-      </div>
-    )
+    <div className="flex flex-col gap-4">
+      {options.stay && <StayControl room={selectedRoom} pending={isPending} onChange={setStayState} onHeadcount={setHeadcount} />}
+      {options.cleaning && <HousekeepingControl room={selectedRoom} pending={isPending} onCycle={cycleCleaning} />}
+    </div>
   );
 }

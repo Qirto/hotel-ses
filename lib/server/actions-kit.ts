@@ -2,7 +2,6 @@ import "server-only";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { PORTALS } from "@/lib/portals";
 
 /**
  * Helpers shared by the server-action files. Kept out of "use server" files on
@@ -30,7 +29,7 @@ export function failed(what: string, error: { message: string }) {
 /** A refusal with a message for people (validation, business rule). */
 export const refuse = (error: string) => ({ success: false as const, error });
 
-/** Portal pages are dynamic; this refreshes their client router cache after a write. */
-export function revalidatePortals() {
-  for (const portal of Object.values(PORTALS)) revalidatePath(portal.path);
+/** After a write: every page under the root layout renders fresh data on its next visit (and the client router cache is dropped). */
+export function revalidateApp() {
+  revalidatePath("/", "layout");
 }

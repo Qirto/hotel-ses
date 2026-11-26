@@ -1,13 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/utils/supabase/admin";
-import type { PortalRole } from "@/lib/portals";
+import type { Role } from "@/lib/roles";
 
 /** An account as the Administration screens show it. */
 export interface Account {
   id: string;
   username: string;
   display_name: string;
-  role: PortalRole;
+  role: Role;
   staff_id: number | null;
   is_active: boolean;
   must_change_password: boolean;

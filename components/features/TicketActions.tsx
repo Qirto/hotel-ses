@@ -17,7 +17,7 @@ export interface TicketActionHandlers {
 
 /** Acknowledge / resolve buttons for one ticket, or null when there is nothing to do.
  *  `layout` "table" gives the small list-row buttons (same format as every table). */
-export function ticketActions(ticket: Reclamation, { pending, onAcknowledge, onResolve }: TicketActionHandlers, layout: CellContext["layout"] = "cards"): ReactNode {
+export function ticketActions(ticket: Reclamation, { pending, onAcknowledge, onResolve }: TicketActionHandlers, layout: CellContext["layout"] = "list"): ReactNode {
   const size = rowButton(layout);
   const icon = layout === "table" ? "size-3.5" : "size-4";
   if (!isOpenTicket(ticket)) return null;

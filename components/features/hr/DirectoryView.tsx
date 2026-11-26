@@ -17,8 +17,7 @@ const rowLabel = (s: Staff) => `${s.full_name}, ${roleLabel(s.role)}`;
 
 /**
  * HR "Directory" sub-tab: headcount KPIs and the staff table with row
- * actions. Search and department filter are controlled by the portal, which
- * also shows the filtered count on the sub-tab.
+ * actions. Search and service filter are controlled by the caller (kept in the URL).
  */
 export const DirectoryView = memo(function DirectoryView({
   staff,
@@ -137,7 +136,7 @@ export const DirectoryView = memo(function DirectoryView({
                 Absent
               </Button>
               {/* One width for both labels (« Commencer » is the longer): the buttons line up as columns down the list. */}
-              <Button variant="secondary" size={size} className={layout === "cards" ? undefined : "w-[7.25rem]"} title={onShift ? "Terminer le service" : "Commencer le service"} onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-3.5" aria-hidden />}>
+              <Button variant="secondary" size={size} className={layout === "list" ? undefined : "w-[7.25rem]"} title={onShift ? "Terminer le service" : "Commencer le service"} onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-3.5" aria-hidden />}>
                 {onShift ? "Terminer" : "Commencer"}
               </Button>
               <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier ${s.full_name}`} onClick={() => onEdit(s)} disabled={pending} aria-label={`Modifier ${s.full_name}`}>

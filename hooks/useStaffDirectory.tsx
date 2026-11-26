@@ -14,7 +14,7 @@ import {
   updateStaffMember,
 } from "@/app/actions";
 import { plural } from "@/lib/format";
-import { useSyncedState } from "./usePortalState";
+import { useSyncedState } from "./useActions";
 import type { ConfirmRequest, PortalRunner } from "./useConfirm";
 
 /**
@@ -32,15 +32,6 @@ export function useStaffDirectory(
   const [staff, setStaff] = useSyncedState<Staff[]>(staffList);
 
   /* ───────────── list ───────────── */
-  const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("ALL");
-  const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return staff.filter((s) => {
-      if (department !== "ALL" && s.department !== department) return false;
-      return !q || s.full_name.toLowerCase().includes(q) || s.role.toLowerCase().includes(q);
-    });
-  }, [staff, department, search]);
   const onShiftCount = useMemo(() => staff.filter((s) => s.shift_status === "ON_SHIFT").length, [staff]);
 
   /* ───────────── shift: one click, reversible, so no confirmation, an undo instead ───────────── */
@@ -183,5 +174,5 @@ export function useStaffDirectory(
     />
   );
 
-  return { staff, onShiftCount, search, setSearch, department, setDepartment, rows, toggleShift, askAbsent, askRemove, openCreate, openEdit, formElement };
+  return { staff, onShiftCount, toggleShift, askAbsent, askRemove, openCreate, openEdit, formElement };
 }

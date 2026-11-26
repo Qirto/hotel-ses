@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { getPortalRole } from "@/lib/server/session";
-import { PORTALS } from "@/lib/portals";
+import { getSession } from "@/lib/server/session";
+import { homeFor } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 
-/** Entry point: the signed-in portal, or the login page. */
+/** Entry point: the role's home page, or the login page (the proxy normally redirects first). */
 export default async function Page() {
-  const role = await getPortalRole();
-  redirect(role ? PORTALS[role].path : "/login");
+  const session = await getSession();
+  redirect(session ? homeFor(session.role) : "/login");
 }
