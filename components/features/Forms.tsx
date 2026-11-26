@@ -136,10 +136,10 @@ function useTicketSubject(defaultDepartment = DEFAULT_DEPARTMENT) {
 function DepartmentIssueFields({ id, subject }: { id: string; subject: ReturnType<typeof useTicketSubject> }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Field label="Department" htmlFor={`${id}-dept`}>
+      <Field label="Service" htmlFor={`${id}-dept`}>
         <Select id={`${id}-dept`} value={subject.department} options={DISPATCH_DEPARTMENTS} onChange={subject.changeDepartment} />
       </Field>
-      <Field label="Issue" htmlFor={`${id}-cat`}>
+      <Field label="Problème" htmlFor={`${id}-cat`}>
         <Select id={`${id}-cat`} value={subject.category} options={issueOptions(subject.department)} onChange={subject.setCategory} />
       </Field>
     </div>
@@ -148,8 +148,8 @@ function DepartmentIssueFields({ id, subject }: { id: string; subject: ReturnTyp
 
 function RoomNumberField({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
   return (
-    <Field label="Room number" htmlFor={`${id}-room`}>
-      <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="e.g. 1031" value={value} onChange={(e) => onChange(e.target.value)} />
+    <Field label="Numéro de chambre" htmlFor={`${id}-room`}>
+      <TextInput id={`${id}-room`} inputMode="numeric" required placeholder="ex. 1031" value={value} onChange={(e) => onChange(e.target.value)} />
     </Field>
   );
 }
@@ -196,12 +196,12 @@ export function NewTicketForm({
     >
       {withRoom && <RoomNumberField id={id} value={room} onChange={setRoom} />}
       <DepartmentIssueFields id={id} subject={subject} />
-      <Segmented label="Priority" value={priority} onChange={setPriority} options={PRIORITIES} />
-      <Field label="Details" htmlFor={`${id}-desc`}>
-        <TextArea id={`${id}-desc`} placeholder="What did the guest report?" value={description} onChange={(e) => setDescription(e.target.value)} />
+      <Segmented label="Priorité" value={priority} onChange={setPriority} options={PRIORITIES} />
+      <Field label="Détails" htmlFor={`${id}-desc`}>
+        <TextArea id={`${id}-desc`} placeholder={"Qu’a signalé le client ?"} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
-      <Button type="submit" variant="primary" size="lg" isLoading={pending} loadingText="Sending" leftIcon={<Send className="size-4" aria-hidden />} className="w-full justify-center">
-        Dispatch ticket
+      <Button type="submit" variant="primary" size="lg" isLoading={pending} loadingText="Envoi" leftIcon={<Send className="size-4" aria-hidden />} className="w-full justify-center">
+        Créer la demande
       </Button>
     </form>
   );
@@ -260,15 +260,15 @@ export function PastIncidentForm({
     >
       <div className={cn("grid grid-cols-1 gap-4", withRoom && "sm:grid-cols-2")}>
         {withRoom && <RoomNumberField id={id} value={room} onChange={setRoom} />}
-        <DateTimeField id={`${id}-date`} label="Date and time" value={createdAt} onChange={setCreatedAt} maxDate={new Date()} required />
+        <DateTimeField id={`${id}-date`} label="Date et heure" value={createdAt} onChange={setCreatedAt} maxDate={new Date()} required />
       </div>
       <DepartmentIssueFields id={id} subject={subject} />
-      <Segmented label="Status" value={status} onChange={setStatus} options={PAST_STATUSES} />
-      <Field label="Details" htmlFor={`${id}-desc`}>
-        <TextArea id={`${id}-desc`} required placeholder="What happened?" value={description} onChange={(e) => setDescription(e.target.value)} />
+      <Segmented label="Statut" value={status} onChange={setStatus} options={PAST_STATUSES} />
+      <Field label="Détails" htmlFor={`${id}-desc`}>
+        <TextArea id={`${id}-desc`} required placeholder={"Que s’est-il passé ?"} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
-      <Button type="submit" variant="secondary" size="lg" isLoading={pending} loadingText="Saving" leftIcon={<History className="size-4" aria-hidden />} className="w-full justify-center">
-        Record past incident
+      <Button type="submit" variant="secondary" size="lg" isLoading={pending} loadingText="Enregistrement" leftIcon={<History className="size-4" aria-hidden />} className="w-full justify-center">
+        Saisir un incident passé
       </Button>
     </form>
   );

@@ -72,7 +72,7 @@ export function SelectField<V extends string | number>({
 /** The one filter toolbar every filterable view uses: a wrapping row of the controls above. */
 export function FilterBar({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div role="toolbar" aria-label="Filters" className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div role="toolbar" aria-label="Filtres" className={cn("flex flex-wrap items-center gap-2", className)}>
       {children}
     </div>
   );

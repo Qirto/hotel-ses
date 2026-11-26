@@ -5,6 +5,7 @@ import type { HotelRoom, Reclamation } from "@/utils/roomsData";
 import type { NewTicketInput, PastIncidentInput } from "@/components/features/Forms";
 import { acknowledgeReclamation, createHistoricalReclamation, createRapidReclamation, resolveReclamation } from "@/app/actions";
 import type { PortalState } from "./usePortalState";
+import { categoryLabel } from "@/lib/format";
 
 /**
  * Every ticket write a portal can make, implemented once (was copied in all three
@@ -42,7 +43,7 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
   );
 
   const acknowledge = useCallback(
-    (id: number) => updateTicket(id, { status: "IN_PROGRESS" }, () => acknowledgeReclamation(id), "Ticket marked in progress.", "Could not update the ticket."),
+    (id: number) => updateTicket(id, { status: "IN_PROGRESS" }, () => acknowledgeReclamation(id), "Demande passée en cours.", "Impossible de mettre à jour la demande."),
     [updateTicket]
   );
 
@@ -52,8 +53,8 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
         id,
         { status: "RESOLVED", resolved_at: new Date().toISOString() },
         () => resolveReclamation(id),
-        "Ticket resolved.",
-        "Could not resolve the ticket."
+        "Demande résolue.",
+        "Impossible de résoudre la demande."
       ),
     [updateTicket]
   );
@@ -71,12 +72,12 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
           roomId: room.id,
           department: input.department,
           category: input.category,
-          description: input.description || `${input.category} reported by ${actor}`,
+          description: input.description || `${categoryLabel(input.category)} (signalé par ${actor})`,
           priority: input.priority,
           isConfidential: false,
         });
         if (res.success && res.data) addTicket(room, res.data);
-        flash(res.success ? "success" : "danger", res.success ? `Ticket created for room ${room.room_number}.` : res.error || "Could not create the ticket.");
+        flash(res.success ? "success" : "danger", res.success ? `Demande créée pour la chambre ${room.room_number}.` : res.error || "Impossible de créer la demande.");
         return Boolean(res.success);
       }),
     [runForResult, addTicket, flash, actor]
@@ -89,13 +90,13 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
           roomId: room.id,
           department: input.department,
           category: input.category,
-          description: input.description || `Past ${input.category} incident recorded by ${actor}`,
+          description: input.description || `Incident passé (${categoryLabel(input.category)}) enregistré par ${actor}`,
           status: input.status,
           createdAt: input.createdAt,
           isConfidential: false,
         });
         if (res.success && res.data) addTicket(room, res.data);
-        flash(res.success ? "success" : "danger", res.success ? `Past incident recorded for room ${room.room_number}.` : res.error || "Could not record the incident.");
+        flash(res.success ? "success" : "danger", res.success ? `Incident passé enregistré pour la chambre ${room.room_number}.` : res.error || "Impossible d’enregistrer l’incident.");
         return Boolean(res.success);
       }),
     [runForResult, addTicket, flash, actor]

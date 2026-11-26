@@ -32,12 +32,12 @@ export function AddStaffSheet({
     <ResponsiveSheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Add employee"
-      description="Create a staff profile. New employees start on shift."
+      title="Ajouter un employé"
+      description="Créez la fiche de l’employé. Les nouveaux employés commencent en service."
       footer={
         <SheetActions onCancel={() => onOpenChange(false)}>
-          <Button type="submit" form={`${id}-form`} variant="primary" isLoading={pending} loadingText="Saving" leftIcon={<UserPlus className="size-4" aria-hidden />} className="justify-center">
-            Create profile
+          <Button type="submit" form={`${id}-form`} variant="primary" isLoading={pending} loadingText="Enregistrement" leftIcon={<UserPlus className="size-4" aria-hidden />} className="justify-center">
+            Créer la fiche
           </Button>
         </SheetActions>
       }
@@ -56,18 +56,18 @@ export function AddStaffSheet({
           }
         }}
       >
-        <Field label="Full name" htmlFor={`${id}-name`}>
-          <TextInput id={`${id}-name`} required autoComplete="off" placeholder="e.g. Marc Vance" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <Field label="Nom complet" htmlFor={`${id}-name`}>
+          <TextInput id={`${id}-name`} required autoComplete="off" placeholder="ex. Marc Vance" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Role" htmlFor={`${id}-role`}>
+          <Field label="Fonction" htmlFor={`${id}-role`}>
             <Select id={`${id}-role`} value={role} options={ROLE_OPTIONS} onChange={setRole} />
           </Field>
-          <Field label="Department" htmlFor={`${id}-dept`}>
+          <Field label="Service" htmlFor={`${id}-dept`}>
             <Select id={`${id}-dept`} value={department} options={departments} onChange={setDepartment} />
           </Field>
         </div>
-        <Field label="Phone number" htmlFor={`${id}-phone`} hint="Optional">
+        <Field label="Numéro de téléphone" htmlFor={`${id}-phone`} hint="Facultatif">
           <div className="relative">
             <Phone className={INPUT_ICON} aria-hidden />
             <TextInput id={`${id}-phone`} type="tel" placeholder="+33 6 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" />

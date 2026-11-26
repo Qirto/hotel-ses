@@ -40,13 +40,18 @@ export interface DataTableColumn<T> {
   header: string;
   /** Value used for sorting + search (default: row[key]) */
   accessor?: (row: T) => Primitive;
-  /** What to show in the cell (default: the accessor value as text) */
-  cell?: (row: T) => ReactNode;
+  /** What to show in the cell (default: the accessor value as text). `layout` says
+   *  whether it renders in a table row or on a stacked card (e.g. bigger touch targets). */
+  cell?: (row: T, ctx: CellContext) => ReactNode;
   align?: "left" | "right" | "center";
   /** Default true */
   sortable?: boolean;
-  /** A CSS grid track: "120px", "1.4fr", "minmax(0, 2fr)" */
-  width?: string;
+  /** Hotel SES: smallest width this column can be read at, in rem, cell padding included
+   *  (default 0). The table switches to cards when the columns' minimums no longer fit,
+   *  so it never scrolls sideways. */
+  minWidth?: number;
+  /** Share of the remaining width (default: 1.8 for the primary column, 1 otherwise). */
+  grow?: number;
   /** The card title on mobile. Usually your first column */
   primary?: boolean;
   hideOnMobile?: boolean;
@@ -55,6 +60,8 @@ export interface DataTableColumn<T> {
   /** On mobile cards, give this cell the whole row width (great for sparklines) */
   fullWidthOnMobile?: boolean;
 }
+
+export type CellContext = { layout: "table" | "cards" };
 
 export type SortState = { key: string; dir: "asc" | "desc" } | null;
 type Id = string | number;
@@ -192,7 +199,7 @@ export function DataTable<T extends { id: Id }>({
   getRowLabel = (r) => String(r.id),
   selectable = true,
   searchable = true,
-  searchPlaceholder = "Search…",
+  searchPlaceholder = "Rechercher…",
   searchText,
   defaultSort = null,
   sort: controlledSort,
@@ -207,22 +214,17 @@ export function DataTable<T extends { id: Id }>({
   cardBreakpoint = 640,
   onRowClick,
   emptyState,
-  ariaLabel = "Data table",
+  ariaLabel = "Tableau de données",
   className = "",
 }: DataTableProps<T>) {
   const reduce = useReducedMotion();
   const [rootRef, width] = useElementWidth<HTMLDivElement>(960);
   // Hotel SES: switch to cards whenever the table cannot fit its columns' minimum
   // widths (e.g. next to the sidebar on tablets), not only below a fixed breakpoint.
-  const minTableWidth = useMemo(() => {
-    const remPx = 16;
-    let total = selectable ? 44 : 0;
-    for (const c of columns) {
-      const m = c.width?.match(/minmax\(\s*([\d.]+)(rem|px)/);
-      if (m) total += m[2] === "rem" ? parseFloat(m[1]) * remPx : parseFloat(m[1]);
-    }
-    return total;
-  }, [columns, selectable]);
+  const minTableWidth = useMemo(
+    () => columns.reduce((sum, c) => sum + (c.minWidth ?? 0) * 16, selectable ? 44 : 0),
+    [columns, selectable],
+  );
   const cards = width < Math.max(cardBreakpoint, minTableWidth);
   /** Table mode with a height cap: the body is its own vertical scroller. */
   const scrollsY = !cards && maxHeight != null;
@@ -243,7 +245,7 @@ export function DataTable<T extends { id: Id }>({
     if (controlledSort === undefined) setInnerSort(s);
     onSortChange?.(s);
     const col = columns.find((c) => c.key === s?.key);
-    setAnnounce(s && col ? `Sorted by ${col.header}, ${s.dir === "asc" ? "ascending" : "descending"}` : "Sorting cleared");
+    setAnnounce(s && col ? `Trié par ${col.header}, ordre ${s.dir === "asc" ? "croissant" : "décroissant"}` : "Tri réinitialisé");
   };
   const setSelected = (ids: Id[]) => {
     if (controlledSelected === undefined) setInnerSel(ids);
@@ -278,7 +280,9 @@ export function DataTable<T extends { id: Id }>({
   const primary = columns.find((c) => c.primary) ?? columns[0];
   const sortable = columns.filter((c) => c.sortable !== false);
 
-  const tracks = [selectable ? "44px" : null, ...cols.map((c) => c.width ?? (c === primary ? "minmax(0,1.8fr)" : "minmax(0,1fr)"))]
+  // Every row is its own grid; minmax(<length>, <fr>) tracks resolve identically in
+  // each row, so columns line up without a fixed width anywhere.
+  const tracks = [selectable ? "44px" : null, ...cols.map((c) => `minmax(${c.minWidth ?? 0}rem, ${c.grow ?? (c === primary ? 1.8 : 1)}fr)`)]
     .filter(Boolean)
     .join(" ");
 
@@ -329,7 +333,7 @@ export function DataTable<T extends { id: Id }>({
       className="flex h-full w-full items-center justify-between gap-3"
     >
       <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100" aria-live="polite">
-        {selectedIds.length} selected
+        {selectedIds.length} {selectedIds.length <= 1 ? "sélectionnée" : "sélectionnées"}
       </p>
       <div className="flex items-center gap-1.5">
         {bulkActions?.(selectedIds)}
@@ -338,7 +342,7 @@ export function DataTable<T extends { id: Id }>({
           onClick={() => setSelected([])}
           className={`h-9 rounded-xl px-3 text-[12.5px] font-medium text-neutral-500 transition-colors duration-150 [@media(hover:hover)]:hover:bg-black/[0.05] [@media(hover:hover)]:hover:text-neutral-900 dark:[@media(hover:hover)]:hover:bg-white/[0.07] dark:[@media(hover:hover)]:hover:text-neutral-100 ${focus}`}
         >
-          Clear
+          Effacer
         </button>
       </div>
     </motion.div>
@@ -364,15 +368,15 @@ export function DataTable<T extends { id: Id }>({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={searchPlaceholder}
-            aria-label="Search rows"
+            aria-label="Rechercher dans le tableau"
             className="h-10 w-full rounded-xl bg-black/[0.04] pl-9 pr-3 text-[16px] text-neutral-900 outline-none transition-shadow placeholder:text-neutral-400 focus:ring-2 focus:ring-neutral-400/50 dark:bg-white/[0.05] dark:text-neutral-100 sm:h-9 sm:text-[13.5px] dark:focus:ring-white/25 [&::-webkit-search-cancel-button]:hidden"
           />
         </label>
       ) : (
-        <span className={`text-[13px] ${muted}`}>{processed.length} {processed.length === 1 ? "row" : "rows"}</span>
+        <span className={`text-[13px] ${muted}`}>{processed.length} {processed.length <= 1 ? "ligne" : "lignes"}</span>
       )}
       <div className="flex shrink-0 items-center gap-2">
-        {searchable && <span className={`hidden text-[12.5px] tabular-nums sm:block ${muted}`}>{processed.length} {processed.length === 1 ? "row" : "rows"}</span>}
+        {searchable && <span className={`hidden text-[12.5px] tabular-nums sm:block ${muted}`}>{processed.length} {processed.length <= 1 ? "ligne" : "lignes"}</span>}
         {toolbar}
       </div>
     </motion.div>
@@ -380,7 +384,7 @@ export function DataTable<T extends { id: Id }>({
 
   /* ---------------------------------- cells --------------------------------- */
   const renderCell = (row: T, col: DataTableColumn<T>): ReactNode => {
-    if (col.cell) return col.cell(row);
+    if (col.cell) return col.cell(row, { layout: cards ? "cards" : "table" });
     const v = read(row, col);
     return v == null ? <span className="text-neutral-400">—</span> : String(v instanceof Date ? formatDate(v) : v); // Hotel SES: dd/MM/yyyy, hotel time
   };
@@ -388,22 +392,22 @@ export function DataTable<T extends { id: Id }>({
   /* ------------------------------ render: header ---------------------------- */
   const header = cards ? (
     <div className={cx("flex items-center gap-3 px-1 pb-3")}>
-      {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Select all rows" />}
+      {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />}
       <SpringSelect
-        aria-label="Sort by"
+        aria-label="Trier par"
         className="ml-1 flex-1"
         triggerClassName="h-10"
         value={sort?.key ?? ""}
         onChange={(key) => setSort(key ? { key, dir: sort?.dir ?? "desc" } : null)}
         options={[
-          { value: "", label: "Sort: default order" },
-          ...sortable.map((c) => ({ value: c.key, label: `Sort: ${c.header}` })),
+          { value: "", label: "Tri : ordre par défaut" },
+          ...sortable.map((c) => ({ value: c.key, label: `Tri : ${c.header}` })),
         ]}
       />
       <button
         type="button"
         disabled={!sort}
-        aria-label={sort?.dir === "asc" ? "Sorted ascending. Switch to descending" : "Sorted descending. Switch to ascending"}
+        aria-label={sort?.dir === "asc" ? "Tri croissant. Passer en décroissant" : "Tri décroissant. Passer en croissant"}
         onClick={() => sort && setSort({ key: sort.key, dir: sort.dir === "asc" ? "desc" : "asc" })}
         className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-neutral-600 transition-opacity active:scale-[0.96] disabled:opacity-40 dark:bg-white/[0.05] dark:text-neutral-300 ${focus}`}
       >
@@ -422,7 +426,7 @@ export function DataTable<T extends { id: Id }>({
     >
       {selectable && (
         <div role="columnheader" className="grid h-11 place-items-center">
-          <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Select all rows" />
+          <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />
         </div>
       )}
       {cols.map((c) => {
@@ -503,7 +507,7 @@ export function DataTable<T extends { id: Id }>({
           <div className="flex items-start gap-3">
             {selectable && (
               <div className="pt-0.5">
-                <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Select ${label}`} />
+                <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Sélectionner ${label}`} />
               </div>
             )}
             <div role="cell" className="min-w-0 flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100">
@@ -551,7 +555,7 @@ export function DataTable<T extends { id: Id }>({
       >
         {selectable && (
           <div role="cell" className="grid place-items-center">
-            <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Select ${label}`} />
+            <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Sélectionner ${label}`} />
           </div>
         )}
         {cols.map((c) => (
@@ -565,7 +569,7 @@ export function DataTable<T extends { id: Id }>({
               c === primary ? "font-medium text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300",
             )}
           >
-            <div className="min-w-0 max-w-full">{renderCell(row, c)}</div>
+            <div className="w-full min-w-0">{renderCell(row, c)}</div>
           </div>
         ))}
       </motion.div>
@@ -576,15 +580,15 @@ export function DataTable<T extends { id: Id }>({
     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
       {emptyState ?? (
         <>
-          <p className="text-[14px] font-medium text-neutral-900 dark:text-neutral-100">No results</p>
-          <p className={`text-[13px] ${muted}`}>{query ? `Nothing matches “${query}”.` : "There's nothing to show yet."}</p>
+          <p className="text-[14px] font-medium text-neutral-900 dark:text-neutral-100">Aucun résultat</p>
+          <p className={`text-[13px] ${muted}`}>{query ? `Aucun résultat pour « ${query} ».` : "Rien à afficher pour le moment."}</p>
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
               className={`h-9 rounded-xl bg-black/[0.05] px-3.5 text-[12.5px] font-medium text-neutral-700 transition-transform active:scale-[0.97] dark:bg-white/[0.07] dark:text-neutral-200 ${focus}`}
             >
-              Clear search
+              Effacer la recherche
             </button>
           )}
         </>
@@ -616,20 +620,19 @@ export function DataTable<T extends { id: Id }>({
         <motion.div
           layoutScroll
           onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
-          className={cx(!cards && (scrollsY ? "overflow-auto overscroll-contain" : "overflow-x-auto overscroll-x-contain"))}
+          className={cx(scrollsY && "overflow-y-auto overscroll-contain")}
           style={scrollsY ? { maxHeight } : undefined}
           tabIndex={scrollsY ? 0 : undefined}
-          aria-label={scrollsY ? `${ariaLabel} (scrollable)` : undefined}
+          aria-label={scrollsY ? `${ariaLabel} (défilant)` : undefined}
         >
           <div
             role="table"
             aria-label={ariaLabel}
             aria-rowcount={processed.length + 1}
             aria-colcount={cols.length + (selectable ? 1 : 0)}
-            className={cx(!cards && "min-w-[560px]")}
           >
             {!cards && header}
-            <div role="rowgroup" className={cx("relative", cards && "flex flex-col gap-2.5")}>
+            <div role="rowgroup" className={cx("relative", cards && "grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-2.5")}>
               <AnimatePresence initial={false} mode="popLayout">
                 {rowEls}
               </AnimatePresence>
@@ -641,14 +644,14 @@ export function DataTable<T extends { id: Id }>({
         {processed.length > limit && (
           <div className={cx("flex items-center justify-between gap-3 px-4 py-3 text-[12.5px]", !cards && cx("border-t", hairline), cards && "pt-4")}>
             <span className={`tabular-nums ${muted}`}>
-              Showing {visible.length} of {processed.length}
+              {visible.length} sur {processed.length} affichées
             </span>
             <button
               type="button"
               onClick={() => setLimit((l) => l + pageSize)}
               className={`h-9 rounded-xl bg-black/[0.05] px-3.5 text-[12.5px] font-medium text-neutral-700 transition-transform active:scale-[0.97] dark:bg-white/[0.07] dark:text-neutral-200 [@media(hover:hover)]:hover:bg-black/[0.08] dark:[@media(hover:hover)]:hover:bg-white/[0.11] ${focus}`}
             >
-              Show {Math.min(pageSize, processed.length - limit)} more
+              Afficher {Math.min(pageSize, processed.length - limit)} de plus
             </button>
           </div>
         )}

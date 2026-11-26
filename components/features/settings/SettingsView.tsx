@@ -31,37 +31,37 @@ export function SettingsView({ role }: { role: PortalRole }) {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-border bg-bg/85 pt-[var(--safe-top)] backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-2 md:px-4">
-          <GhostIconButton label={`Back to ${portal.code}`} href={portal.path}>
+          <GhostIconButton label={`Retour à l’espace ${portal.name}`} href={portal.path}>
             <ArrowLeft aria-hidden />
           </GhostIconButton>
-          <h1 className="text-base font-semibold tracking-tight">Settings</h1>
+          <h1 className="text-base font-semibold tracking-tight">Paramètres</h1>
         </div>
       </header>
 
       <main id="main" className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pb-[calc(2rem+var(--safe-bottom))] pt-4 md:gap-6 md:pt-6">
-        <Panel title="Appearance" description="How Hotel SES looks on this device." icon={<Palette />}>
-          <SettingRow label="Theme" description="System follows your device's light or dark setting.">
-            <Segmented<ThemePreference> label="Theme" hideLabel value={theme} onChange={setThemePreference} options={THEME_CHOICES} />
+        <Panel title="Apparence" description="Apparence de Hotel SES sur cet appareil." icon={<Palette />}>
+          <SettingRow label="Thème" description="Le mode Système suit le réglage clair ou sombre de votre appareil.">
+            <Segmented<ThemePreference> label="Thème" hideLabel value={theme} onChange={setThemePreference} options={THEME_CHOICES} />
           </SettingRow>
         </Panel>
 
-        <Panel title="Account" description="Who is signed in on this device." icon={<UserRound />}>
+        <Panel title="Compte" description="Session ouverte sur cet appareil." icon={<UserRound />}>
           <div className="flex flex-col divide-y divide-border">
-            <SettingRow label="Portal">
+            <SettingRow label="Espace">
               <span className="text-sm text-fg">{portal.name}</span>
             </SettingRow>
-            <SettingRow label="Sign-in method">
+            <SettingRow label="Mode de connexion">
               <span className="inline-flex items-center gap-1.5 text-sm text-fg">
-                <KeyRound className="size-4 text-fg-muted" aria-hidden /> Shared department passcode
+                <KeyRound className="size-4 text-fg-muted" aria-hidden /> Code d’accès partagé du service
               </span>
             </SettingRow>
           </div>
           <Alert tone="info" className="mt-4">
-            Personal staff accounts are planned: each person will sign in with their own staff ID and PIN and manage it here.
+            Des comptes personnels sont prévus : chaque collaborateur se connectera avec son propre identifiant et son code PIN, qu’il pourra gérer ici.
           </Alert>
           <div className="mt-4 flex justify-end">
             <Button type="button" variant="secondary" size="touch" onClick={() => void signOutToLogin()} leftIcon={<LogOut className="size-4" aria-hidden />}>
-              Sign out
+              Se déconnecter
             </Button>
           </div>
         </Panel>

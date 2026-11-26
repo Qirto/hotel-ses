@@ -17,9 +17,9 @@ export type ThemePreference = "system" | "light" | "dark";
 const CHANGE_EVENT = "ses-theme-change";
 
 export const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+  { value: "system", label: "Système" },
+  { value: "light", label: "Clair" },
+  { value: "dark", label: "Sombre" },
 ];
 
 function readPreference(): ThemePreference {

@@ -36,7 +36,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Hotel SES",
-  description: "Hotel SES operational dashboard, room state matrix, and incident dispatch platform powered by Next.js and Supabase.",
+  description: "Hotel SES : tableau de bord opérationnel, état des chambres en temps réel et gestion des demandes d’intervention, propulsé par Next.js et Supabase.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -75,7 +75,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
       suppressHydrationWarning
       className={cn("font-sans antialiased", jakarta.variable, plexMono.variable)}
     >
@@ -88,7 +88,7 @@ export default function RootLayout({
       </head>
       <body>
         <a href="#main" className="skip-link">
-          Skip to main content
+          Aller au contenu principal
         </a>
         <ThemeProvider>
           <PwaProvider>{children}</PwaProvider>

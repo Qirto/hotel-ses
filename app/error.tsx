@@ -21,20 +21,20 @@ export default function RouteError({ error, retry }: { error: Error & { digest?:
     <StatusScreen
       icon={<TriangleAlert />}
       tone="danger"
-      title="Something went wrong"
+      title="Une erreur est survenue"
       actions={
         <>
           <Button variant="primary" size="lg" onClick={retry} leftIcon={<RotateCw className="size-4" aria-hidden />} className="w-full justify-center">
-            Try again
+            Réessayer
           </Button>
           <ButtonLink href="/" variant="outline" size="lg" fullWidth leftIcon={<House className="size-4" aria-hidden />}>
-            Back to my workspace
+            Retour à mon espace
           </ButtonLink>
         </>
       }
     >
-      <p>This page could not be loaded. Check the connection and try again; nothing you saved is lost.</p>
-      {error.digest && <p className="mt-2 font-mono text-xs">Reference: {error.digest}</p>}
+      <p>Impossible de charger cette page. Vérifiez la connexion et réessayez ; aucune donnée enregistrée n’a été perdue.</p>
+      {error.digest && <p className="mt-2 font-mono text-xs">Référence : {error.digest}</p>}
     </StatusScreen>
   );
 }

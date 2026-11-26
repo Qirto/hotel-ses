@@ -110,7 +110,7 @@ export function Badge({
       {onRemove && (
         <button
           type="button"
-          aria-label="Remove"
+          aria-label="Retirer"
           onClick={onRemove}
           className="grid size-4 place-items-center rounded-full opacity-60 outline-none transition hover:bg-black/10 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-current dark:hover:bg-white/15"
         >

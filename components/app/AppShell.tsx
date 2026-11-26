@@ -83,10 +83,10 @@ export default function AppShell({ role, items, headerActions, children }: AppSh
 
             <div className="flex shrink-0 items-center gap-1">
               {headerActions}
-              <GhostIconButton label="Settings" href="/settings" className="md:hidden">
+              <GhostIconButton label="Paramètres" href="/settings" className="md:hidden">
                 <Settings aria-hidden />
               </GhostIconButton>
-              <GhostIconButton label="Sign out" onClick={signOut} className="hover:bg-danger-subtle hover:text-danger md:hidden">
+              <GhostIconButton label="Se déconnecter" onClick={signOut} className="hover:bg-danger-subtle hover:text-danger md:hidden">
                 <LogOut aria-hidden />
               </GhostIconButton>
             </div>
@@ -153,8 +153,8 @@ function SidebarFooter() {
   const { collapsed } = useSidebar();
   return (
     <>
-      <FooterRow href="/settings" icon={<Settings />} label="Settings" collapsed={collapsed} />
-      <FooterRow onClick={signOut} icon={<LogOut />} label="Sign out" collapsed={collapsed} className="hover:bg-danger-subtle hover:text-danger" />
+      <FooterRow href="/settings" icon={<Settings />} label="Paramètres" collapsed={collapsed} />
+      <FooterRow onClick={signOut} icon={<LogOut />} label="Se déconnecter" collapsed={collapsed} className="hover:bg-danger-subtle hover:text-danger" />
     </>
   );
 }

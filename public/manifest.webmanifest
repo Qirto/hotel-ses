@@ -1,7 +1,7 @@
 {
   "name": "Hotel SES",
   "short_name": "Hotel SES",
-  "description": "Hotel SES operational hotel management system.",
+  "description": "Hotel SES, système de gestion opérationnelle de l’hôtel.",
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "orientation": "portrait-primary",
   "background_color": "#111113",
   "theme_color": "#111113",
-  "lang": "en",
+  "lang": "fr",
   "dir": "ltr",
   "categories": ["business", "productivity"],
   "icons": [
@@ -58,20 +58,20 @@
   ],
   "shortcuts": [
     {
-      "name": "Reception Desk",
-      "short_name": "Reception",
+      "name": "Espace Réception",
+      "short_name": "Réception",
       "url": "/login",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "HR Portal",
-      "short_name": "HR",
+      "name": "Espace RH",
+      "short_name": "RH",
       "url": "/login",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "General Manager",
-      "short_name": "GM",
+      "name": "Espace Direction",
+      "short_name": "Direction",
       "url": "/login",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }

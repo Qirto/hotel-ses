@@ -83,7 +83,7 @@ const toRange = (v: Date | null | DateRange | undefined): DateRange | undefined 
   v === undefined ? undefined : v === null ? EMPTY : v instanceof Date ? { from: v, to: null } : v;
 
 export function Calendar(props: CalendarProps) {
-  const { defaultMonth, minDate, maxDate, isDateDisabled, weekStartsOn = 0, locale, className } = props;
+  const { defaultMonth, minDate, maxDate, isDateDisabled, weekStartsOn = 1, locale = "fr-FR", className } = props;
   const isRange = props.mode === "range";
   const uid = React.useId();
 
@@ -182,7 +182,7 @@ export function Calendar(props: CalendarProps) {
     <div className={cn("w-fit select-none p-3", className)}>
       {/* header */}
       <div className="mb-2 flex h-8 items-center gap-1">
-        <NavButton label="Previous month" disabled={!canPrev} onClick={() => go(addMonths(view, -1), -1)}>
+        <NavButton label="Mois précédent" disabled={!canPrev} onClick={() => go(addMonths(view, -1), -1)}>
           <ChevronLeft className="size-4" />
         </NavButton>
         <div className="relative h-5 flex-1 overflow-hidden text-center text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -202,7 +202,7 @@ export function Calendar(props: CalendarProps) {
             </motion.span>
           </AnimatePresence>
         </div>
-        <NavButton label="Next month" disabled={!canNext} onClick={() => go(addMonths(view, 1), 1)}>
+        <NavButton label="Mois suivant" disabled={!canNext} onClick={() => go(addMonths(view, 1), 1)}>
           <ChevronRight className="size-4" />
         </NavButton>
       </div>

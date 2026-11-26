@@ -27,10 +27,10 @@ export function ticketStatsByRoom(tickets: readonly Reclamation[]): Map<number, 
 }
 
 export const CLEANING_LABEL: Record<HotelRoom["cleaning_status"], string> = {
-  CLEAN: "Clean",
-  DIRTY: "Dirty",
-  CLEANING: "Cleaning",
-  INSPECTING: "Inspecting",
+  CLEAN: "Propre",
+  DIRTY: "À nettoyer",
+  CLEANING: "En nettoyage",
+  INSPECTING: "En contrôle",
 };
 
 export const CLEANING_TONE: Record<HotelRoom["cleaning_status"], Tone> = {
@@ -42,14 +42,14 @@ export const CLEANING_TONE: Record<HotelRoom["cleaning_status"], Tone> = {
 
 /** The one status a room tile shows first: what needs action wins. */
 export function roomHeadline(room: HotelRoom, stats?: RoomTicketStats): { label: string; tone: Tone } {
-  if (stats?.urgent) return { label: "Urgent issue", tone: "danger" };
-  if (stats && stats.open > 0) return { label: plural(stats.open, "open issue"), tone: "warning" };
+  if (stats?.urgent) return { label: "Urgence", tone: "danger" };
+  if (stats && stats.open > 0) return { label: plural(stats.open, "problème ouvert", "problèmes ouverts"), tone: "warning" };
   if (room.cleaning_status !== "CLEAN") return { label: CLEANING_LABEL[room.cleaning_status], tone: CLEANING_TONE[room.cleaning_status] };
-  return { label: room.is_occupied ? "Occupied" : "Ready", tone: room.is_occupied ? "info" : "success" };
+  return { label: room.is_occupied ? "Occupée" : "Prête", tone: room.is_occupied ? "info" : "success" };
 }
 
 export function blockLabel(block?: string | null): string {
-  return block ? block.replace("BLOCK_", "Block ") : "Main";
+  return block ? block.replace("BLOCK_", "Bloc ") : "Principal";
 }
 
 /** Housekeeping cycle: each step leads to the next. */
@@ -121,18 +121,18 @@ export const STAY_RESULT: Record<StayState, Partial<HotelRoom>> = {
 };
 
 export const STAY_MESSAGE: Record<StayState, string> = {
-  OCCUPIED: "checked in",
-  VACANT_DIRTY: "checked out and marked dirty",
+  OCCUPIED: "arrivée enregistrée",
+  VACANT_DIRTY: "départ enregistré, chambre à nettoyer",
 };
 
 /** Floor filter options: "All floors" plus every floor present, ascending. */
 export function floorOptions(rooms: readonly Pick<HotelRoom, "floor">[]): { value: "ALL" | number; label: string }[] {
   const floors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b);
-  return [{ value: "ALL", label: "All floors" }, ...floors.map((f) => ({ value: f, label: `Floor ${f}` }))];
+  return [{ value: "ALL", label: "Tous les étages" }, ...floors.map((f) => ({ value: f, label: `Étage ${f}` }))];
 }
 
-/** "Floor 1 · Block A". */
-export const roomLocation = (room: Pick<HotelRoom, "floor" | "block">) => `Floor ${room.floor} · ${blockLabel(room.block)}`;
+/** "Étage 1 · Bloc A". */
+export const roomLocation = (room: Pick<HotelRoom, "floor" | "block">) => `Étage ${room.floor} · ${blockLabel(room.block)}`;
 
 /** Whether a ticket belongs to a room (by id, or by room number for joined rows without an id). */
 export const isTicketForRoom = (t: Pick<Reclamation, "room_id"> & { room?: { room_number?: string | null } | null }, room: Pick<HotelRoom, "id" | "room_number">) =>

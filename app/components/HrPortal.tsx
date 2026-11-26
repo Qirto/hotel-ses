@@ -45,8 +45,8 @@ const NO_TICKETS: Reclamation[] = [];
 const NO_ROOMS: HotelRoom[] = [];
 
 const HEADCOUNT_SERIES: Series[] = [
-  { key: "onShift", label: "On shift", color: "var(--success)" },
-  { key: "offShift", label: "Off shift", color: "var(--text-muted)" },
+  { key: "onShift", label: "En service", color: "var(--success)" },
+  { key: "offShift", label: "Hors service", color: "var(--text-muted)" },
 ];
 
 function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamationsList = NO_TICKETS, rooms = NO_ROOMS, isLiveSupabase = false }: Props) {
@@ -70,7 +70,7 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
   );
   const deptCodes = useMemo(() => activeDepartments.map((d) => d.code), [activeDepartments]);
   const deptOptions = useMemo(() => activeDepartments.map((d) => ({ value: d.code, label: d.name })), [activeDepartments]);
-  const deptFilterOptions = useMemo(() => [{ value: "ALL", label: "All departments" }, ...deptOptions], [deptOptions]);
+  const deptFilterOptions = useMemo(() => [{ value: "ALL", label: "Tous les services" }, ...deptOptions], [deptOptions]);
 
   /* ───────────── directory ───────────── */
   const [search, setSearch] = useState("");
@@ -91,8 +91,8 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         if (res.success) {
           const next = member.shift_status === "ON_SHIFT" ? "OFF_SHIFT" : "ON_SHIFT";
           setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, shift_status: next, is_present: next === "ON_SHIFT" } : s)));
-          flash("success", `${member.full_name} is now ${next === "ON_SHIFT" ? "on shift" : "off shift"}.`);
-        } else flash("danger", `Could not update the shift for ${member.full_name}.`);
+          flash("success", `${member.full_name} est désormais ${next === "ON_SHIFT" ? "en service" : "hors service"}.`);
+        } else flash("danger", `Impossible de mettre à jour le service de ${member.full_name}.`);
       }),
     [run, setStaff, flash]
   );
@@ -110,14 +110,14 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         const res = await markStaffAbsentAndRedistribute(member.id);
         if (res.success) {
           setStaff((prev) => prev.map((s) => (s.id === member.id ? { ...s, shift_status: "OFF_SHIFT", is_present: false } : s)));
-          flash("success", `${member.full_name} marked absent. Open tickets were reassigned.`);
-        } else flash("danger", `Could not mark ${member.full_name} absent.`);
+          flash("success", `${member.full_name} déclaré(e) absent(e). Ses demandes ouvertes ont été réassignées.`);
+        } else flash("danger", `Impossible de déclarer ${member.full_name} absent(e).`);
       } else {
         const res = await deleteStaffMember(member.id);
         if (res.success) {
           setStaff((prev) => prev.filter((s) => s.id !== member.id));
-          flash("success", `${member.full_name} was removed from the directory.`);
-        } else flash("danger", `Could not remove ${member.full_name}.`);
+          flash("success", `${member.full_name} a été retiré(e) de l’annuaire.`);
+        } else flash("danger", `Impossible de retirer ${member.full_name}.`);
       }
       setPending(null);
     });
@@ -131,8 +131,8 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
       const res = await createStaffMember({ ...input, shift_status: "ON_SHIFT" });
       if (res.success) {
         setShowCreate(false);
-        flash("success", `${input.full_name} was added to the directory.`);
-      } else flash("danger", res.error || "Could not add the employee.");
+        flash("success", `${input.full_name} a été ajouté(e) à l’annuaire.`);
+      } else flash("danger", res.error || "Impossible d’ajouter l’employé.");
       return Boolean(res.success);
     });
 
@@ -143,7 +143,7 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
   }, []);
 
   /* ───────────── rooms + tickets ───────────── */
-  const ticketMutations = useTicketMutations(p, "HR");
+  const ticketMutations = useTicketMutations(p, "RH");
   const cycleCleaning = useCleaningCycle(p);
 
   /* ───────────── analytics ───────────── */
@@ -153,9 +153,9 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
   /* ───────────── navigation ───────────── */
   const navItems = useMemo<NavTabItem[]>(
     () => [
-      navItem(p, "EMPLOYEES", "Staff & Shifts", <Users aria-hidden />, { badge: staff.length, badgeTone: "neutral" }),
+      navItem(p, "EMPLOYEES", "Personnel & horaires", <Users aria-hidden />, { badge: staff.length, badgeTone: "neutral" }),
       ...sharedNavItems(p),
-      navItem(p, "STATS", "Analytics", <ChartColumn aria-hidden />),
+      navItem(p, "STATS", "Analyses", <ChartColumn aria-hidden />),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeTab, staff.length, attentionCount, openCount, p.go]
@@ -167,8 +167,8 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
         <TabPanel active={activeTab === "EMPLOYEES"}>
           <AnimatedTabs
             tabs={[
-              { id: "DIRECTORY", label: "Directory", icon: <Users className="size-4" aria-hidden />, badge: filteredStaff.length },
-              { id: "SHIFTS", label: "Shifts", icon: <CalendarDays className="size-4" aria-hidden /> },
+              { id: "DIRECTORY", label: "Annuaire", icon: <Users className="size-4" aria-hidden />, badge: filteredStaff.length },
+              { id: "SHIFTS", label: "Horaires", icon: <CalendarDays className="size-4" aria-hidden /> },
             ]}
             activeTab={subTab}
             onChange={(id) => setSubTab(id as SubTab)}
@@ -211,16 +211,16 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
 
         <TabPanel active={activeTab === "STATS"}>
           <KpiGrid>
-            <Kpi label="Total staff" value={staff.length} icon={<Users />} />
-            <Kpi label="On shift" value={onShiftCount} hint={`${percent(onShiftCount, staff.length)} of staff`} tone="success" icon={<UserCheck />} />
-            <Kpi label="Staffed departments" value={headcount.length} hint={`of ${plural(activeDepartments.length, "department")}`} icon={<Building2 />} />
-            <Kpi label="Largest department" value={largest ? largest.label : "–"} hint={largest ? plural(largest.values.onShift + largest.values.offShift, "employee") : "No staff yet"} icon={<ChartColumn />} />
+            <Kpi label="Effectif total" value={staff.length} icon={<Users />} />
+            <Kpi label="En service" value={onShiftCount} hint={`${percent(onShiftCount, staff.length)} du personnel`} tone="success" icon={<UserCheck />} />
+            <Kpi label="Services pourvus" value={headcount.length} hint={`sur ${plural(activeDepartments.length, "service")}`} icon={<Building2 />} />
+            <Kpi label="Service le plus important" value={largest ? largest.label : "–"} hint={largest ? plural(largest.values.onShift + largest.values.offShift, "employé") : "Aucun employé pour l’instant"} icon={<ChartColumn />} />
           </KpiGrid>
-          <Panel title="Headcount per department" description="Employees on and off shift" icon={<ChartColumn />}>
+          <Panel title="Effectif par service" description="Employés en service et hors service" icon={<ChartColumn />}>
             {headcount.length > 0 ? (
-              <RankedBreakdown rows={headcount} series={HEADCOUNT_SERIES} label="Staff headcount per department" unit={["employee", "employees"]} />
+              <RankedBreakdown rows={headcount} series={HEADCOUNT_SERIES} label="Effectif du personnel par service" unit={["employé", "employés"]} />
             ) : (
-              <EmptyState icon={<Users />} title="No staff yet" description="Headcount appears once employees are added." />
+              <EmptyState icon={<Users />} title="Aucun employé pour l’instant" description="L’effectif s’affichera dès que des employés auront été ajoutés." />
             )}
           </Panel>
         </TabPanel>
@@ -236,14 +236,14 @@ function HrPortalView({ staffList, departmentsList = NO_DEPARTMENTS, reclamation
 
       <ConfirmSheet
         open={pending !== null}
-        title={pending?.kind === "delete" ? "Remove employee" : "Mark absent"}
+        title={pending?.kind === "delete" ? "Retirer l’employé" : "Déclarer absent"}
         description={
           pending?.kind === "delete"
-            ? `Remove ${pending.member.full_name} from the staff directory? Their tickets become unassigned. This can't be undone.`
-            : `Mark ${pending?.member.full_name ?? "this employee"} absent today and reassign their open tickets?`
+            ? `Retirer ${pending.member.full_name} de l’annuaire du personnel ? Ses demandes deviendront non assignées. Cette action est irréversible.`
+            : `Déclarer ${pending?.member.full_name ?? "cet employé"} absent(e) aujourd’hui et réassigner ses demandes ouvertes ?`
         }
-        confirmLabel={pending?.kind === "delete" ? "Remove" : "Mark absent"}
-        pendingLabel={pending?.kind === "delete" ? "Removing" : "Updating"}
+        confirmLabel={pending?.kind === "delete" ? "Retirer" : "Déclarer absent"}
+        pendingLabel={pending?.kind === "delete" ? "Retrait en cours" : "Mise à jour"}
         tone={pending?.kind === "delete" ? "danger" : "primary"}
         pending={isPending}
         onConfirm={confirmPending}

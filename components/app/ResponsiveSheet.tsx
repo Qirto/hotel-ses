@@ -74,7 +74,7 @@ export function SheetActions({
   return (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
       <Button variant="outline" onClick={onCancel} disabled={cancelDisabled} className="justify-center">
-        Cancel
+        Annuler
       </Button>
       {children}
     </div>

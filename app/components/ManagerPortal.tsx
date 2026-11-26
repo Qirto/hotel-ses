@@ -46,16 +46,16 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
   const mttr = useMemo(() => averageResolutionMinutes(tickets), [tickets]);
 
   /* ───────────── actions ───────────── */
-  const ticketMutations = useTicketMutations(p, "General Manager");
+  const ticketMutations = useTicketMutations(p, "Direction");
   const ticketActions = useTicketActions({ pending: isPending, onResolve: ticketMutations.resolve });
   const cycleCleaning = useCleaningCycle(p);
 
   /* ───────────── navigation ───────────── */
   const navItems = useMemo<NavTabItem[]>(
     () => [
-      navItem(p, "STATS", "Dashboard", <LayoutDashboard aria-hidden />),
+      navItem(p, "STATS", "Tableau de bord", <LayoutDashboard aria-hidden />),
       ...sharedNavItems(p),
-      navItem(p, "ANALYTICS", "Analytics", <ChartColumn aria-hidden />),
+      navItem(p, "ANALYTICS", "Analyses", <ChartColumn aria-hidden />),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeTab, attentionCount, openCount, p.go]
@@ -66,18 +66,18 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
       <PageStack>
         <TabPanel active={activeTab === "STATS"}>
           <KpiGrid>
-            <Kpi label="Occupancy" value={percent(counts.occupied, liveRooms.length)} hint={`${counts.occupied} of ${plural(liveRooms.length, "room")}`} icon={<Hotel />} />
-            <Kpi label="Ready to sell" value={counts.vacantClean} hint="Vacant and clean" tone="success" icon={<Sparkles />} onClick={() => showRooms("VACANT_CLEAN")} />
-            <Kpi label="Needs attention" value={attentionCount} hint="Dirty or open issue" tone={attentionCount ? "warning" : "neutral"} icon={<TriangleAlert />} onClick={() => showRooms("ATTENTION")} />
-            <Kpi label="Open tickets" value={openCount} hint={mttr != null ? `Avg fix ${formatMinutes(mttr)}` : "No resolved tickets yet"} tone={openCount ? "danger" : "neutral"} icon={<ClipboardList />} onClick={showTickets} />
+            <Kpi label="Taux d’occupation" value={percent(counts.occupied, liveRooms.length)} hint={`${counts.occupied} sur ${plural(liveRooms.length, "chambre")}`} icon={<Hotel />} />
+            <Kpi label="Prêtes à la vente" value={counts.vacantClean} hint="Libres et propres" tone="success" icon={<Sparkles />} onClick={() => showRooms("VACANT_CLEAN")} />
+            <Kpi label="À traiter" value={attentionCount} hint="À nettoyer ou demande ouverte" tone={attentionCount ? "warning" : "neutral"} icon={<TriangleAlert />} onClick={() => showRooms("ATTENTION")} />
+            <Kpi label="Demandes ouvertes" value={openCount} hint={mttr != null ? `Résolution moyenne : ${formatMinutes(mttr)}` : "Aucune demande résolue pour l’instant"} tone={openCount ? "danger" : "neutral"} icon={<ClipboardList />} onClick={showTickets} />
           </KpiGrid>
 
           <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
             <RoomStatusPanel rooms={liveRooms} />
-            <Panel title="Resolution" description="Tickets closed and time to fix" icon={<Timer />}>
+            <Panel title="Résolution" description="Demandes clôturées et délai de résolution" icon={<Timer />}>
               <div className="grid grid-cols-2 gap-3">
-                <Kpi label="Resolved" value={percent(tickets.length - openCount, tickets.length)} hint={plural(tickets.length, "ticket")} tone="success" />
-                <Kpi label="Avg time to fix" value={formatMinutes(mttr)} hint="Resolved tickets" />
+                <Kpi label="Résolues" value={percent(tickets.length - openCount, tickets.length)} hint={plural(tickets.length, "demande")} tone="success" />
+                <Kpi label="Délai moyen de résolution" value={formatMinutes(mttr)} hint="Demandes résolues" />
               </div>
               <div className="mt-5">
                 <TicketsByDepartmentChart tickets={tickets} />
@@ -86,8 +86,8 @@ function ManagerPortalView({ rooms, reclamations, isLiveSupabase = false }: Prop
           </div>
 
           <UrgentTicketsPanel
-            title="Urgent open tickets"
-            description="Emergency and high priority"
+            title="Demandes urgentes ouvertes"
+            description="Priorité urgente et haute"
             tickets={urgentOpen}
             actions={ticketActions}
             onViewAll={showTickets}

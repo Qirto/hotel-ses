@@ -11,7 +11,7 @@ import type { NavTabItem } from "./nav";
 export function BottomNav({ items }: { items: NavTabItem[] }) {
   return (
     <nav
-      aria-label="Sections"
+      aria-label="Rubriques"
       className="glass-surface fixed inset-x-0 bottom-0 z-40 border-x-0 border-b-0 pb-[var(--safe-bottom)] md:hidden"
     >
       <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
@@ -44,7 +44,7 @@ export function BottomNav({ items }: { items: NavTabItem[] }) {
                     )}
                   >
                     {item.badge > 99 ? "99+" : item.badge}
-                    <span className="sr-only">{item.badgeTone === "alert" ? " need attention" : ""}</span>
+                    <span className="sr-only">{item.badgeTone === "alert" ? " à traiter" : ""}</span>
                   </span>
                 )}
               </span>

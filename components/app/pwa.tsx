@@ -59,16 +59,16 @@ function UpdatePrompt() {
         action={
           <div className="flex gap-1">
             <Button type="button" variant="ghost" size="touch" onClick={() => setWaiting(false)}>
-              Later
+              Plus tard
             </Button>
             <Button type="button" variant="primary" size="touch" onClick={update}>
-              Reload
+              Recharger
             </Button>
           </div>
         }
       >
-        <p className="font-medium text-fg">Update available</p>
-        <p className="text-fg-secondary">Reload to use the latest version of Hotel SES.</p>
+        <p className="font-medium text-fg">Mise à jour disponible</p>
+        <p className="text-fg-secondary">Rechargez pour utiliser la dernière version de Hotel SES.</p>
       </Alert>
     </div>
   );

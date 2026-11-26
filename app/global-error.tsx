@@ -17,21 +17,21 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
   }, [error]);
 
   return (
-    <html lang="en" data-theme={typeof window === "undefined" ? "dark" : resolvedTheme()} suppressHydrationWarning>
+    <html lang="fr" data-theme={typeof window === "undefined" ? "dark" : resolvedTheme()} suppressHydrationWarning>
       <body>
-        <title>Something went wrong · Hotel SES</title>
+        <title>Une erreur est survenue · Hotel SES</title>
         <StatusScreen
           icon={<TriangleAlert />}
           tone="danger"
-          title="Hotel SES could not start"
+          title="Hotel SES n’a pas pu démarrer"
           actions={
             <Button variant="primary" size="lg" onClick={retry} leftIcon={<RotateCw className="size-4" aria-hidden />} className="w-full justify-center">
-              Try again
+              Réessayer
             </Button>
           }
         >
-          <p>Something went wrong while loading the app. Try again in a moment.</p>
-          {error.digest && <p className="mt-2 font-mono text-xs">Reference: {error.digest}</p>}
+          <p>Une erreur est survenue lors du chargement de l’application. Réessayez dans un instant.</p>
+          {error.digest && <p className="mt-2 font-mono text-xs">Référence : {error.digest}</p>}
         </StatusScreen>
       </body>
     </html>

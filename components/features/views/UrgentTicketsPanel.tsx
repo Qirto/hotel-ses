@@ -29,12 +29,12 @@ export const UrgentTicketsPanel = memo(function UrgentTicketsPanel({
       icon={<Siren />}
       actions={
         <Button size="touch" variant="ghost" onClick={onViewAll}>
-          View all
+          Tout afficher
         </Button>
       }
     >
       {tickets.length === 0 ? (
-        <EmptyState icon={<CircleCheck />} title="Nothing urgent" description="No emergency or high-priority tickets are open." />
+        <EmptyState icon={<CircleCheck />} title="Rien d’urgent" description="Aucune demande urgente ou de priorité haute n’est ouverte." />
       ) : (
         <ul className="flex flex-col gap-3">
           {tickets.map((t) => (

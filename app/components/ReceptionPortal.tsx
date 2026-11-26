@@ -55,7 +55,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
   const departmentCodes = useMemo(() => departmentsList.map((d) => d.code), [departmentsList]);
 
   /* ───────────── actions ───────────── */
-  const ticketMutations = useTicketMutations(p, "Reception");
+  const ticketMutations = useTicketMutations(p, "Réception");
   const ticketActions = useTicketActions({ pending: isPending, onAcknowledge: ticketMutations.acknowledge, onResolve: ticketMutations.resolve });
   const cycleCleaning = useCleaningCycle(p);
   const setStayState = useCallback(
@@ -64,8 +64,8 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
         const res = await updateRoomStayState(room.id, state);
         if (res.success) {
           patchRoom(room.id, STAY_RESULT[state]);
-          flash("success", `Room ${room.room_number} ${STAY_MESSAGE[state]}.`);
-        } else flash("danger", "Could not update the stay state.");
+          flash("success", `Chambre ${room.room_number} : ${STAY_MESSAGE[state]}.`);
+        } else flash("danger", "Impossible de mettre à jour le statut du séjour.");
       }),
     [run, patchRoom, flash]
   );
@@ -76,7 +76,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
 
   const findRoom = (number?: string) => {
     const room = number ? rooms.find((r) => r.room_number === number) : undefined;
-    if (!room) flash("danger", number ? `No room numbered ${number}.` : "Enter a room number.");
+    if (!room) flash("danger", number ? `Aucune chambre n° ${number}.` : "Saisissez un numéro de chambre.");
     return room;
   };
   const quickDispatch = async (input: NewTicketInput) => {
@@ -95,9 +95,9 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
   /* ───────────── navigation ───────────── */
   const navItems = useMemo<NavTabItem[]>(
     () => [
-      navItem(p, "OVERVIEW", "Overview", <LayoutDashboard aria-hidden />),
+      navItem(p, "OVERVIEW", "Vue d’ensemble", <LayoutDashboard aria-hidden />),
       ...sharedNavItems(p),
-      navItem(p, "STATS", "Stats", <ChartColumn aria-hidden />),
+      navItem(p, "STATS", "Statistiques", <ChartColumn aria-hidden />),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeTab, p.attentionCount, openCount, p.go]
@@ -107,27 +107,27 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
     <AppShell role="reception" items={navItems}>
       <PageStack>
         <TabPanel active={activeTab === "OVERVIEW"}>
-          <Panel title="Front desk" description="Live room status, guest requests and dispatch." icon={<ConciergeBell />}>
+          <Panel title="Réception" description="État des chambres en direct, demandes des clients et transmission aux services." icon={<ConciergeBell />}>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="primary" size="lg" onClick={() => setDispatchOpen(true)} leftIcon={<Send className="size-4" aria-hidden />} className="justify-center">
-                Dispatch ticket
+                Créer la demande
               </Button>
               <Button variant="outline" size="lg" onClick={() => setBackfillOpen(true)} leftIcon={<History className="size-4" aria-hidden />} className="justify-center">
-                Past logbook
+                Incident passé
               </Button>
             </div>
           </Panel>
 
           <KpiGrid>
-            <Kpi label="Occupied" value={counts.occupied} hint={`${percent(counts.occupied, liveRooms.length)} of ${plural(liveRooms.length, "room")}`} icon={<Hotel />} onClick={() => showRooms("OCCUPIED")} />
-            <Kpi label="Vacant and clean" value={counts.vacantClean} hint="Ready for check-in" tone="success" icon={<Sparkles />} onClick={() => showRooms("VACANT_CLEAN")} />
-            <Kpi label="Dirty rooms" value={counts.dirty} hint="Waiting for housekeeping" tone={counts.dirty ? "danger" : "neutral"} icon={<TriangleAlert />} onClick={() => showRooms("DIRTY")} />
-            <Kpi label="Open tickets" value={openCount} hint={`${urgentOpen.length} urgent`} tone={openCount ? "warning" : "neutral"} icon={<ClipboardList />} onClick={showTickets} />
+            <Kpi label="Chambres occupées" value={counts.occupied} hint={`${percent(counts.occupied, liveRooms.length)} sur ${plural(liveRooms.length, "chambre")}`} icon={<Hotel />} onClick={() => showRooms("OCCUPIED")} />
+            <Kpi label="Libres et propres" value={counts.vacantClean} hint="Prêtes pour l’arrivée" tone="success" icon={<Sparkles />} onClick={() => showRooms("VACANT_CLEAN")} />
+            <Kpi label="Chambres à nettoyer" value={counts.dirty} hint="En attente de la gouvernance" tone={counts.dirty ? "danger" : "neutral"} icon={<TriangleAlert />} onClick={() => showRooms("DIRTY")} />
+            <Kpi label="Demandes ouvertes" value={openCount} hint={plural(urgentOpen.length, "urgente")} tone={openCount ? "warning" : "neutral"} icon={<ClipboardList />} onClick={showTickets} />
           </KpiGrid>
 
           <UrgentTicketsPanel
-            title="Urgent tickets"
-            description={`${plural(urgentOpen.length, "open ticket")} with emergency or high priority`}
+            title="Demandes urgentes"
+            description={`${plural(urgentOpen.length, "demande ouverte", "demandes ouvertes")} en priorité urgente ou haute`}
             tickets={urgentOpen}
             actions={ticketActions}
             onViewAll={showTickets}
@@ -145,7 +145,7 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
         <TabPanel active={activeTab === "STATS"}>
           <div className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
             <RoomStatusPanel rooms={liveRooms} />
-            <Panel title="Tickets by department" description="Open and resolved, busiest departments first" icon={<ChartColumn />}>
+            <Panel title="Demandes par service" description="Ouvertes et résolues, services les plus sollicités en premier" icon={<ChartColumn />}>
               <TicketsByDepartmentChart tickets={tickets} />
             </Panel>
           </div>
@@ -166,13 +166,13 @@ function ReceptionPortalView({ rooms, departmentsList = NO_DEPARTMENTS, reclamat
         }
       />
 
-      <Fab label="Dispatch ticket" onClick={() => setDispatchOpen(true)} />
+      <Fab label="Créer la demande" onClick={() => setDispatchOpen(true)} />
 
-      <ResponsiveSheet open={dispatchOpen} onOpenChange={setDispatchOpen} title="Dispatch ticket" description="Log and route a guest request now.">
+      <ResponsiveSheet open={dispatchOpen} onOpenChange={setDispatchOpen} title="Créer la demande" description="Enregistrez la demande du client et transmettez-la au service concerné.">
         <NewTicketForm withRoom onSubmit={quickDispatch} pending={isPending} />
       </ResponsiveSheet>
 
-      <ResponsiveSheet open={backfillOpen} onOpenChange={setBackfillOpen} title="Backfill past incident" description="Add an older ticket to a room's history with its real date.">
+      <ResponsiveSheet open={backfillOpen} onOpenChange={setBackfillOpen} title="Saisir un incident passé" description="Ajoutez une demande antérieure à l’historique d’une chambre, avec sa date réelle.">
         <PastIncidentForm withRoom onSubmit={backfill} pending={isPending} />
       </ResponsiveSheet>
     </AppShell>

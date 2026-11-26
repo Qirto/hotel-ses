@@ -4,24 +4,24 @@ import { LegalLayout } from "@/components/app/LegalLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Staff & Operations Privacy Notice | Hotel SES",
-  description: "Internal data privacy and cookie disclosure for Hotel SES staff and operational management.",
+  title: "Politique de confidentialité du personnel et des opérations | Hotel SES",
+  description: "Information interne sur la protection des données et l’utilisation des cookies pour le personnel et la gestion opérationnelle de Hotel SES.",
 };
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalLayout>
-        <p className="legal-meta">Effective Date: October 2026 • Version 1.4</p>
+        <p className="legal-meta">Date d’entrée en vigueur : octobre 2026 • Version 1.4</p>
 
         {/* Header */}
         <header>
-          <p className="legal-eyebrow">Legal Compliance & Data Protection (GDPR / DPDP)</p>
+          <p className="legal-eyebrow">Conformité juridique et protection des données (RGPD / DPDP)</p>
           <h1>
-            Staff & Operations Privacy Policy
+            Politique de confidentialité du personnel et des opérations
           </h1>
           <p>
-            This Privacy Notice governs data processing across the Hotel SES (Service & Operations Management System)
-            deployed at Hôtel Méditerranée Thalasso Golf Hammamet. It details how employee operational records, incident tickets, and resident stay metrics are managed.
+            La présente politique de confidentialité encadre les traitements de données réalisés au sein de Hotel SES (système de gestion des services et des opérations)
+            déployé à l’Hôtel Méditerranée Thalasso Golf Hammamet. Elle précise la manière dont sont gérés les dossiers opérationnels des employés, les demandes d’intervention et les données de séjour des clients.
           </p>
         </header>
 
@@ -29,22 +29,22 @@ export default function PrivacyPolicyPage() {
         <div>
           <section>
             <h2>
-              1. Data Controller & Protection Contact
+              1. Responsable du traitement et contact pour la protection des données
             </h2>
             <p>
-              The data controller responsible for personal and operational data processed within Hotel SES is:
+              Le responsable du traitement des données personnelles et opérationnelles traitées dans Hotel SES est :
             </p>
             <div className="legal-callout">
-              <p><strong>Entity:</strong> Hôtel Méditerranée Thalasso Golf Hammamet</p>
-              <p><strong>Location:</strong> Hammamet, Tunisia</p>
+              <p><strong>Entité :</strong> Hôtel Méditerranée Thalasso Golf Hammamet</p>
+              <p><strong>Adresse :</strong> Hammamet, Tunisie</p>
               <p>
-                <strong>Data Protection Contact:</strong>{" "}
+                <strong>Contact protection des données :</strong>{" "}
                 <a href="mailto:contact@hotelmediterraneehammamet.com">
                   contact@hotelmediterraneehammamet.com
                 </a>
               </p>
               <p>
-                <strong>IT Support & Incident Inquiries:</strong>{" "}
+                <strong>Support informatique et signalement d’incidents :</strong>{" "}
                 <a href="mailto:it-support@grandpalacehotel.com">
                   it-support@grandpalacehotel.com
                 </a>
@@ -54,66 +54,66 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2>
-              2. Categories of Data Collected
+              2. Catégories de données collectées
             </h2>
-            <p>Hotel SES processes operational information strictly limited to hotel management tasks:</p>
+            <p>Hotel SES traite des informations opérationnelles strictement limitées aux tâches de gestion hôtelière :</p>
             <ul>
               <li>
-                <strong>Staff Profiles & Attendance:</strong> Full legal name, assigned role (receptionist, technician, governance, HR), department code, internal extension/phone number, shift presence status, skill tags, and clock-in timestamps.
+                <strong>Profils et présence du personnel :</strong> nom complet, rôle attribué (réceptionniste, technicien, gouvernante, RH), code de service, numéro de poste interne ou de téléphone, statut de présence en service, compétences et horodatages de pointage.
               </li>
               <li>
-                <strong>Incident & Maintenance Tickets:</strong> Room number, issue description, priority tier (Standard, High, Emergency), target department, technician assignment, resolution notes, and SLA timestamps.
+                <strong>Demandes d’intervention et de maintenance :</strong> numéro de chambre, description du problème, niveau de priorité (normale, haute, urgente), service destinataire, technicien assigné, notes de résolution et horodatages SLA.
               </li>
               <li>
-                <strong>Resident & Room Allocation:</strong> Guest name, room number, check-in and check-out dates, adult/child headcount (required for safety protocols and city tax assessments).
+                <strong>Clients et attribution des chambres :</strong> nom du client, numéro de chambre, dates d’arrivée et de départ, nombre d’adultes et d’enfants (requis pour les protocoles de sécurité et le calcul de la taxe de séjour).
               </li>
               <li>
-                <strong>Confidential Grievances:</strong> Restricted executive incident tickets accessible exclusively by the General Manager to protect guest privacy and handle sensitive feedback.
+                <strong>Réclamations confidentielles :</strong> demandes à accès restreint, consultables exclusivement par le directeur général afin de protéger la vie privée des clients et de traiter les retours sensibles.
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              3. Lawful Bases for Processing
+              3. Bases légales du traitement
             </h2>
-            <p>Under Article 6 of the General Data Protection Regulation (GDPR), processing is conducted under:</p>
+            <p>Conformément à l’article 6 du Règlement général sur la protection des données (RGPD), le traitement repose sur les bases suivantes :</p>
             <ul>
               <li>
-                <strong>Article 6(1)(b) [Contractual Necessity]:</strong> Performance of employment obligations, shift dispatching, and fulfillment of hotel service contracts with guests.
+                <strong>Article 6(1)(b) [nécessité contractuelle] :</strong> exécution des obligations liées au contrat de travail, répartition des horaires et exécution des contrats de prestation hôtelière conclus avec les clients.
               </li>
               <li>
-                <strong>Article 6(1)(c) [Legal Obligation]:</strong> Maintaining hotel guest registries, safety headcount records, and occupational health shift records required by municipal hospitality regulations.
+                <strong>Article 6(1)(c) [obligation légale] :</strong> tenue des registres des clients de l’hôtel, des relevés d’effectifs à des fins de sécurité et des relevés d’horaires liés à la santé au travail exigés par la réglementation hôtelière locale.
               </li>
               <li>
-                <strong>Article 6(1)(f) [Legitimate Interests]:</strong> Operational efficiency, prompt maintenance resolution, asset protection, and executive audit oversight.
+                <strong>Article 6(1)(f) [intérêts légitimes] :</strong> efficacité opérationnelle, traitement rapide des interventions de maintenance, protection des biens et contrôle exercé par la direction.
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              4. Cookie Policy & Storage Technologies
+              4. Politique relative aux cookies et technologies de stockage
             </h2>
             <p>
-              Hotel SES is an internal operational tool and does <strong>not</strong> use advertising cookies, marketing trackers, or cross-site profiling beacons.
+              Hotel SES est un outil opérationnel interne et n’utilise <strong>aucun</strong> cookie publicitaire, traceur marketing ni balise de profilage intersites.
             </p>
             <div className="legal-callout">
               <h3>
-                Strictly Necessary Cookies
+                Cookies strictement nécessaires
               </h3>
               <ul>
                 <li>
-                  <strong>Cookie Name:</strong> <code>hotel_role</code>
+                  <strong>Nom du cookie :</strong> <code>hotel_role</code>
                 </li>
                 <li>
-                  <strong>Purpose:</strong> Stores authenticated department portal role (<code>reception</code>, <code>rh</code>, <code>gm</code>) to enforce route protection in server middleware (<code>proxy.ts</code>).
+                  <strong>Finalité :</strong> enregistre l’espace authentifié du service (<code>reception</code>, <code>rh</code>, <code>gm</code>) afin d’appliquer la protection des pages dans le middleware serveur (<code>proxy.ts</code>).
                 </li>
                 <li>
-                  <strong>Lifespan:</strong> 7 days (or deleted immediately upon explicit logout).
+                  <strong>Durée de conservation :</strong> 7 jours (ou suppression immédiate lors d’une déconnexion explicite).
                 </li>
                 <li>
-                  <strong>Legal Exemption:</strong> Strictly necessary for portal security under ePrivacy Directive Art. 5(3); does not require prior opt-in consent.
+                  <strong>Exemption légale :</strong> strictement nécessaire à la sécurité des espaces au sens de l’article 5(3) de la directive ePrivacy ; aucun consentement préalable n’est requis.
                 </li>
               </ul>
             </div>
@@ -121,42 +121,42 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2>
-              5. Data Retention & Erasure Schedule
+              5. Durées de conservation et calendrier d’effacement
             </h2>
-            <p>We adhere to strict data minimization principles:</p>
+            <p>Nous appliquons des principes stricts de minimisation des données :</p>
             <ul>
               <li>
-                <strong>Staff Records:</strong> Retained for the duration of employment. Upon departure or contract termination, staff accounts can be anonymized via the HR portal.
+                <strong>Dossiers du personnel :</strong> conservés pendant toute la durée de l’emploi. En cas de départ ou de fin de contrat, les comptes du personnel peuvent être anonymisés depuis l’espace RH.
               </li>
               <li>
-                <strong>Incident History:</strong> Retained for 12 months for quality assurance and facility maintenance planning, after which identifying resident details are expunged.
+                <strong>Historique des incidents :</strong> conservé 12 mois à des fins d’assurance qualité et de planification de la maintenance des installations, après quoi les informations permettant d’identifier les clients sont supprimées.
               </li>
               <li>
-                <strong>Checked-out Resident Data:</strong> Archived following settlement and deleted or anonymized within 6 months unless longer retention is required for legal tax compliance.
+                <strong>Données des clients partis :</strong> archivées après règlement du séjour, puis supprimées ou anonymisées dans un délai de 6 mois, sauf si une conservation plus longue est exigée par les obligations fiscales légales.
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              6. Your Data Rights & Deletion Requests
+              6. Vos droits et demandes de suppression
             </h2>
             <p>
-              In accordance with applicable privacy legislation (GDPR Articles 15–22), all staff and resident data subjects have the right to:
+              Conformément à la législation applicable en matière de protection des données (articles 15 à 22 du RGPD), toutes les personnes concernées, membres du personnel comme clients, ont le droit de :
             </p>
             <ul>
-              <li>Request confirmation and an export copy of personal records held (Right of Access & Portability).</li>
-              <li>Request immediate correction of inaccurate contact or departmental information.</li>
-              <li>Request erasure (Right to be Forgotten) or anonymization of non-essential records.</li>
-              <li>Object to or restrict specific processing operations.</li>
+              <li>Obtenir la confirmation que des données les concernant sont détenues et en recevoir une copie exportée (droit d’accès et droit à la portabilité).</li>
+              <li>Obtenir sans délai la rectification de coordonnées ou d’informations de service inexactes.</li>
+              <li>Obtenir l’effacement (droit à l’oubli) ou l’anonymisation des données non essentielles.</li>
+              <li>S’opposer à certaines opérations de traitement ou en demander la limitation.</li>
             </ul>
             <div className="legal-callout">
               <p>
-                To exercise your rights or request account data erasure, contact our Data Protection Officer directly at{" "}
+                Pour exercer vos droits ou demander l’effacement des données de votre compte, contactez directement notre délégué à la protection des données (DPO) à l’adresse{" "}
                 <a href="mailto:dpo@grandpalacehotel.com">
                   dpo@grandpalacehotel.com
                 </a>
-                . HR Administrators can also initiate staff record anonymization directly within the HR Portal.
+                . Les administrateurs RH peuvent également lancer l’anonymisation d’un dossier du personnel directement depuis l’espace RH.
               </p>
             </div>
           </section>
@@ -169,10 +169,10 @@ export default function PrivacyPolicyPage() {
           </div>
           <div>
             <Link href="/tos">
-              Acceptable Use Policy
+              Charte d’utilisation
             </Link>
             <Link href="/login">
-              Login Gateway
+              Page de connexion
             </Link>
           </div>
         </footer>

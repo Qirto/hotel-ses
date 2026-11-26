@@ -270,7 +270,7 @@ export function SheetContent({
             {showClose && (
               <button
                 type="button"
-                aria-label="Close"
+                aria-label="Fermer"
                 onClick={() => setOpen(false)}
                 className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-neutral-400 outline-none transition hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 active:scale-95 dark:hover:bg-neutral-800 dark:hover:text-white dark:focus-visible:ring-neutral-600/60"
               >

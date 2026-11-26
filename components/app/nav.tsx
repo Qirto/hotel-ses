@@ -33,7 +33,7 @@ export function sharedNavItems<Tab extends string>(p: {
   openCount: number;
 }): NavTabItem[] {
   return [
-    navItem(p, "ROOMS" as Tab, "Rooms", <BedDouble aria-hidden />, { badge: p.attentionCount, badgeTone: "alert" }),
-    navItem(p, "RECLAMATIONS" as Tab, "Tickets", <ClipboardList aria-hidden />, { badge: p.openCount, badgeTone: "alert" }),
+    navItem(p, "ROOMS" as Tab, "Chambres", <BedDouble aria-hidden />, { badge: p.attentionCount, badgeTone: "alert" }),
+    navItem(p, "RECLAMATIONS" as Tab, "Demandes", <ClipboardList aria-hidden />, { badge: p.openCount, badgeTone: "alert" }),
   ];
 }

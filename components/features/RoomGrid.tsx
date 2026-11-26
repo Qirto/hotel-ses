@@ -18,10 +18,10 @@ const DOT: Record<Tone, string> = {
 };
 
 const LEGEND: { tone: Tone; label: string }[] = [
-  { tone: "success", label: "Ready" },
-  { tone: "info", label: "Occupied" },
-  { tone: "warning", label: "Open issue / cleaning" },
-  { tone: "danger", label: "Urgent / dirty" },
+  { tone: "success", label: "Prête" },
+  { tone: "info", label: "Occupée" },
+  { tone: "warning", label: "Demande ouverte / en nettoyage" },
+  { tone: "danger", label: "Urgente / à nettoyer" },
 ];
 
 /**
@@ -49,12 +49,12 @@ export const RoomGrid = memo(function RoomGrid({
   }, [rooms]);
 
   if (rooms.length === 0) {
-    return <EmptyState icon={<BedDouble />} title="No rooms match" description="Try another floor, block or search." />;
+    return <EmptyState icon={<BedDouble />} title="Aucune chambre ne correspond" description="Essayez un autre étage, un autre bloc ou une autre recherche." />;
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-fg-muted" aria-label="Legend">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-fg-muted" aria-label="Légende">
         {LEGEND.map((l) => (
           <li key={l.tone} className="inline-flex items-center gap-1.5">
             <span className={cn("size-2 rounded-full", DOT[l.tone])} aria-hidden />
@@ -63,10 +63,10 @@ export const RoomGrid = memo(function RoomGrid({
         ))}
       </ul>
       {floors.map(([floor, list]) => (
-        <section key={floor} className="[contain-intrinsic-size:auto_480px] [content-visibility:auto]" aria-label={`Floor ${floor}`}>
+        <section key={floor} className="[contain-intrinsic-size:auto_480px] [content-visibility:auto]" aria-label={`Étage ${floor}`}>
           <h3 className="mb-2 flex items-baseline gap-2 text-sm font-semibold">
-            Floor {floor}
-            <span className="text-xs font-normal text-fg-muted">{plural(list.length, "room")}</span>
+            Étage {floor}
+            <span className="text-xs font-normal text-fg-muted">{plural(list.length, "chambre")}</span>
           </h3>
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(5.75rem,1fr))] gap-2">
             {list.map((room) => (
@@ -99,7 +99,7 @@ const RoomTile = memo(function RoomTile({
         "focus-ring group flex h-full w-full flex-col gap-1 rounded-lg border bg-surface px-3 py-2.5 text-left transition-colors hover:bg-surface-hover",
         head.tone === "danger" ? "border-danger/50" : head.tone === "warning" ? "border-warning/40" : "border-border hover:border-border-hover"
       )}
-      aria-label={`Room ${room.room_number}, ${head.label}, ${room.is_occupied ? "occupied" : "vacant"}, ${blockLabel(room.block)}`}
+      aria-label={`Chambre ${room.room_number}, ${head.label}, ${room.is_occupied ? "occupée" : "libre"}, ${blockLabel(room.block)}`}
     >
       <span className="flex items-center justify-between gap-2">
         <span className="text-[15px] font-semibold tabular-nums tracking-tight">{room.room_number}</span>

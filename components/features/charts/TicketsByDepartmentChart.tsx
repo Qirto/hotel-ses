@@ -8,8 +8,8 @@ import { ticketsByDepartment } from "@/lib/tickets";
 import { RankedBreakdown, type Series } from "./Breakdown";
 
 const SERIES: Series[] = [
-  { key: "open", label: "Open", color: "var(--warning)" },
-  { key: "resolved", label: "Resolved", color: "var(--success)" },
+  { key: "open", label: "Ouvertes", color: "var(--warning)" },
+  { key: "resolved", label: "Résolues", color: "var(--success)" },
 ];
 
 /** Open / resolved tickets for every department, busiest first. */
@@ -18,6 +18,6 @@ export const TicketsByDepartmentChart = memo(function TicketsByDepartmentChart({
     () => ticketsByDepartment(tickets, Infinity).map((d) => ({ label: d.label, values: { open: d.open, resolved: d.resolved } })),
     [tickets]
   );
-  if (rows.length === 0) return <EmptyState icon={<ClipboardList />} title="No tickets yet" />;
-  return <RankedBreakdown rows={rows} series={SERIES} label="Tickets by department" unit={["ticket", "tickets"]} />;
+  if (rows.length === 0) return <EmptyState icon={<ClipboardList />} title="Aucune demande pour le moment" />;
+  return <RankedBreakdown rows={rows} series={SERIES} label="Demandes par service" unit={["demande", "demandes"]} />;
 });

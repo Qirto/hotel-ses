@@ -85,7 +85,7 @@ export function Alert({
             {dismissible && (
               <button
                 type="button"
-                aria-label="Dismiss"
+                aria-label="Masquer"
                 onClick={() => setVisible(false)}
                 className="focus-ring -mr-1 -mt-1 grid size-8 shrink-0 place-items-center rounded-lg text-fg-muted transition hover:bg-surface-hover hover:text-fg active:scale-95"
               >

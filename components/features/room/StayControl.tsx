@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import type { StayState } from "@/lib/rooms";
 
 const STAY_ACTIONS: { state: StayState; label: string; icon: ReactNode }[] = [
-  { state: "OCCUPIED", label: "Check in", icon: <LogIn className="size-4" aria-hidden /> },
-  { state: "VACANT_DIRTY", label: "Check out", icon: <LogOut className="size-4" aria-hidden /> },
+  { state: "OCCUPIED", label: "Enregistrer l’arrivée", icon: <LogIn className="size-4" aria-hidden /> },
+  { state: "VACANT_DIRTY", label: "Enregistrer le départ", icon: <LogOut className="size-4" aria-hidden /> },
 ];
 
 /** Room detail control: check a guest in or out. */
@@ -23,7 +23,7 @@ export const StayControl = memo(function StayControl({
   onChange: (room: HotelRoom, state: StayState) => void;
 }) {
   return (
-    <ControlSection title="Stay">
+    <ControlSection title="Séjour">
       <div className="grid grid-cols-2 gap-2">
         {STAY_ACTIONS.map((a) => (
           <Button

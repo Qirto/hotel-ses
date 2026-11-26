@@ -23,32 +23,32 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
     <StatusScreen
       icon={<ShieldAlert />}
       tone="danger"
-      title="No access to this workspace"
+      title="Accès non autorisé à cet espace"
       actions={
         <>
           {currentRole && currentRole !== requiredRole && (
             <Button variant="primary" size="lg" onClick={() => router.push(PORTALS[currentRole].path)} leftIcon={<ArrowLeft className="size-4" aria-hidden />} className="w-full justify-center">
-              Go to {current}
+              Ouvrir {current}
             </Button>
           )}
           <Button
             variant="secondary"
             size="lg"
             isLoading={isPending}
-            loadingText="Signing out"
+            loadingText="Déconnexion"
             onClick={() => startTransition(() => signOutToLogin())}
             leftIcon={<LogOut className="size-4" aria-hidden />}
             className="w-full justify-center"
           >
-            Sign in with another passcode
+            Se connecter avec un autre code d’accès
           </Button>
         </>
       }
     >
       <p>
-        This page is for <strong className="font-semibold text-fg">{required}</strong> staff.
+        Cette page est réservée au personnel habilité : <strong className="font-semibold text-fg">{required}</strong>.
       </p>
-      <p className="mt-1">{current ? `You are signed in as ${current}.` : "You are not signed in."}</p>
+      <p className="mt-1">{current ? `Vous êtes connecté avec l’accès « ${current} ».` : "Vous n’êtes pas connecté."}</p>
     </StatusScreen>
   );
 }

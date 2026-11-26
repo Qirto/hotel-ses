@@ -80,15 +80,15 @@ export type SignInState = { error: string } | null;
  */
 export async function signInWithForm(_prev: SignInState, formData: FormData): Promise<SignInState> {
   const passcode = String(formData.get("passcode") ?? "");
-  if (!passcode.trim()) return { error: "Please enter your access passcode." };
+  if (!passcode.trim()) return { error: "Veuillez saisir votre code d’accès." };
   const role = roleForPasscode(passcode);
-  if (!role) return { error: "Invalid access passcode. Please check your credentials." };
+  if (!role) return { error: "Code d’accès non valide. Veuillez vérifier votre saisie." };
   await setRoleCookie(role);
   redirect(PORTALS[role].path);
 }
 
 export async function restorePersistedSession(role: PortalRole) {
-  if (!isPortalRole(role)) return { success: false, error: "Invalid portal role." } as const;
+  if (!isPortalRole(role)) return { success: false, error: "Espace non valide." } as const;
   await setRoleCookie(role);
   return { success: true, redirectUrl: PORTALS[role].path, role } as const;
 }
@@ -313,7 +313,7 @@ export async function resolveConfidentialGrievance(reclamationId: number, remedy
       status: "RESOLVED",
       resolved_at: new Date().toISOString(),
       description: remedyNotes
-        ? `[GM RESOLVED REMEDY]: ${remedyNotes}`
+        ? `[RÉSOLUE PAR LA DIRECTION] : ${remedyNotes}`
         : undefined,
     })
     .eq("id", reclamationId);
@@ -586,7 +586,7 @@ export async function anonymizeStaffRecord(staffId: number) {
   const { error } = await supabase
     .from("staff")
     .update({
-      full_name: "Former Staff Member",
+      full_name: "Ancien collaborateur",
       phone_number: null,
       skill_tags: [],
       shift_status: "OFF_SHIFT",
@@ -612,7 +612,7 @@ export async function exportStaffData(staffId: number) {
     .single();
 
   if (staffError || !staff) {
-    return { success: false, error: staffError?.message || "Staff member not found" };
+    return { success: false, error: staffError?.message || "Employé introuvable" };
   }
 
   const { data: tickets } = await supabase
@@ -637,8 +637,8 @@ export async function purgeCheckedOutResidentData(residentId: number) {
   const { error } = await supabase
     .from("residents")
     .update({
-      first_name: "Archived",
-      last_name: "Guest",
+      first_name: "Client",
+      last_name: "archivé",
       phone_number: null,
     })
     .eq("id", residentId)

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getPortalRole } from "@/lib/server/session";
 import { SettingsView } from "@/components/features/settings/SettingsView";
 
-export const metadata: Metadata = { title: "Settings · Hotel SES" };
+export const metadata: Metadata = { title: "Paramètres · Hotel SES" };
 
 /** Settings for whoever is signed in (any portal). The proxy also guards this route. */
 export default async function SettingsPage() {

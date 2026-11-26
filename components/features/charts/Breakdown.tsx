@@ -60,7 +60,7 @@ function Total({ value, unit }: { value: number; unit: readonly [string, string]
 
 export function Legend({ series }: { series: readonly Series[] }) {
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-secondary" aria-label="Legend">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-secondary" aria-label="Légende">
       {series.map((s) => (
         <li key={s.key} className="flex items-center gap-1.5">
           <Swatch color={s.color} />

@@ -58,9 +58,10 @@ export const DirectoryView = memo(function DirectoryView({
     () => [
       {
         key: "full_name",
-        header: "Employee",
+        header: "Employé",
         primary: true,
-        width: "minmax(0, 1.6fr)",
+        minWidth: 11,
+        grow: 1.6,
         cell: (s) => (
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-hover text-fg-muted">
@@ -72,15 +73,16 @@ export const DirectoryView = memo(function DirectoryView({
       },
       {
         key: "role",
-        header: "Role",
-        width: "minmax(0, 1fr)",
+        header: "Fonction",
+        minWidth: 8,
         accessor: (s) => roleLabel(s.role),
         cell: (s) => <span className="block min-w-0 truncate text-fg-secondary">{roleLabel(s.role)}</span>,
       },
       {
         key: "department",
-        header: "Department",
-        width: "minmax(0, 1.3fr)",
+        header: "Service",
+        minWidth: 9,
+        grow: 1.3,
         accessor: (s) => departmentName(staffDepartment(s)),
         cell: (s) => {
           const Icon = departmentIcon(staffDepartment(s));
@@ -94,16 +96,17 @@ export const DirectoryView = memo(function DirectoryView({
       },
       {
         key: "phone_number",
-        header: "Phone",
-        width: "minmax(0, 1fr)",
+        header: "Téléphone",
+        minWidth: 8.5,
         hideOnMobile: true,
         accessor: (s) => s.phone_number ?? "",
         cell: (s) => <span className="block min-w-0 truncate tabular-nums text-fg-secondary">{s.phone_number || "–"}</span>,
       },
       {
         key: "shift_status",
-        header: "Shift",
-        width: "minmax(6.5rem, 0.8fr)",
+        header: "Présence",
+        minWidth: 7.5,
+        grow: 0.8,
         accessor: (s) => SHIFT_STATUS[s.shift_status]?.label ?? s.shift_status,
         cell: (s) => {
           const st = SHIFT_STATUS[s.shift_status] ?? { label: s.shift_status, tone: "neutral" as const };
@@ -115,19 +118,20 @@ export const DirectoryView = memo(function DirectoryView({
         header: "Actions",
         sortable: false,
         align: "right",
-        width: "minmax(19rem, auto)",
+        minWidth: 19,
+        grow: 1.2,
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
         cell: (s) => (
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" size="touch" onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-4" aria-hidden />}>
-              {s.shift_status === "ON_SHIFT" ? "End shift" : "Start shift"}
+              {s.shift_status === "ON_SHIFT" ? "Terminer le service" : "Prendre son service"}
             </Button>
             <Button variant="outline" size="touch" onClick={() => onMarkAbsent(s)} disabled={pending} leftIcon={<UserMinus className="size-4" aria-hidden />}>
-              Absent
+              Déclarer absent
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => onRemove(s)} disabled={pending} aria-label={`Remove ${s.full_name}`}>
+            <Button variant="ghost" size="icon" onClick={() => onRemove(s)} disabled={pending} aria-label={`Supprimer ${s.full_name}`}>
               <Trash2 className="size-4 text-danger" aria-hidden />
             </Button>
           </div>
@@ -140,26 +144,26 @@ export const DirectoryView = memo(function DirectoryView({
   return (
     <>
       <KpiGrid>
-        <Kpi label="Total staff" value={staff.length} hint="In the directory" icon={<Users />} />
-        <Kpi label="On shift" value={onShiftCount} hint="Working now" tone="success" icon={<UserCheck />} />
-        <Kpi label="Off shift" value={staff.length - onShiftCount} hint="Off or on break" icon={<UserX />} />
-        <Kpi label="Departments" value={departmentCount} hint="Managed by HR" icon={<Building2 />} />
+        <Kpi label="Effectif total" value={staff.length} hint="Dans l’annuaire" icon={<Users />} />
+        <Kpi label="En service" value={onShiftCount} hint="Au travail actuellement" tone="success" icon={<UserCheck />} />
+        <Kpi label="Hors service" value={staff.length - onShiftCount} hint="En repos ou en pause" icon={<UserX />} />
+        <Kpi label="Services" value={departmentCount} hint="Gérés par les RH" icon={<Building2 />} />
       </KpiGrid>
 
       <Panel
-        title="Staff directory"
-        description={`${rows.length} of ${plural(staff.length, "employee")}`}
+        title="Annuaire du personnel"
+        description={`${rows.length} sur ${plural(staff.length, "employé")}`}
         icon={<Users />}
         actions={
           <Button variant="primary" size="touch" onClick={onAdd} leftIcon={<UserPlus className="size-4" aria-hidden />}>
-            Add staff
+            Ajouter un employé
           </Button>
         }
       >
         <div className="mb-4">
           <FilterBar>
-            <SearchInput label="Search staff" placeholder="Name or role" value={search} onChange={onSearchChange} />
-            <SelectField label="Department" icon={<Building2 />} value={department} onChange={onDepartmentChange} options={departmentOptions} />
+            <SearchInput label="Rechercher un employé" placeholder="Nom ou fonction" value={search} onChange={onSearchChange} />
+            <SelectField label="Service" icon={<Building2 />} value={department} onChange={onDepartmentChange} options={departmentOptions} />
           </FilterBar>
         </div>
         <DataTable<Staff>
@@ -172,8 +176,8 @@ export const DirectoryView = memo(function DirectoryView({
           defaultSort={{ key: "full_name", dir: "asc" }}
           pageSize={25}
           density="comfortable"
-          emptyState={<EmptyState icon={<Users />} title="No staff found" description="Nothing matches this search and department." />}
-          ariaLabel="Staff directory"
+          emptyState={<EmptyState icon={<Users />} title="Aucun employé trouvé" description="Aucun résultat pour cette recherche et ce service." />}
+          ariaLabel="Annuaire du personnel"
         />
       </Panel>
     </>

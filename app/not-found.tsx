@@ -3,21 +3,21 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { House, SearchX } from "lucide-react";
 import { StatusScreen } from "@/components/app/StatusScreen";
 
-export const metadata: Metadata = { title: "Page not found · Hotel SES" };
+export const metadata: Metadata = { title: "Page introuvable · Hotel SES" };
 
 /** 404 for unknown URLs (and `notFound()` calls). */
 export default function NotFound() {
   return (
     <StatusScreen
       icon={<SearchX />}
-      title="Page not found"
+      title="Page introuvable"
       actions={
         <ButtonLink href="/" size="lg" fullWidth leftIcon={<House className="size-4" aria-hidden />}>
-          Back to my workspace
+          Retour à mon espace
         </ButtonLink>
       }
     >
-      <p>This address does not exist in Hotel SES. It may have been mistyped or moved.</p>
+      <p>Cette adresse n’existe pas dans Hotel SES. Elle a peut-être été mal saisie ou déplacée.</p>
     </StatusScreen>
   );
 }

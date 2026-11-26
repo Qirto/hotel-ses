@@ -23,12 +23,12 @@ export function ticketActions(ticket: Reclamation, { pending, onAcknowledge, onR
     <>
       {acknowledge && (
         <Button size="touch" variant="secondary" onClick={() => onAcknowledge(ticket.id)} disabled={pending} leftIcon={<Eye className="size-4" aria-hidden />}>
-          Acknowledge
+          Prendre en charge
         </Button>
       )}
       {onResolve && (
-        <Button size="touch" variant="success" onClick={() => onResolve(ticket.id)} disabled={pending} leftIcon={<CircleCheck className="size-4" aria-hidden />}>
-          Resolve
+        <Button size="touch" variant="success" onClick={() => onResolve(ticket.id)} disabled={pending} aria-label="Marquer comme résolue" leftIcon={<CircleCheck className="size-4" aria-hidden />}>
+          Résolue
         </Button>
       )}
     </>

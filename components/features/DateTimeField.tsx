@@ -40,7 +40,7 @@ const serialize = ({ date, hour, minute }: Parts) =>
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-const weekdayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+const weekdayFmt = new Intl.DateTimeFormat("fr-FR", { weekday: "short" });
 /** "Mon, 23/11/2026" for a calendar day. */
 const dayLabel = (d: Date) => `${weekdayFmt.format(d)}, ${formatWallDate({ year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() })}`;
 
@@ -123,7 +123,7 @@ export function DateTimeField({
         )}
       >
         <CalendarClock className={INPUT_ICON} aria-hidden />
-        <span className="truncate tabular-nums">{text ?? "Pick date and time"}</span>
+        <span className="truncate tabular-nums">{text ?? "Choisir la date et l’heure"}</span>
         <ChevronDown
           className={cn("pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted transition-transform", open && "rotate-180")}
           aria-hidden
@@ -137,7 +137,7 @@ export function DateTimeField({
         dockOnPhone
         id={panelId}
         role="dialog"
-        aria-label={`${label}: choose date and time`}
+        aria-label={`${label} : choisir la date et l’heure`}
         className="flex flex-col sm:w-max"
       >
         <PanelBody
@@ -219,26 +219,26 @@ function PanelBody({
           defaultMonth={parts.date ?? maxDay}
           maxDate={maxDay}
           weekStartsOn={1}
-          locale="en-GB"
+          locale="fr-FR"
           className="mx-auto shrink-0"
         />
         {/* phones: two scrolling rows under the calendar; sm+: two columns beside it, as tall as the calendar */}
         <div className="border-t border-border p-3 sm:relative sm:w-36 sm:border-l sm:border-t-0 sm:p-0">
           <div className="flex flex-col gap-3 sm:absolute sm:inset-0 sm:flex-row sm:gap-0 sm:divide-x sm:divide-border">
-            <TimeList label="Hour" options={hourOptions} value={parts.hour} onSelect={onHour} />
+            <TimeList label="Heure" options={hourOptions} value={parts.hour} onSelect={onHour} />
             <TimeList label="Minute" options={minuteOptions} value={parts.minute} onSelect={onMinute} />
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2 border-t border-border px-3 py-2.5">
         <p className="min-w-0 flex-1 truncate text-sm tabular-nums text-fg-secondary" aria-live="polite">
-          {summary ?? "No date picked"}
+          {summary ?? "Aucune date choisie"}
         </p>
         <Button type="button" variant="ghost" size="touch" onClick={onNow}>
-          Now
+          Maintenant
         </Button>
         <Button type="button" variant="primary" size="touch" onClick={onDone}>
-          Done
+          Valider
         </Button>
       </div>
     </div>

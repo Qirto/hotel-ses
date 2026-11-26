@@ -13,7 +13,7 @@ function Bone({ className }: { className?: string }) {
 export function PortalSkeleton() {
   return (
     <div className="flex min-h-dvh" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">Chargement…</span>
       <aside className="hidden w-[248px] shrink-0 flex-col gap-2 border-r border-border p-3 md:flex" aria-hidden>
         <div className="flex h-14 items-center gap-2.5 px-1">
           <Bone className="size-8" />
@@ -50,7 +50,7 @@ export function PortalSkeleton() {
 export function PageSkeleton() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pt-20" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">Chargement…</span>
       <Bone className="h-40 rounded-xl" />
       <Bone className="h-56 rounded-xl" />
     </div>

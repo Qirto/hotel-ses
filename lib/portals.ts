@@ -12,17 +12,17 @@ export type PortalTone = "brand" | "success" | "special";
 export interface Portal {
   role: PortalRole;
   path: `/${PortalRole}`;
-  /** Short code shown in the shell header, e.g. "GM". */
+  /** Short code shown in the shell header, e.g. "DG". */
   code: string;
-  /** Full name, e.g. "Executive Management". */
+  /** Full name, e.g. "Direction générale". */
   name: string;
   tone: PortalTone;
 }
 
 export const PORTALS: Record<PortalRole, Portal> = {
-  reception: { role: "reception", path: "/reception", code: "Reception", name: "Reception Operations", tone: "brand" },
-  rh: { role: "rh", path: "/rh", code: "HR", name: "Human Resources & Roster", tone: "success" },
-  gm: { role: "gm", path: "/gm", code: "GM", name: "Executive Management", tone: "brand" },
+  reception: { role: "reception", path: "/reception", code: "Réception", name: "Réception", tone: "brand" },
+  rh: { role: "rh", path: "/rh", code: "RH", name: "Ressources humaines", tone: "success" },
+  gm: { role: "gm", path: "/gm", code: "DG", name: "Direction générale", tone: "brand" },
 };
 
 export const isPortalRole = (value: unknown): value is PortalRole => value === "reception" || value === "rh" || value === "gm";

@@ -158,7 +158,7 @@ export function SidebarTrigger({ className, ...props }: React.ComponentProps<"bu
   return (
     <button
       type="button"
-      aria-label="Open navigation"
+      aria-label="Ouvrir la navigation"
       className={cn(
         "grid size-9 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 md:hidden dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white",
         className
@@ -361,12 +361,12 @@ function Panel({
                 onMouseEnter={(e) => {
                   if (!collapsed) return;
                   const r = e.currentTarget.getBoundingClientRect();
-                  setTip({ label: "Expand sidebar", x: r.right + 10, y: r.top + r.height / 2 });
+                  setTip({ label: "Déplier la barre latérale", x: r.right + 10, y: r.top + r.height / 2 });
                 }}
                 onMouseLeave={() => setTip(null)}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}
                 aria-expanded={!collapsed}
-                title={collapsed ? undefined : "Collapse sidebar"}
+                title={collapsed ? undefined : "Replier la barre latérale"}
                 className="focus-ring grid size-9 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
               >
                 {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}
@@ -376,7 +376,7 @@ function Panel({
         )}
 
         <nav
-          aria-label="Main"
+          aria-label="Navigation principale"
           onMouseLeave={() => {
             setHovering(false);
             setTip(null);

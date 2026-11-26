@@ -17,8 +17,8 @@ export function ConnectionBanner() {
   if (!online) {
     return (
       <Alert tone="warning" icon={<WifiOff />} className="mb-4 md:mb-6">
-        <p className="font-medium">You&apos;re offline</p>
-        <p className="text-fg-secondary">This screen may be out of date and changes are paused. It refreshes as soon as you&apos;re back online.</p>
+        <p className="font-medium">Vous êtes hors ligne</p>
+        <p className="text-fg-secondary">Cet écran n’est peut-être pas à jour et les modifications sont suspendues. Il se met à jour dès le retour de la connexion.</p>
       </Alert>
     );
   }
@@ -26,8 +26,8 @@ export function ConnectionBanner() {
   if (realtime === "reconnecting") {
     return (
       <Alert tone="warning" icon={<RadioTower />} className="mb-4 md:mb-6">
-        <p className="font-medium">Live updates paused</p>
-        <p className="text-fg-secondary">Reconnecting. Other people&apos;s changes will appear once the connection is back.</p>
+        <p className="font-medium">Mises à jour en direct suspendues</p>
+        <p className="text-fg-secondary">Reconnexion en cours. Les modifications de vos collègues s’afficheront dès le retour de la connexion.</p>
       </Alert>
     );
   }

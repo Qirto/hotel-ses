@@ -40,6 +40,8 @@ export interface SpringSelectProps<V extends string | number = string> {
   error?: string;
   className?: string;
   triggerClassName?: string;
+  /** `sm`: compact trigger for dense grids (e.g. a weekly roster). */
+  size?: "md" | "sm";
 }
 
 const nextEnabled = <V extends string | number>(options: readonly SpringSelectOption<V>[], from: number, step: 1 | -1) => {
@@ -52,7 +54,7 @@ export function SpringSelect<V extends string | number = string>({
   value,
   defaultValue,
   onChange,
-  placeholder = "Select…",
+  placeholder = "Sélectionner…",
   label,
   id,
   "aria-label": ariaLabel,
@@ -62,7 +64,9 @@ export function SpringSelect<V extends string | number = string>({
   error,
   className,
   triggerClassName,
+  size = "md",
 }: SpringSelectProps<V>) {
+  const sm = size === "sm";
   const uid = React.useId();
   const triggerId = id ?? `${uid}-trigger`;
   const listId = `${uid}-list`;
@@ -168,8 +172,9 @@ export function SpringSelect<V extends string | number = string>({
         onClick={() => (open ? setOpen(false) : show())}
         onKeyDown={onKeyDown}
         className={cn(
-          "focus-ring relative flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border bg-surface pr-9 text-left text-base transition-colors md:text-sm",
-          icon ? "pl-9" : "pl-3",
+          "focus-ring relative flex w-full min-w-0 items-center gap-2 rounded-lg border bg-surface text-left transition-colors",
+          sm ? "h-9 pr-7 text-sm" : "h-11 pr-9 text-base md:text-sm",
+          icon ? (sm ? "pl-8" : "pl-9") : sm ? "pl-2.5" : "pl-3",
           open ? "border-border-hover" : error ? "border-danger" : "border-border-strong hover:border-border-hover",
           disabled && "cursor-not-allowed opacity-50",
           selected ? "text-fg" : "text-fg-muted",
@@ -177,7 +182,7 @@ export function SpringSelect<V extends string | number = string>({
         )}
       >
         {icon && (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted [&>svg]:size-4" aria-hidden>
+          <span className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 text-fg-muted [&>svg]:size-4", sm ? "left-2.5" : "left-3")} aria-hidden>
             {icon}
           </span>
         )}
@@ -186,7 +191,7 @@ export function SpringSelect<V extends string | number = string>({
           aria-hidden
           animate={{ rotate: open ? 180 : 0 }}
           transition={motionTransitions.springSnappy}
-          className="pointer-events-none absolute right-3 top-1/2 -mt-2 text-fg-muted"
+          className={cn("pointer-events-none absolute top-1/2 -mt-2 text-fg-muted", sm ? "right-2" : "right-3")}
         >
           <ChevronDown className="size-4" />
         </motion.span>

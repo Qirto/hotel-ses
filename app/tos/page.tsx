@@ -4,23 +4,23 @@ import { LegalLayout } from "@/components/app/LegalLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Acceptable Use Policy & System Terms | Hotel SES",
-  description: "Terms of service and acceptable operational use policy for Hotel SES staff users.",
+  title: "Charte d’utilisation et conditions du système | Hotel SES",
+  description: "Conditions d’utilisation et charte d’usage opérationnel de Hotel SES pour le personnel de l’hôtel.",
 };
 
 export default function TermsOfServicePage() {
   return (
     <LegalLayout>
-        <p className="legal-meta">Effective Date: October 2026 • Version 1.4</p>
+        <p className="legal-meta">Date d’entrée en vigueur : octobre 2026 • Version 1.4</p>
 
         {/* Header */}
         <header>
-          <p className="legal-eyebrow">Governance & System Security</p>
+          <p className="legal-eyebrow">Gouvernance et sécurité du système</p>
           <h1>
-            Acceptable Use Policy & Staff Terms
+            Charte d’utilisation et conditions applicables au personnel
           </h1>
           <p>
-            These terms define authorized usage, confidentiality expectations, and security responsibilities for all hotel personnel accessing the Hotel SES platform.
+            Les présentes conditions définissent les usages autorisés, les obligations de confidentialité et les responsabilités en matière de sécurité de l’ensemble du personnel de l’hôtel accédant à la plateforme Hotel SES.
           </p>
         </header>
 
@@ -28,67 +28,67 @@ export default function TermsOfServicePage() {
         <div>
           <section>
             <h2>
-              1. Authorized Access & Role-Based Scope
+              1. Accès autorisé et périmètre par rôle
             </h2>
             <p>
-              Hotel SES is an internal management system strictly reserved for authenticated staff members of Hôtel Méditerranée Thalasso Golf Hammamet. Access is provisioned under three operational tiers:
+              Hotel SES est un système de gestion interne strictement réservé aux membres authentifiés du personnel de l’Hôtel Méditerranée Thalasso Golf Hammamet. Les accès sont attribués selon trois niveaux opérationnels :
             </p>
             <ul>
               <li>
-                <strong>Reception Desk (<code>/reception</code>):</strong> Front desk personnel authorized to create rapid incident tickets, update guest room occupancy states, and monitor room cleanliness indicators.
+                <strong>Réception (<code>/reception</code>) :</strong> personnel de la réception habilité à créer rapidement des demandes d’intervention, à mettre à jour l’état d’occupation des chambres et à suivre les indicateurs de propreté des chambres.
               </li>
               <li>
-                <strong>Human Resources (<code>/rh</code>):</strong> HR personnel authorized to manage employee shifts, maintain department catalogs, and reassign ticket workloads during absenteeism.
+                <strong>Ressources humaines (<code>/rh</code>) :</strong> personnel RH habilité à gérer les horaires des employés, à tenir à jour le référentiel des services et à réassigner la charge des demandes en cas d’absence.
               </li>
               <li>
-                <strong>General Management (<code>/gm</code>):</strong> Executive leadership with oversight across all 341 rooms, department SLA analytics, MTTR performance, and confidential guest grievances.
+                <strong>Direction générale (<code>/gm</code>) :</strong> équipe de direction disposant d’une vue d’ensemble sur les 341 chambres, des analyses de SLA par service, des performances de délai moyen de résolution (MTTR) et des réclamations confidentielles des clients.
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              2. Credential Security & Passcode Confidentiality
+              2. Sécurité des identifiants et confidentialité des codes d’accès
             </h2>
             <p>
-              Each role portal is secured via environment-configured passcodes and cryptographic session cookies. Users must strictly adhere to the following rules:
+              Chaque espace est protégé par des codes d’accès définis dans la configuration de l’environnement et par des cookies de session chiffrés. Les utilisateurs doivent respecter strictement les règles suivantes :
             </p>
             <ul>
               <li>
-                <strong>Zero Credential Sharing:</strong> Department passcodes must never be shared with unauthorized third parties or written in plain view at workstations.
+                <strong>Aucun partage des identifiants :</strong> les codes d’accès des services ne doivent jamais être communiqués à des tiers non autorisés ni être notés en évidence sur les postes de travail.
               </li>
               <li>
-                <strong>Explicit Session Termination:</strong> Staff must utilize the &ldquo;Log Out&rdquo; function before leaving a shared terminal or front-desk workstation unattended.
+                <strong>Fermeture explicite de la session :</strong> le personnel doit utiliser la fonction « Se déconnecter » avant de laisser sans surveillance un terminal partagé ou un poste de la réception.
               </li>
               <li>
-                <strong>Incident Reporting:</strong> Any suspected unauthorized access or compromised credentials must be reported immediately to the IT Helpdesk (<a href="mailto:contact@hotelmediterraneehammamet.com">contact@hotelmediterraneehammamet.com</a>).
+                <strong>Signalement des incidents :</strong> tout accès non autorisé suspecté ou toute compromission d’identifiants doit être signalé sans délai au support informatique (<a href="mailto:contact@hotelmediterraneehammamet.com">contact@hotelmediterraneehammamet.com</a>).
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              3. Guest Privacy & Data Confidentiality
+              3. Vie privée des clients et confidentialité des données
             </h2>
             <p>
-              All guest information (names, room numbers, maintenance requests, and confidential grievances) stored in Hotel SES is subject to strict professional secrecy and applicable privacy statutes:
+              Toutes les informations relatives aux clients (noms, numéros de chambre, demandes d’intervention et réclamations confidentielles) enregistrées dans Hotel SES sont soumises au strict secret professionnel et à la réglementation applicable en matière de protection des données personnelles :
             </p>
             <ul>
               <li>
-                Staff shall not extract, photograph, or duplicate guest records for personal use or external distribution.
+                Le personnel s’interdit d’extraire, de photographier ou de reproduire les fiches clients à des fins personnelles ou en vue d’une diffusion externe.
               </li>
               <li>
-                Tickets designated as <strong>Confidential</strong> are routed exclusively to executive oversight and must never be discussed outside designated management channels.
+                Les demandes marquées <strong>Confidentielles</strong> sont transmises exclusivement à la direction et ne doivent jamais être évoquées en dehors des canaux de direction prévus à cet effet.
               </li>
             </ul>
           </section>
 
           <section>
             <h2>
-              4. System Integrity & Automated Monitoring
+              4. Intégrité du système et surveillance automatisée
             </h2>
             <p>
-              System activity, including ticket dispatches, status acknowledgments, and attendance clock-ins, is logged for quality assurance and operational compliance. Any deliberate attempt to disrupt database integrity, bypass route guards, or manipulate SLA timers is strictly prohibited.
+              L’activité du système, notamment la création des demandes, leur prise en charge et les pointages de présence, est journalisée à des fins d’assurance qualité et de conformité opérationnelle. Toute tentative délibérée de porter atteinte à l’intégrité de la base de données, de contourner les contrôles d’accès aux pages ou de manipuler les délais de SLA est strictement interdite.
             </p>
           </section>
         </div>
@@ -100,10 +100,10 @@ export default function TermsOfServicePage() {
           </div>
           <div>
             <Link href="/privacy">
-              Privacy & Cookie Notice
+              Politique de confidentialité et cookies
             </Link>
             <Link href="/login">
-              Login Gateway
+              Page de connexion
             </Link>
           </div>
         </footer>

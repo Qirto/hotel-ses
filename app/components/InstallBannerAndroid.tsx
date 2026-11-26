@@ -39,21 +39,21 @@ export default function InstallBannerAndroid() {
 
   return (
     <InstallCard
-      title="Install Hotel SES"
+      title="Installer Hotel SES"
       icon={<Smartphone />}
       onDismiss={dismiss}
       actions={
         <>
           <Button variant="ghost" size="sm" onClick={dismiss}>
-            Not now
+            Plus tard
           </Button>
           <Button variant="primary" size="sm" onClick={install} leftIcon={<Download className="size-3.5" aria-hidden />}>
-            Install
+            Installer
           </Button>
         </>
       }
     >
-      Open it from your home screen, full screen and faster.
+      Ouvrez-la depuis votre écran d’accueil, en plein écran et plus rapidement.
     </InstallCard>
   );
 }

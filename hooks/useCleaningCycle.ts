@@ -23,8 +23,8 @@ export function useCleaningCycle({
         const res = await cycleRoomCleaning(room.id, next);
         if (res.success) {
           patchRoom(room.id, { cleaning_status: next });
-          flash("success", `Room ${room.room_number} set to ${CLEANING_LABEL[next].toLowerCase()}.`);
-        } else flash("danger", "Could not update the cleaning status.");
+          flash("success", `Chambre ${room.room_number} : ${CLEANING_LABEL[next].toLowerCase()}.`);
+        } else flash("danger", "Impossible de mettre à jour l’état de nettoyage.");
       });
     },
     [run, patchRoom, flash]

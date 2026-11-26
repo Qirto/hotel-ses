@@ -12,22 +12,22 @@ export const RoomStatusChart = memo(function RoomStatusChart({ rooms }: { rooms:
   const parts = useMemo(() => {
     const c = roomStatusCounts(rooms);
     return [
-      { key: "ready", label: "Ready", value: c.vacantClean, color: "var(--success)" },
-      { key: "occupied", label: "Occupied", value: c.occupied, color: "var(--info)" },
-      { key: "cleaning", label: "In cleaning", value: Math.max(0, c.inCleaning), color: "var(--warning)" },
-      { key: "dirty", label: "Dirty", value: c.vacantDirty, color: "var(--danger)" },
+      { key: "ready", label: "Prêtes", value: c.vacantClean, color: "var(--success)" },
+      { key: "occupied", label: "Occupées", value: c.occupied, color: "var(--info)" },
+      { key: "cleaning", label: "En nettoyage", value: Math.max(0, c.inCleaning), color: "var(--warning)" },
+      { key: "dirty", label: "À nettoyer", value: c.vacantDirty, color: "var(--danger)" },
     ];
   }, [rooms]);
 
-  if (rooms.length === 0) return <EmptyState icon={<BedDouble />} title="No rooms loaded" />;
-  return <SplitBreakdown parts={parts} label="Room status" unit={["room", "rooms"]} />;
+  if (rooms.length === 0) return <EmptyState icon={<BedDouble />} title="Aucune chambre chargée" />;
+  return <SplitBreakdown parts={parts} label="État des chambres" unit={["chambre", "chambres"]} />;
 });
 
 /** The "Room status" card, as shown on Reception Stats and the GM dashboard. */
 export function RoomStatusPanel({ rooms }: { rooms: readonly HotelRoom[] }) {
   return (
     // fills the card when a taller neighbour stretches it, content centred vertically
-    <Panel title="Room status" description="Where all rooms stand right now" icon={<BedDouble />} className="flex flex-col" bodyClassName="flex flex-1 items-center">
+    <Panel title="État des chambres" description="Situation actuelle de toutes les chambres" icon={<BedDouble />} className="flex flex-col" bodyClassName="flex flex-1 items-center">
       <RoomStatusChart rooms={rooms} />
     </Panel>
   );

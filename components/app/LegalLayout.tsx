@@ -11,7 +11,7 @@ export function LegalLayout({ children }: { children: ReactNode }) {
           href="/login"
           className="focus-ring mb-8 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
         >
-          <ArrowLeft className="size-4" aria-hidden /> Back to sign in
+          <ArrowLeft className="size-4" aria-hidden /> Retour à la connexion
         </Link>
         <article className="legal-prose">{children}</article>
       </div>

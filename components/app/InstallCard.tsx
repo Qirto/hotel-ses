@@ -60,7 +60,7 @@ export function InstallCard({
         <button
           type="button"
           onClick={onDismiss}
-          aria-label="Dismiss"
+          aria-label="Masquer"
           className="focus-ring -mr-1 -mt-1 grid size-9 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
         >
           <X className="size-4" aria-hidden />

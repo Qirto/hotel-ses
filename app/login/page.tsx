@@ -56,13 +56,13 @@ export default function LoginPage() {
         </header>
 
         <section className="rounded-2xl border border-border bg-surface p-5 shadow-float sm:p-6">
-          <h2 className="text-base font-semibold">Sign in</h2>
-          <p className="mt-1 text-sm text-fg-muted">Enter the passcode for your department.</p>
+          <h2 className="text-base font-semibold">Connexion</h2>
+          <p className="mt-1 text-sm text-fg-muted">Saisissez le code d’accès de votre service.</p>
 
           <form action={signInAction} noValidate className="mt-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="passcode-input" className="text-sm font-medium text-fg-secondary">
-                Passcode
+                Code d’accès
               </label>
               <div className="relative">
                 <KeyRound className={INPUT_ICON} aria-hidden />
@@ -75,7 +75,7 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                   onChange={() => errorMessage && setDismissedError(signIn)}
-                  placeholder="Enter passcode"
+                  placeholder="Saisir le code d’accès"
                   disabled={busy || Boolean(successRole)}
                   aria-invalid={Boolean(errorMessage)}
                   aria-describedby={errorMessage ? "passcode-error" : undefined}
@@ -88,7 +88,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPasscode((prev) => !prev)}
-                  aria-label={showPasscode ? "Hide passcode" : "Show passcode"}
+                  aria-label={showPasscode ? "Masquer le code d’accès" : "Afficher le code d’accès"}
                   aria-pressed={showPasscode}
                   className="focus-ring absolute inset-y-1 right-1 grid w-10 place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
                 >
@@ -102,7 +102,7 @@ export default function LoginPage() {
                 {errorMessage}
               </Alert>
             )}
-            {successRole && <Alert tone="success">Signed in. Opening your workspace.</Alert>}
+            {successRole && <Alert tone="success">Connexion réussie. Ouverture de votre espace…</Alert>}
 
             <Button
               type="submit"
@@ -110,24 +110,24 @@ export default function LoginPage() {
               size="lg"
               disabled={Boolean(successRole)}
               isLoading={busy}
-              loadingText="Checking"
+              loadingText="Vérification"
               rightIcon={<ArrowRight className="size-4" aria-hidden />}
               className="w-full justify-center"
             >
-              Continue
+              Continuer
             </Button>
           </form>
         </section>
 
         <footer className="mt-6 flex flex-col items-center gap-3 text-center text-xs text-fg-muted">
           <p>
-            Authorised staff only. A strictly necessary session cookie keeps you signed in.{" "}
+            Réservé au personnel autorisé. Un cookie de session strictement nécessaire maintient votre connexion.{" "}
             <Link href="/privacy" className="underline underline-offset-2 hover:text-fg">
-              Privacy
+              Confidentialité
             </Link>{" "}
             ·{" "}
             <Link href="/tos" className="underline underline-offset-2 hover:text-fg">
-              Terms
+              Conditions d’utilisation
             </Link>
           </p>
         </footer>

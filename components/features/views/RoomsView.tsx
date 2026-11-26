@@ -43,12 +43,12 @@ export const RoomsView = memo(function RoomsView({
   const statusOptions = useMemo(
     () =>
       [
-        { value: "ALL", label: "All" },
-        { value: "ATTENTION", label: "Needs attention", count: attention },
-        { value: "OCCUPIED", label: "Occupied", count: counts.occupied },
-        { value: "VACANT", label: "Vacant", count: counts.vacant },
-        { value: "VACANT_CLEAN", label: "Ready", count: counts.vacantClean },
-        { value: "DIRTY", label: "Dirty", count: counts.dirty },
+        { value: "ALL", label: "Toutes" },
+        { value: "ATTENTION", label: "À traiter", count: attention },
+        { value: "OCCUPIED", label: "Occupées", count: counts.occupied },
+        { value: "VACANT", label: "Libres", count: counts.vacant },
+        { value: "VACANT_CLEAN", label: "Prêtes", count: counts.vacantClean },
+        { value: "DIRTY", label: "À nettoyer", count: counts.dirty },
       ] as const satisfies readonly { value: RoomFilter; label: string; count?: number }[],
     [attention, counts]
   );
@@ -61,13 +61,13 @@ export const RoomsView = memo(function RoomsView({
   }, [rooms, search, floor, status, stats]);
 
   return (
-    <Panel title="Rooms" description={`${filtered.length} of ${plural(rooms.length, "room")}`} icon={<BedDouble />}>
+    <Panel title="Chambres" description={`${filtered.length} sur ${plural(rooms.length, "chambre")}`} icon={<BedDouble />}>
       <div className="mb-5 flex flex-col gap-2">
         <FilterBar>
-          <SearchInput label="Search rooms" placeholder="Room number" value={search} onChange={setSearch} />
-          <SelectField label="Floor" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
+          <SearchInput label="Rechercher une chambre" placeholder="Numéro de chambre" value={search} onChange={setSearch} />
+          <SelectField label="Étage" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
         </FilterBar>
-        <PillGroup<RoomFilter> label="Room status" value={status} onChange={setStatus} options={statusOptions} />
+        <PillGroup<RoomFilter> label="État des chambres" value={status} onChange={setStatus} options={statusOptions} />
       </div>
       <RoomGrid rooms={filtered} tickets={tickets} onSelect={onSelectRoom} />
     </Panel>

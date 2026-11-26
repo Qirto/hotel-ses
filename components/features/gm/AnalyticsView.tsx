@@ -17,16 +17,16 @@ import { computeAllRoomsAnalytics, type RoomAnalyticsSummary } from "@/utils/roo
 type AnalyticsSort = "MOST_TICKETS" | "OPEN_TICKETS" | "RUSH_HOUR" | "ROOM_NUMBER";
 
 const BLOCK_OPTIONS = [
-  { value: "ALL", label: "All blocks" },
-  { value: "BLOCK_A", label: "Block A" },
-  { value: "BLOCK_B", label: "Block B" },
+  { value: "ALL", label: "Tous les blocs" },
+  { value: "BLOCK_A", label: "Bloc A" },
+  { value: "BLOCK_B", label: "Bloc B" },
 ];
 
 const SORT_OPTIONS = [
-  { value: "MOST_TICKETS", label: "Most tickets" },
-  { value: "OPEN_TICKETS", label: "Most open" },
-  { value: "RUSH_HOUR", label: "Biggest rush" },
-  { value: "ROOM_NUMBER", label: "Room number" },
+  { value: "MOST_TICKETS", label: "Plus de demandes" },
+  { value: "OPEN_TICKETS", label: "Plus de demandes ouvertes" },
+  { value: "RUSH_HOUR", label: "Pic le plus élevé" },
+  { value: "ROOM_NUMBER", label: "Numéro de chambre" },
 ] as const satisfies readonly { value: AnalyticsSort; label: string }[];
 
 /**
@@ -91,30 +91,30 @@ export const AnalyticsView = memo(function AnalyticsView({
   return (
     <>
       <KpiGrid>
-        <Kpi label="Rooms with tickets" value={summary.withIssues} hint={`of ${plural(rooms.length, "room")}`} icon={<BedDouble />} />
-        <Kpi label="Rush hours found" value={summary.withRush} hint="Rooms with a peak hour" icon={<Clock />} />
+        <Kpi label="Chambres avec demandes" value={summary.withIssues} hint={`sur ${plural(rooms.length, "chambre")}`} icon={<BedDouble />} />
+        <Kpi label="Heures de pointe détectées" value={summary.withRush} hint="Chambres avec une heure de pointe" icon={<Clock />} />
         <Kpi
-          label="Most reported room"
+          label="Chambre la plus signalée"
           value={summary.top ? summary.top.room : "–"}
-          hint={summary.top ? plural(summary.top.count, "ticket") : "No tickets yet"}
+          hint={summary.top ? plural(summary.top.count, "demande") : "Aucune demande pour le moment"}
           tone={summary.top ? "warning" : "neutral"}
           icon={<Repeat />}
         />
-        <Kpi label="Total tickets" value={tickets.length} hint={`${openCount} open`} icon={<ClipboardList />} />
+        <Kpi label="Total des demandes" value={tickets.length} hint={plural(openCount, "ouverte")} icon={<ClipboardList />} />
       </KpiGrid>
 
-      <Panel title="Room patterns" description="Peak complaint hours and repeated problems per room" icon={<ChartColumn />}>
+      <Panel title="Tendances par chambre" description="Heures de pointe des réclamations et problèmes récurrents par chambre" icon={<ChartColumn />}>
         <div className="mb-5">
           <FilterBar>
-            <SearchInput label="Search rooms" placeholder="Room number" value={search} onChange={setSearch} />
-            <SelectField label="Floor" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
-            <SelectField label="Block" icon={<Building2 />} value={block} onChange={setBlock} options={BLOCK_OPTIONS} />
-            <SelectField label="Sort" icon={<ListFilter />} value={sort} onChange={setSort} options={SORT_OPTIONS} />
+            <SearchInput label="Rechercher une chambre" placeholder="Numéro de chambre" value={search} onChange={setSearch} />
+            <SelectField label="Étage" icon={<Layers />} value={floor} onChange={setFloor} options={floorOptions} />
+            <SelectField label="Bloc" icon={<Building2 />} value={block} onChange={setBlock} options={BLOCK_OPTIONS} />
+            <SelectField label="Trier" icon={<ListFilter />} value={sort} onChange={setSort} options={SORT_OPTIONS} />
           </FilterBar>
         </div>
 
         {listed.length === 0 ? (
-          <EmptyState icon={<ChartColumn />} title="No rooms with tickets" description="Patterns appear once rooms have reported issues." />
+          <EmptyState icon={<ChartColumn />} title="Aucune chambre avec des demandes" description="Les tendances apparaissent dès que des problèmes sont signalés dans les chambres." />
         ) : (
           <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {listed.map((room) => (
@@ -140,15 +140,15 @@ const RoomPatternCard = memo(function RoomPatternCard({
 }) {
   const figures: [string, string | number][] = [
     ["Total", s.totalTickets],
-    ["Resolved", s.resolvedTickets],
-    ["Open", s.openTickets],
-    ["Avg fix", formatMinutes(s.avgResolutionMinutes)],
+    ["Résolues", s.resolvedTickets],
+    ["Ouvertes", s.openTickets],
+    ["Délai moyen", formatMinutes(s.avgResolutionMinutes)],
   ];
   return (
     <li className="flex min-w-0 flex-col gap-4 rounded-xl border border-border bg-surface-raised p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-lg font-semibold tabular-nums tracking-tight">Room {room.room_number}</p>
+          <p className="text-lg font-semibold tabular-nums tracking-tight">Chambre {room.room_number}</p>
           <p className="text-xs text-fg-muted">
             {roomLocation(room)}
           </p>
@@ -158,7 +158,7 @@ const RoomPatternCard = memo(function RoomPatternCard({
 
       <div className="rounded-lg border border-border bg-surface p-3">
         <p className="flex items-center gap-1.5 text-xs text-fg-muted">
-          <Clock className="size-3.5" aria-hidden /> Rush hour
+          <Clock className="size-3.5" aria-hidden /> Heure de pointe
         </p>
         {s.rushHour ? (
           <p className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3">
@@ -166,7 +166,7 @@ const RoomPatternCard = memo(function RoomPatternCard({
             <span className="text-xs text-fg-muted">{s.rushHour.date}</span>
           </p>
         ) : (
-          <p className="mt-1 text-sm text-fg-muted">No peak yet</p>
+          <p className="mt-1 text-sm text-fg-muted">Aucun pic pour le moment</p>
         )}
       </div>
 
@@ -182,7 +182,7 @@ const RoomPatternCard = memo(function RoomPatternCard({
       </dl>
 
       <Button variant="secondary" size="touch" onClick={() => onOpen(room)} className="w-full justify-center">
-        Open room
+        Ouvrir la chambre
       </Button>
     </li>
   );

@@ -151,7 +151,7 @@ export const VelocityToast: React.FC<VelocityToastProps> = ({
                 type="button"
                 onClick={handleDismiss}
                 className="focus-ring -mr-1 -mt-1 grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
-                aria-label="Close notification"
+                aria-label="Fermer la notification"
               >
                 <X className="size-4" aria-hidden />
               </button>

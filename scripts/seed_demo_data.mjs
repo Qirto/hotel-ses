@@ -87,32 +87,32 @@ const TEAM = [
 /** Categories match the app's issue presets (lib/constants), with realistic details. */
 const ISSUES = {
   TECHNICAL: [
-    ["A/C", ["A/C blowing warm air", "A/C unit very noisy at night", "Thermostat not responding"]],
-    ["Plumbing", ["Shower drain blocked", "Sink leaking under the counter", "No hot water in the bathroom"]],
-    ["Electrical", ["Bedside lamp not working", "Power socket by the desk dead", "Bathroom light flickering"]],
-    ["TV/Audio", ["TV has no signal", "Remote control not working", "Missing international channels"]],
-    ["Lock", ["Door lock sticks", "Keycard reader slow to open", "Balcony door does not lock"]],
+    ["A/C", ["La climatisation souffle de l’air chaud", "Climatiseur très bruyant la nuit", "Le thermostat ne répond pas"]],
+    ["Plumbing", ["Évacuation de la douche bouchée", "Fuite sous le lavabo", "Pas d’eau chaude dans la salle de bains"]],
+    ["Electrical", ["Lampe de chevet en panne", "Prise du bureau hors service", "L’éclairage de la salle de bains clignote"]],
+    ["TV/Audio", ["Pas de signal sur la TV", "Télécommande en panne", "Chaînes internationales manquantes"]],
+    ["Lock", ["La serrure de la porte accroche", "Lecteur de carte-clé lent à ouvrir", "La porte du balcon ne ferme pas à clé"]],
   ],
   HOUSEKEEPING: [
-    ["Towels", ["Extra bath towels requested", "Pool towels needed", "Fresh towels after spa"]],
-    ["Bedding", ["Extra pillow requested", "Extra blanket for a child", "Sheets need changing"]],
-    ["Toiletries", ["Shampoo and soap restock", "Toothbrush kit requested", "Out of conditioner"]],
-    ["Cleaning", ["Spilled coffee on the carpet", "Balcony needs cleaning", "Sand in the room after the beach"]],
-    ["Minibar", ["Minibar restock", "Minibar not cold", "Water bottles requested"]],
+    ["Towels", ["Serviettes de bain supplémentaires demandées", "Serviettes de piscine demandées", "Serviettes propres après le spa"]],
+    ["Bedding", ["Oreiller supplémentaire demandé", "Couverture supplémentaire pour un enfant", "Draps à changer"]],
+    ["Toiletries", ["Réassort shampooing et savon", "Kit brosse à dents demandé", "Plus d’après-shampooing"]],
+    ["Cleaning", ["Café renversé sur la moquette", "Balcon à nettoyer", "Sable dans la chambre au retour de la plage"]],
+    ["Minibar", ["Réassort du minibar", "Le minibar ne refroidit pas", "Bouteilles d’eau demandées"]],
   ],
   FOOD_AND_BEVERAGE: [
-    ["Room Service", ["Dinner order delayed", "Wrong item delivered", "Late-night snack order"]],
-    ["Breakfast", ["Continental breakfast tray at 7:30", "Gluten-free breakfast request", "Breakfast for two in the room"]],
-    ["Drinks", ["Champagne and ice bucket for an anniversary", "Fresh orange juice requested"]],
+    ["Room Service", ["Commande du dîner en retard", "Erreur dans la commande livrée", "Collation commandée en fin de soirée"]],
+    ["Breakfast", ["Plateau petit-déjeuner continental à 7:30", "Petit-déjeuner sans gluten demandé", "Petit-déjeuner pour deux en chambre"]],
+    ["Drinks", ["Champagne et seau à glace pour un anniversaire", "Jus d’orange frais demandé"]],
   ],
   CONCIERGE: [
-    ["Luggage", ["Luggage pickup at checkout", "Bags to store until evening"]],
-    ["Transport", ["Airport transfer to Enfidha", "Taxi to Hammamet medina", "Golf course shuttle"]],
-    ["Keycard", ["Keycard demagnetised", "Second keycard requested"]],
+    ["Luggage", ["Prise en charge des bagages au départ", "Bagages à garder jusqu’au soir"]],
+    ["Transport", ["Transfert vers l’aéroport d’Enfidha", "Taxi pour la médina de Hammamet", "Navette pour le golf"]],
+    ["Keycard", ["Carte-clé démagnétisée", "Deuxième carte-clé demandée"]],
   ],
   SECURITY: [
-    ["General", ["Noise complaint from the next room", "Lost phone near the pool", "Guest locked out of the balcony"]],
-    ["Urgent", ["Smoke smell in the corridor", "Unknown person at the door"]],
+    ["General", ["Plainte pour bruit de la chambre voisine", "Téléphone perdu près de la piscine", "Client bloqué à l’extérieur sur le balcon"]],
+    ["Urgent", ["Odeur de fumée dans le couloir", "Personne inconnue à la porte"]],
   ],
 };
 const DEPARTMENT_WEIGHTS = [["TECHNICAL", 38], ["HOUSEKEEPING", 32], ["FOOD_AND_BEVERAGE", 12], ["CONCIERGE", 10], ["SECURITY", 8]];
@@ -132,11 +132,11 @@ const FIX_MINUTES = { EMERGENCY: [8, 45], HIGH: [15, 120], STANDARD: [25, 360] }
 /* ───────────── run ───────────── */
 
 async function main() {
-  console.log(`Seeding demo data into ${new URL(env.NEXT_PUBLIC_SUPABASE_URL).host}${RESET ? " (reset first)" : ""}`);
+  console.log(`Insertion des données de démonstration dans ${new URL(env.NEXT_PUBLIC_SUPABASE_URL).host}${RESET ? " (réinitialisation préalable)" : ""}`);
 
   if (RESET) {
     for (const table of ["reclamations", "residents", "staff"]) await must(`clear ${table}`, supabase.from(table).delete().gte("id", 0));
-    console.log("Cleared tickets, residents and staff.");
+    console.log("Demandes, clients et personnel supprimés.");
   }
 
   /* staff */
@@ -156,7 +156,7 @@ async function main() {
     })
   );
   const staff = await must("insert staff", supabase.from("staff").insert(staffRows).select("id, role, department"));
-  console.log(`Staff: ${staff.length}`);
+  console.log(`Personnel : ${staff.length}`);
   const byRole = (roles) => staff.filter((s) => roles.includes(s.role));
   const receptionists = byRole(["receptionist"]);
 
@@ -177,7 +177,7 @@ async function main() {
     if (isOccupied) occupied.push({ ...room, adults });
   }
   for (const { patch, ids } of groups.values()) await must("update rooms", supabase.from("rooms").update(patch).in("id", ids));
-  console.log(`Rooms: ${occupied.length} occupied of ${rooms.length}`);
+  console.log(`Chambres : ${occupied.length} occupées sur ${rooms.length}`);
 
   /* guests in occupied rooms */
   const residentRows = occupied.flatMap((room) =>
@@ -199,7 +199,7 @@ async function main() {
   for (let i = 0; i < residentRows.length; i += 200) {
     residents.push(...(await must("insert residents", supabase.from("residents").insert(residentRows.slice(i, i + 200)).select("id, room_id"))));
   }
-  console.log(`Guests: ${residents.length}`);
+  console.log(`Clients : ${residents.length}`);
   const residentByRoom = new Map(residents.map((r) => [r.room_id, r.id]));
 
   /* tickets: 90 days, a few rooms with repeat problems, some open right now */
@@ -256,8 +256,8 @@ async function main() {
   }
   for (let i = 0; i < ticketRows.length; i += 200) await must("insert tickets", supabase.from("reclamations").insert(ticketRows.slice(i, i + 200)));
   const open = ticketRows.filter((t) => t.status !== "RESOLVED");
-  console.log(`Tickets: ${ticketRows.length} (${open.length} open, ${open.filter((t) => t.priority !== "STANDARD").length} urgent)`);
-  console.log("Done.");
+  console.log(`Demandes : ${ticketRows.length} (${open.length} ouvertes, ${open.filter((t) => t.priority !== "STANDARD").length} urgentes)`);
+  console.log("Terminé.");
 }
 
 main().catch((err) => {

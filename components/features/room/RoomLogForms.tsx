@@ -30,8 +30,8 @@ export const RoomLogForms = memo(function RoomLogForms({
         value={mode}
         onChange={onModeChange}
         options={[
-          { value: "NEW", label: "New ticket" },
-          { value: "PAST", label: "Past incident" },
+          { value: "NEW", label: "Nouvelle demande" },
+          { value: "PAST", label: "Incident passé" },
         ]}
       />
       {mode === "NEW" ? (

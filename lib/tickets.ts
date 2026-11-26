@@ -1,5 +1,5 @@
 import type { HotelRoom, Reclamation } from "@/utils/roomsData";
-import { departmentLabel } from "@/lib/format";
+import { categoryLabel, departmentLabel } from "@/lib/format";
 import { hotelDayNumber } from "@/lib/datetime";
 import type { Tone } from "@/lib/rooms";
 
@@ -29,44 +29,51 @@ export function isUrgentOpenTicket(ticket: Pick<Reclamation, "status" | "priorit
 export type DateRange = "ALL" | "TODAY" | "WEEK" | "MONTH" | "ARCHIVE";
 
 export const DATE_RANGES = [
-  { value: "ALL", label: "All time" },
-  { value: "TODAY", label: "Today" },
-  { value: "WEEK", label: "7 days" },
-  { value: "MONTH", label: "30 days" },
-  { value: "ARCHIVE", label: "Older" },
+  { value: "ALL", label: "Toute la période" },
+  { value: "TODAY", label: "Aujourd’hui" },
+  { value: "WEEK", label: "7 jours" },
+  { value: "MONTH", label: "30 jours" },
+  { value: "ARCHIVE", label: "Plus ancien" },
 ] as const satisfies readonly { value: DateRange; label: string }[];
 
 /** Ticket status: label, badge tone and sort order (open first). The one definition. */
 export const TICKET_STATUS: Record<Reclamation["status"], { label: string; tone: Tone; order: number }> = {
-  OPEN: { label: "Open", tone: "danger", order: 0 },
-  ACKNOWLEDGED: { label: "Acknowledged", tone: "warning", order: 1 },
-  IN_PROGRESS: { label: "In progress", tone: "warning", order: 2 },
-  RESOLVED: { label: "Resolved", tone: "success", order: 3 },
+  OPEN: { label: "Ouverte", tone: "danger", order: 0 },
+  ACKNOWLEDGED: { label: "Prise en charge", tone: "warning", order: 1 },
+  IN_PROGRESS: { label: "En cours", tone: "warning", order: 2 },
+  RESOLVED: { label: "Résolue", tone: "success", order: 3 },
 };
 
 /** Ticket priority: label, tone and sort order (most urgent first). */
 export const TICKET_PRIORITY: Record<Reclamation["priority"], { label: string; tone: Tone; order: number }> = {
-  EMERGENCY: { label: "Emergency", tone: "danger", order: 0 },
-  HIGH: { label: "High", tone: "warning", order: 1 },
-  STANDARD: { label: "Standard", tone: "neutral", order: 2 },
+  EMERGENCY: { label: "Urgente", tone: "danger", order: 0 },
+  HIGH: { label: "Haute", tone: "warning", order: 1 },
+  STANDARD: { label: "Normale", tone: "neutral", order: 2 },
 };
 
 export type TicketStatusFilter = "ALL" | Reclamation["status"];
 
 export const TICKET_STATUS_OPTIONS: { value: TicketStatusFilter; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
+  { value: "ALL", label: "Tous les statuts" },
   ...(Object.keys(TICKET_STATUS) as Reclamation["status"][]).map((s) => ({ value: s, label: TICKET_STATUS[s].label })),
 ];
 
 
-/** Free-text ticket search: room number, issue, description and assignee. */
+/** Free-text ticket search: room number, issue (code and label), department label, description and assignee. */
 export function matchesTicketQuery(
-  ticket: Pick<Reclamation, "category" | "description"> & { room?: { room_number?: string | null } | null; assigned_to?: { full_name?: string | null } | null },
+  ticket: Pick<Reclamation, "category" | "description"> & Partial<Pick<Reclamation, "department">> & { room?: { room_number?: string | null } | null; assigned_to?: { full_name?: string | null } | null },
   query: string
 ): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [ticket.room?.room_number, ticket.category, ticket.description, ticket.assigned_to?.full_name].some((v) => v?.toLowerCase().includes(q));
+  return [
+    ticket.room?.room_number,
+    ticket.category,
+    categoryLabel(ticket.category),
+    ticket.department ? departmentLabel(ticket.department) : undefined,
+    ticket.description,
+    ticket.assigned_to?.full_name,
+  ].some((v) => v?.toLowerCase().includes(q));
 }
 
 /** Date-range filter for ticket lists. Tickets without a creation date always match. */

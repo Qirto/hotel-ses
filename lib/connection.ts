@@ -49,4 +49,4 @@ export function useRealtimeState(): RealtimeState {
   return useSyncExternalStore(subscribeRealtime, () => realtime, () => "idle");
 }
 
-export const OFFLINE_MESSAGE = "You're offline. Nothing was saved. Try again when you're back online.";
+export const OFFLINE_MESSAGE = "Vous êtes hors ligne. Rien n’a été enregistré. Réessayez une fois la connexion rétablie.";

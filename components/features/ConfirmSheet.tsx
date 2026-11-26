@@ -10,7 +10,7 @@ export function ConfirmSheet({
   title,
   description,
   confirmLabel,
-  pendingLabel = "Updating",
+  pendingLabel = "Mise à jour",
   tone = "primary",
   pending,
   onConfirm,

@@ -40,7 +40,7 @@ export const TicketsView = memo(function TicketsView({
     for (const t of tickets) if (t.department) counts.set(t.department, (counts.get(t.department) ?? 0) + 1);
     for (const code of departments ?? []) if (!counts.has(code)) counts.set(code, 0);
     return [
-      { value: "ALL", label: `All departments (${tickets.length})` },
+      { value: "ALL", label: `Tous les services (${tickets.length})` },
       ...[...counts.entries()]
         .map(([code, n]) => ({ value: code, name: departmentName(code), n }))
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -60,12 +60,12 @@ export const TicketsView = memo(function TicketsView({
   }, [tickets, department, status, range, query]);
 
   return (
-    <Panel title="Tickets" description={`${plural(filtered.length, "ticket")} · ${openCount} open`} icon={<ClipboardList />}>
+    <Panel title="Demandes" description={`${plural(filtered.length, "demande")} · ${plural(openCount, "ouverte")}`} icon={<ClipboardList />}>
       <FilterBar className="mb-4">
-        <SearchInput label="Search tickets by room, issue or assignee" placeholder="Search tickets" value={query} onChange={setQuery} />
-        <SelectField label="Department" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
-        <SelectField label="Status" icon={<ListFilter />} value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
-        <SelectField<DateRange> label="Date range" icon={<CalendarRange />} value={range} onChange={setRange} options={DATE_RANGES} />
+        <SearchInput label="Rechercher une demande par chambre, problème ou personne assignée" placeholder="Rechercher une demande" value={query} onChange={setQuery} />
+        <SelectField label="Service" icon={<Building2 />} value={department} onChange={setDepartment} options={departmentOptions} />
+        <SelectField label="Statut" icon={<ListFilter />} value={status} onChange={setStatus} options={TICKET_STATUS_OPTIONS} />
+        <SelectField<DateRange> label="Période" icon={<CalendarRange />} value={range} onChange={setRange} options={DATE_RANGES} />
       </FilterBar>
       <TicketTable tickets={filtered} actions={actions} />
     </Panel>

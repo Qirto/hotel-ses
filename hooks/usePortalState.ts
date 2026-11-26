@@ -96,7 +96,7 @@ export function usePortalState<Tab extends SharedTab | (string & {})>({
   // lost mid-request: say so and refetch, so the screen shows the real state.
   const [isPending, startAction] = useTransition();
   const lostConnection = useCallback(() => {
-    flash("danger", "Connection lost. The change may not have been saved; showing the latest data.");
+    flash("danger", "Connexion perdue. La modification n’a peut-être pas été enregistrée ; affichage des données les plus récentes.");
     router.refresh();
   }, [flash, router]);
 
