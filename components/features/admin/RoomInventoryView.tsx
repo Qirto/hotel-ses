@@ -53,7 +53,7 @@ export const RoomInventoryView = memo(function RoomInventoryView({
         minWidth: 8,
         priority: 3,
         accessor: (r) => Number(r.room_number) % 2,
-        cell: (r) => <span className="text-fg-secondary">{Number(r.room_number) % 2 ? "Droit (impairs)" : "Gauche (pairs)"}</span>,
+        cell: (r) => <span className="text-fg-secondary">{Number(r.room_number) % 2 ? "Gauche (impairs)" : "Droit (pairs)"}</span>,
       },
       {
         key: "state",

@@ -2,14 +2,14 @@
  * The hotel's rooms: the one source for every seed script (seed_supabase_rooms.js,
  * generate_full_erd_sql.js). Taken from the hotel's floor plan.
  *
- * Per floor and block, two corridor sides: even numbers on the left, odd on the right.
+ * Per floor and block, two corridor sides: odd numbers on the left, even on the right.
  * Numbers ending in 13 do not exist. 3077 stands alone on Bloc B's odd side, floor 3.
  *
  *            Bloc A                        Bloc B
- *            left (even)   right (odd)     left (even)   right (odd)
- *   Floor 1  1002-1052     1001-1067       1070-1120     1071-1135
- *   Floor 2  2002-2052     2001-2067       2070-2120     2071-2135
- *   Floor 3  3002-3052     3001-3067       3070-3118     3091-3133 + 3077
+ *            left (odd)    right (even)    left (odd)          right (even)
+ *   Floor 1  1001-1067     1002-1052       1071-1135           1070-1120
+ *   Floor 2  2001-2067     2002-2052       2071-2135           2070-2120
+ *   Floor 3  3001-3067     3002-3052       3091-3133 + 3077    3070-3118
  *
  * Totals: 117 + 117 + 106 = 340 rooms.
  */

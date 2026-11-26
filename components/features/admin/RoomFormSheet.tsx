@@ -38,7 +38,7 @@ export function RoomFormSheet({
   const [number, setNumber] = useState(room?.room_number ?? "");
   const [block, setBlock] = useState<RoomFormInput["block"]>(room?.block ?? "BLOCK_A");
   const digits = number.trim();
-  const preview = /^[1-3]\d{3}$/.test(digits) ? `Étage ${digits[0]} · côté ${Number(digits) % 2 ? "droit (impairs)" : "gauche (pairs)"}` : "Le premier chiffre donne l’étage (1 à 3).";
+  const preview = /^[1-3]\d{3}$/.test(digits) ? `Étage ${digits[0]} · côté ${Number(digits) % 2 ? "gauche (impairs)" : "droit (pairs)"}` : "Le premier chiffre donne l’étage (1 à 3).";
 
   return (
     <ResponsiveSheet

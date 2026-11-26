@@ -141,10 +141,10 @@ export type RoomSide = { side: "even" | "odd"; label: string; from: string; to: 
 export type RoomBlock = { block: string; label: string; rooms: HotelRoom[]; sides: RoomSide[] };
 export type RoomFloor = { floor: number; rooms: HotelRoom[]; blocks: RoomBlock[] };
 
-/** Corridor sides: even numbers on the left, odd on the right (hotel floor plan). */
+/** Corridor sides: odd numbers on the left, even on the right (hotel floor plan); left first. */
 const SIDES = [
-  { side: "even", label: "Côté gauche · pairs" },
-  { side: "odd", label: "Côté droit · impairs" },
+  { side: "odd", label: "Côté gauche · impairs" },
+  { side: "even", label: "Côté droit · pairs" },
 ] as const;
 
 /**
