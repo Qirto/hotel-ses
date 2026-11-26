@@ -1,6 +1,6 @@
 # Hotel SES
 
-Operations app for Hôtel Méditerranée Thalasso Golf Hammamet (341 rooms). Front desk, HR and management track rooms, guest issues ("tickets") and staff in real time, from a phone or a desktop.
+Operations app for Hôtel Méditerranée Thalasso Golf Hammamet (340 rooms). Front desk, HR and management track rooms, guest issues ("tickets") and staff in real time, from a phone or a desktop.
 
 Built with Next.js 16, React 19, Supabase and the [easyui](https://easyui.site) component set. Installable as a PWA.
 
@@ -186,7 +186,7 @@ Run these in the Supabase SQL editor, in order:
 
 | Order | File | Adds |
 | --- | --- | --- |
-| 1 | `supabase/hotel_rooms.sql` | Tables, policies and the 341 rooms |
+| 1 | `supabase/hotel_rooms.sql` | Tables, policies and the 340 rooms |
 | 2 | `supabase/migrations_roles_upgrade.sql` | Guest counts, staff presence, confidential flag, SLA deadline |
 | 3 | `supabase/migrations_department_crud.sql` | `departments` table |
 | 4 | `supabase/migrations_expand_departments.sql` | All hotel departments and roles for staff |
@@ -200,7 +200,7 @@ Run these in the Supabase SQL editor, in order:
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Production build (includes type check) |
 | `npm run start` | Serve the production build |
-| `npm run seed` | Seed the 341 rooms into Supabase |
+| `npm run seed` | Add any missing rooms of the hotel plan (scripts/room_layout.js) to Supabase |
 
 ## Design
 

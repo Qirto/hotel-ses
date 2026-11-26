@@ -62,8 +62,8 @@ export const RoomGrid = memo(function RoomGrid({
             Étage {f.floor}
             <span className="text-xs font-normal text-fg-muted">{plural(f.rooms.length, "chambre")}</span>
           </h3>
-          {/* one block fills the row; two sit side by side once each has ~34rem */}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,34rem),1fr))] gap-3">
+          {/* one block fills the row; two sit side by side once each has 28rem (laptop widths) */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,28rem),1fr))] gap-3">
             {f.blocks.map((b) => (
               <BlockCard key={b.block} block={b} stats={stats} onSelect={onSelect} />
             ))}

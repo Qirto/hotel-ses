@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
                 <strong>Ressources humaines (<code>/rh</code>) :</strong> personnel RH habilité à gérer les horaires des employés, à tenir à jour le référentiel des services et à réassigner la charge des demandes en cas d’absence.
               </li>
               <li>
-                <strong>Direction générale (<code>/gm</code>) :</strong> équipe de direction disposant d’une vue d’ensemble sur les 341 chambres, des analyses de SLA par service, des performances de délai moyen de résolution (MTTR) et des réclamations confidentielles des clients.
+                <strong>Direction générale (<code>/gm</code>) :</strong> équipe de direction disposant d’une vue d’ensemble sur les 340 chambres, des analyses de SLA par service, des performances de délai moyen de résolution (MTTR) et des réclamations confidentielles des clients.
               </li>
             </ul>
           </section>

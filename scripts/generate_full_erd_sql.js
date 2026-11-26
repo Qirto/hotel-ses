@@ -1,119 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
+const { hotelRooms } = require('./room_layout');
 
-function generateAllRooms() {
-  const rooms = [];
-
-  // ====================================================
-  // BLOCK A
-  // ====================================================
-  // Right side: odd numbers (1001-1067, 2001-2067, 3001-3067), skip ending in 13
-  const blockARightFloors = [
-    { floor: 1, start: 1001, end: 1067 },
-    { floor: 2, start: 2001, end: 2067 },
-    { floor: 3, start: 3001, end: 3067 },
-  ];
-
-  for (const f of blockARightFloors) {
-    for (let n = f.start; n <= f.end; n += 2) {
-      if (n % 100 !== 13) {
-        const roomNum = n.toString();
-        const qrHash = crypto.createHash('sha256').update(`HOTEL_DOOR_${roomNum}_BLOCK_A`).digest('hex').slice(0, 16);
-        rooms.push({
-          room_number: roomNum,
-          floor: f.floor,
-          block: 'BLOCK_A',
-          is_occupied: false,
-          cleaning_status: 'CLEAN',
-          qr_code_hash: `QR-${roomNum}-${qrHash}`,
-        });
-      }
-    }
-  }
-
-  // Left side: even numbers (1002-1054, 2002-2054, 3002-3052), skip ending in 13
-  const blockALeftFloors = [
-    { floor: 1, start: 1002, end: 1054 },
-    { floor: 2, start: 2002, end: 2054 },
-    { floor: 3, start: 3002, end: 3052 },
-  ];
-
-  for (const f of blockALeftFloors) {
-    for (let n = f.start; n <= f.end; n += 2) {
-      if (n % 100 !== 13) {
-        const roomNum = n.toString();
-        const qrHash = crypto.createHash('sha256').update(`HOTEL_DOOR_${roomNum}_BLOCK_A`).digest('hex').slice(0, 16);
-        rooms.push({
-          room_number: roomNum,
-          floor: f.floor,
-          block: 'BLOCK_A',
-          is_occupied: false,
-          cleaning_status: 'CLEAN',
-          qr_code_hash: `QR-${roomNum}-${qrHash}`,
-        });
-      }
-    }
-  }
-
-  // ====================================================
-  // BLOCK B
-  // ====================================================
-  // Left side: odd numbers (1071-1135, 2071-2135, 3091-3133), skip ending in 13
-  const blockBLeftFloors = [
-    { floor: 1, start: 1071, end: 1135 },
-    { floor: 2, start: 2071, end: 2135 },
-    { floor: 3, start: 3091, end: 3133 },
-  ];
-
-  for (const f of blockBLeftFloors) {
-    for (let n = f.start; n <= f.end; n += 2) {
-      if (n % 100 !== 13) {
-        const roomNum = n.toString();
-        const qrHash = crypto.createHash('sha256').update(`HOTEL_DOOR_${roomNum}_BLOCK_B`).digest('hex').slice(0, 16);
-        rooms.push({
-          room_number: roomNum,
-          floor: f.floor,
-          block: 'BLOCK_B',
-          is_occupied: false,
-          cleaning_status: 'CLEAN',
-          qr_code_hash: `QR-${roomNum}-${qrHash}`,
-        });
-      }
-    }
-  }
-
-  // Right side: even numbers (1070-1120, 2070-2120, 3070-3118), skip ending in 13
-  const blockBRightFloors = [
-    { floor: 1, start: 1070, end: 1120 },
-    { floor: 2, start: 2070, end: 2120 },
-    { floor: 3, start: 3070, end: 3118 },
-  ];
-
-  for (const f of blockBRightFloors) {
-    for (let n = f.start; n <= f.end; n += 2) {
-      if (n % 100 !== 13) {
-        const roomNum = n.toString();
-        const qrHash = crypto.createHash('sha256').update(`HOTEL_DOOR_${roomNum}_BLOCK_B`).digest('hex').slice(0, 16);
-        rooms.push({
-          room_number: roomNum,
-          floor: f.floor,
-          block: 'BLOCK_B',
-          is_occupied: false,
-          cleaning_status: 'CLEAN',
-          qr_code_hash: `QR-${roomNum}-${qrHash}`,
-        });
-      }
-    }
-  }
-
-  return rooms;
-}
-
-const rooms = generateAllRooms();
+const rooms = hotelRooms(); // one layout for every script: see room_layout.js
 
 const sqlContent = `-- =====================================================================
--- HOTEL MANAGEMENT DATABASE SCHEMA (ERD) & 341-ROOM SEED
+-- HOTEL MANAGEMENT DATABASE SCHEMA (ERD) & ROOM SEED
 -- Tables: ROOMS, RESIDENTS, STAFF, RECLAMATIONS
 -- Price column has been removed.
 -- Total Rooms: ${rooms.length} (Skipping all rooms ending with 13)
@@ -228,7 +120,7 @@ create policy "Allow all access to staff" on public.staff for all using (true) w
 create policy "Allow all access to reclamations" on public.reclamations for all using (true) with check (true);
 
 -- =====================================================================
--- 6. SEED DATA: INSERT ALL 341 ROOMS (No Price Column)
+-- 6. SEED DATA: INSERT ALL ${rooms.length} ROOMS (No Price Column)
 -- =====================================================================
 insert into public.rooms (room_number, floor, block, is_occupied, cleaning_status, qr_code_hash)
 values

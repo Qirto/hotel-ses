@@ -49,7 +49,7 @@ function Swatch({ color }: { color: string }) {
   return <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden />;
 }
 
-/** "341 rooms": the whole the chart adds up to. */
+/** "340 rooms": the whole the chart adds up to. */
 function Total({ value, unit }: { value: number; unit: readonly [string, string] }) {
   return (
     <p className="text-sm tabular-nums text-fg-secondary">
