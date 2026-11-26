@@ -9,8 +9,8 @@ import { percent } from "@/lib/format";
  * bars only carry proportion and never colour alone: they are aria-hidden, the
  * list is the accessible content.
  *
- * - <SplitBreakdown>: one whole split into parts (room status). A thin segmented bar,
- *   then one row per part: swatch, name, count, share.
+ * - <SplitBreakdown>: one whole split into parts (room status). A donut with the total on top,
+ *   then one full-width row per part: swatch, name, count, share.
  * - <RankedBreakdown>: items ranked largest first (tickets or staff per department).
  *   One row per item: name, its split and its total, and a bar that is that item's own
  *   100% split by series (each row reads on its own; volume is the bold total and the
@@ -73,6 +73,48 @@ export function Legend({ series }: { series: readonly Series[] }) {
 
 /* ───────────── one whole, split into parts ───────────── */
 
+const DONUT_R = 42;
+const DONUT_C = 2 * Math.PI * DONUT_R;
+const SLICE_GAP = 2.5; // surface gap between slices, in px of circumference
+const MIN_SLICE = 3; // a non-zero part stays visible
+
+/** Donut of the parts with the total in the middle. Decorative: the list beside it carries the figures. */
+function Donut({ parts, total, unit }: { parts: readonly (Series & { value: number })[]; total: number; unit: readonly [string, string] }) {
+  const shown = parts.filter((p) => p.value > 0);
+  const gap = shown.length > 1 ? SLICE_GAP : 0;
+  let offset = 0;
+  return (
+    <div className="relative size-44 shrink-0">
+      <svg viewBox="0 0 100 100" className="size-full -rotate-90" aria-hidden>
+        <circle cx="50" cy="50" r={DONUT_R} fill="none" strokeWidth="12" className="stroke-surface-raised" />
+        {total > 0 &&
+          shown.map((p) => {
+            const length = Math.max(MIN_SLICE, (p.value / total) * DONUT_C - gap);
+            const slice = (
+              <circle
+                key={p.key}
+                cx="50"
+                cy="50"
+                r={DONUT_R}
+                fill="none"
+                strokeWidth="12"
+                stroke={p.color}
+                strokeDasharray={`${length} ${DONUT_C - length}`}
+                strokeDashoffset={-offset}
+              />
+            );
+            offset += (p.value / total) * DONUT_C;
+            return slice;
+          })}
+      </svg>
+      <div className="absolute inset-0 grid place-content-center text-center">
+        <span className="text-2xl font-semibold tabular-nums text-fg">{total}</span>
+        <span className="text-xs text-fg-muted">{total === 1 ? unit[0] : unit[1]}</span>
+      </div>
+    </div>
+  );
+}
+
 export const SplitBreakdown = memo(function SplitBreakdown({
   parts,
   label,
@@ -86,10 +128,10 @@ export const SplitBreakdown = memo(function SplitBreakdown({
 }) {
   const total = parts.reduce((a, p) => a + p.value, 0);
   return (
-    <div className="flex flex-col gap-4">
-      <Total value={total} unit={unit} />
-      <StackBar segments={parts.map((p) => ({ key: p.key, value: p.value, color: p.color }))} className="h-2.5" />
-      <ul className="flex flex-col divide-y divide-border" aria-label={label}>
+    // stacked: donut on top, the list full width below (same shape on phones and desktop)
+    <div className="flex w-full flex-col items-center gap-5">
+      <Donut parts={parts} total={total} unit={unit} />
+      <ul className="flex w-full flex-col divide-y divide-border" aria-label={label}>
         {parts.map((p) => (
           <li key={p.key} className="flex min-h-10 items-center gap-3 py-2 text-sm">
             <Swatch color={p.color} />

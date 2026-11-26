@@ -8,7 +8,7 @@ const TICKET_SELECT =
 
 type Result<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-/** Runs one query; a failure is logged and yields null, so one table never takes the page down. */
+/** Runs one query; a failure is logged and yields null (reported together below). */
 async function rows<T>(label: string, query: Result<T>): Promise<T[] | null> {
   try {
     const { data, error } = await query;
@@ -23,8 +23,12 @@ async function rows<T>(label: string, query: Result<T>): Promise<T[] | null> {
 /**
  * Server-side data for a portal page. Rooms and tickets are always loaded;
  * departments and staff only when the portal shows them. All queries run in
- * parallel. `isLiveSupabase` is false when rooms could not be loaded (the
- * portal then skips realtime).
+ * parallel.
+ *
+ * If any requested dataset fails to load, this throws: the route's error page
+ * then offers "Try again". A portal never renders from silently missing data
+ * (an empty room grid or ticket list would look real). `isLiveSupabase` is false
+ * only when the rooms table is genuinely empty (realtime is then skipped).
  */
 export async function loadHotelData({ departments = false, staff = false }: { departments?: boolean; staff?: boolean } = {}) {
   const supabase = createClient(await cookies());
@@ -35,6 +39,14 @@ export async function loadHotelData({ departments = false, staff = false }: { de
     departments ? rows<Department>("departments", supabase.from("departments").select("*").order("id", { ascending: true })) : null,
     staff ? rows<Staff>("staff", supabase.from("staff").select("*").order("id", { ascending: true })) : null,
   ]);
+
+  const failed = [
+    rooms === null && "rooms",
+    tickets === null && "tickets",
+    departments && departmentRows === null && "departments",
+    staff && staffRows === null && "staff",
+  ].filter(Boolean);
+  if (failed.length) throw new Error(`Could not load ${failed.join(", ")} from the database.`);
 
   return {
     rooms: rooms ?? [],

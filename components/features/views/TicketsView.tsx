@@ -1,5 +1,6 @@
 "use client";
 
+import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, useMemo, useState, type ReactNode } from "react";
 import { Building2, CalendarRange, ClipboardList, ListFilter } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
@@ -21,7 +22,7 @@ export const TicketsView = memo(function TicketsView({
 }: {
   tickets: readonly Reclamation[];
   /** Per-ticket buttons (see `useTicketActions`); omit for a read-only list. */
-  actions?: (ticket: Reclamation) => ReactNode;
+  actions?: TicketActionsRender;
   /** Department codes to list even with no tickets. */
   departments?: readonly string[];
   /** Label for a department code. Must be stable. */

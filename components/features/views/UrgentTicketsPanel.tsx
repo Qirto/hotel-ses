@@ -1,5 +1,6 @@
 "use client";
 
+import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, type ReactNode } from "react";
 import { CircleCheck, Siren } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
@@ -18,7 +19,7 @@ export const UrgentTicketsPanel = memo(function UrgentTicketsPanel({
   title: string;
   description: string;
   tickets: readonly Reclamation[];
-  actions?: (ticket: Reclamation) => ReactNode;
+  actions?: TicketActionsRender;
   onViewAll: () => void;
 }) {
   return (

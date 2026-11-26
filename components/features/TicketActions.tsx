@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { CircleCheck, Eye } from "lucide-react";
 import type { Reclamation } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
@@ -35,14 +35,18 @@ export function ticketActions(ticket: Reclamation, { pending, onAcknowledge, onR
   );
 }
 
+/** Per-ticket action buttons, plus how many buttons a ticket can show at most (for column sizing). */
+export type TicketActionsRender = ((ticket: Reclamation) => ReactNode) & { maxButtons: number };
+
 /**
  * Stable render prop for `TicketTable`, `TicketCard` and `RoomDetail`.
  * Pass the portal's handlers; omit both to get `undefined` (no action column).
  */
-export function useTicketActions({ pending, onAcknowledge, onResolve }: TicketActionHandlers) {
+export function useTicketActions({ pending, onAcknowledge, onResolve }: TicketActionHandlers): TicketActionsRender | undefined {
+  const maxButtons = (onAcknowledge ? 1 : 0) + (onResolve ? 1 : 0);
   const render = useCallback(
     (ticket: Reclamation) => ticketActions(ticket, { pending, onAcknowledge, onResolve }),
     [pending, onAcknowledge, onResolve]
   );
-  return onAcknowledge || onResolve ? render : undefined;
+  return useMemo(() => (maxButtons ? Object.assign(render, { maxButtons }) : undefined), [render, maxButtons]);
 }

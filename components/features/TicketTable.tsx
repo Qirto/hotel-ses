@@ -1,5 +1,6 @@
 "use client";
 
+import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, useMemo, type ReactNode } from "react";
 import { ClipboardList } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
@@ -26,7 +27,7 @@ export const TicketTable = memo(function TicketTable({
   ariaLabel = "Tickets",
 }: {
   tickets: readonly Reclamation[];
-  actions?: (ticket: Reclamation) => ReactNode;
+  actions?: TicketActionsRender;
   onRowClick?: (ticket: Reclamation) => void;
   pageSize?: number;
   emptyTitle?: string;
@@ -118,13 +119,15 @@ export const TicketTable = memo(function TicketTable({
         header: "Actions",
         sortable: false,
         align: "right",
-        width: "minmax(8rem, auto)",
+        // Fixed, never `auto`: each row is its own grid, so an auto track would give every
+        // row different column widths. Sized for the buttons this portal can show.
+        width: actions.maxButtons > 1 ? "15.5rem" : "8.5rem",
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
         cell: (t) => {
           const node = actions(t);
-          return node ? <div className="flex flex-wrap justify-end gap-2">{node}</div> : null;
+          return node ? <div className="flex justify-end gap-2">{node}</div> : null;
         },
       });
     }

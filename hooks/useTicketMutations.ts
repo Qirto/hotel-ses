@@ -9,7 +9,7 @@ import type { PortalState } from "./usePortalState";
 /**
  * Every ticket write a portal can make, implemented once (was copied in all three
  * portals, with drift: some new tickets lacked their room number, one resolve always
- * reported success). `actor` names the portal in stored notes ("Resolved by …").
+ * reported success). `actor` names the portal in the default description of new tickets.
  *
  * - acknowledge / resolve: optimistic, reverted (with a message) if the server refuses.
  * - createTicket / recordPast: for any room (quick-dispatch sheets) and, bound to the
@@ -51,11 +51,11 @@ export function useTicketMutations<Tab extends string>(p: PortalState<Tab>, acto
       updateTicket(
         id,
         { status: "RESOLVED", resolved_at: new Date().toISOString() },
-        () => resolveReclamation(id, `Resolved by ${actor}`),
+        () => resolveReclamation(id),
         "Ticket resolved.",
         "Could not resolve the ticket."
       ),
-    [updateTicket, actor]
+    [updateTicket]
   );
 
   /** Adds the created ticket to the list, with its room number. */

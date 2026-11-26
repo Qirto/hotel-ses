@@ -37,10 +37,8 @@ async function findStaffId(supabase: Db, column: "role" | "department", value: s
   return data?.id ?? null;
 }
 
-/** Department codes the forms send, mapped to the department that handles them. */
-const DEPARTMENT_ALIAS: Record<string, string> = { TECHNICAL: "MAINTENANCE", GOVERNANCE: "HOUSEKEEPING" };
-/** Who to assign when nobody from the department is present. */
-const FALLBACK_ROLE: Record<string, string> = { MAINTENANCE: "maintenance", HOUSEKEEPING: "governance" };
+/** Who to assign when nobody from the department is present (keyed by department code). */
+const FALLBACK_ROLE: Record<string, string> = { TECHNICAL: "maintenance", HOUSEKEEPING: "governance" };
 
 /** Portal pages are dynamic; this refreshes their client router cache after a write. */
 function revalidatePortals() {
@@ -115,7 +113,8 @@ export async function createRapidReclamation(data: {
   residentId?: number | null;
 }) {
   const supabase = await db();
-  const targetDepartment = DEPARTMENT_ALIAS[data.department] ?? data.department;
+  // tickets keep the department code the form sends (the same codes as departments and staff)
+  const targetDepartment = data.department;
 
   // Smart dispatch: the reporter (a receptionist) and the first present member of the
   // target department, looked up in parallel; failing that, a present member with the
@@ -242,18 +241,13 @@ export async function acknowledgeReclamation(reclamationId: number, staffId?: nu
   return ok();
 }
 
-export async function resolveReclamation(reclamationId: number, resolutionNotes?: string) {
+/** Marks a ticket resolved. The guest's original description is kept as it is. */
+export async function resolveReclamation(reclamationId: number) {
   const supabase = await db();
 
   const { error } = await supabase
     .from("reclamations")
-    .update({
-      status: "RESOLVED",
-      resolved_at: new Date().toISOString(),
-      description: resolutionNotes
-        ? `[RESOLVED]: ${resolutionNotes}`
-        : undefined,
-    })
+    .update({ status: "RESOLVED", resolved_at: new Date().toISOString() })
     .eq("id", reclamationId);
 
   if (error) {

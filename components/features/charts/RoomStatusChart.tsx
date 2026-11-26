@@ -26,7 +26,8 @@ export const RoomStatusChart = memo(function RoomStatusChart({ rooms }: { rooms:
 /** The "Room status" card, as shown on Reception Stats and the GM dashboard. */
 export function RoomStatusPanel({ rooms }: { rooms: readonly HotelRoom[] }) {
   return (
-    <Panel title="Room status" description="Where all rooms stand right now" icon={<BedDouble />}>
+    // fills the card when a taller neighbour stretches it, content centred vertically
+    <Panel title="Room status" description="Where all rooms stand right now" icon={<BedDouble />} className="flex flex-col" bodyClassName="flex flex-1 items-center">
       <RoomStatusChart rooms={rooms} />
     </Panel>
   );

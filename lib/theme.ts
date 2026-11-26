@@ -34,8 +34,11 @@ function readPreference(): ThemePreference {
 const resolve = (p: ThemePreference): "light" | "dark" =>
   p === "system" ? (window.matchMedia(LIGHT_QUERY).matches ? "light" : "dark") : p;
 
+/** The theme to show now ("light" | "dark"), from the stored preference and the device. */
+export const resolvedTheme = () => resolve(readPreference());
+
 function apply(): void {
-  document.documentElement.setAttribute("data-theme", resolve(readPreference()));
+  document.documentElement.setAttribute("data-theme", resolvedTheme());
 }
 
 export function setThemePreference(p: ThemePreference): void {
