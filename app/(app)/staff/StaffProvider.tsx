@@ -1,12 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Building2, CalendarDays, Users } from "lucide-react";
-import type { Department, Staff } from "@/utils/roomsData";
+import type { Department, RosterEntry, Staff } from "@/utils/roomsData";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
-import { initialRoster, type Roster } from "@/components/features/hr/Roster";
-import { useActions } from "@/hooks/useActions";
+import { rosterFromEntries, shiftOf, WEEKDAYS, type Roster } from "@/components/features/hr/Roster";
+import { setRosterShift } from "@/app/actions";
+import { useActions, useSyncedState } from "@/hooks/useActions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDepartmentsCrud } from "@/hooks/useDepartmentsCrud";
 import { useStaffDirectory } from "@/hooks/useStaffDirectory";
@@ -34,8 +35,8 @@ const TABS = [
   { href: "/staff/services", label: "Services", icon: <Building2 className="size-4" aria-hidden /> },
 ];
 
-/** Staff, services and roster state shared by the three staff pages, plus their tabs (links). */
-export function StaffProvider({ staff, departments, children }: { staff: Staff[]; departments: Department[]; children: ReactNode }) {
+/** Staff, services and the saved roster, shared by the three staff pages, plus their tabs (links). */
+export function StaffProvider({ staff, departments, roster: entries, children }: { staff: Staff[]; departments: Department[]; roster: RosterEntry[]; children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const actions = useActions();
@@ -43,11 +44,25 @@ export function StaffProvider({ staff, departments, children }: { staff: Staff[]
   const services = useDepartmentsCrud(actions, departments, confirm.ask);
   const people = useStaffDirectory(actions, staff, confirm.ask, services.options);
 
-  // Weekly roster: client-side only (not saved), kept while moving between the staff pages.
-  const [roster, setRoster] = useState<Roster>(() => initialRoster(staff));
-  const setShift = useCallback((staffId: number, day: string, shift: ShiftType) => {
-    setRoster((prev) => ({ ...prev, [staffId]: { ...(prev[staffId] || {}), [day]: shift } }));
-  }, []);
+  // Weekly roster, saved per cell: shown at once, put back with a message if the server refuses.
+  const [roster, setRoster] = useSyncedState<Roster>(useMemo(() => rosterFromEntries(entries), [entries]));
+  const latest = useRef(roster);
+  useEffect(() => {
+    latest.current = roster;
+  }, [roster]);
+  const { run, flash } = actions;
+  const setShift = useCallback(
+    (staffId: number, day: string, shift: ShiftType) =>
+      run(async () => {
+        const before = shiftOf(latest.current, staffId, day);
+        setRoster((prev) => ({ ...prev, [staffId]: { ...prev[staffId], [day]: shift } }));
+        const res = await setRosterShift(staffId, WEEKDAYS.indexOf(day) + 1, shift);
+        if (res.success) return;
+        setRoster((prev) => ({ ...prev, [staffId]: { ...prev[staffId], [day]: before } }));
+        flash("danger", "Impossible d’enregistrer l’horaire.");
+      }),
+    [run, flash, setRoster]
+  );
 
   const badges: Record<string, number> = { "/staff": people.staff.length, "/staff/services": services.departments.length };
 

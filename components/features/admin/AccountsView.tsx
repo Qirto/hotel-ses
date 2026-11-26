@@ -6,7 +6,7 @@ import { KeyRound, Pencil, Power, Trash2, UserPlus, UserRound, UsersRound } from
 import type { Staff } from "@/utils/roomsData";
 import type { Account } from "@/lib/server/accounts";
 import { Button } from "@/components/ui/button";
-import { DataTable, DataTableActions, rowButton, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, ROW_BUTTON, ROW_ICON_BUTTON, type DataTableColumn, rowFixedWidth } from "@/components/ui/data-table";
 import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { ToneBadge } from "@/components/features/StatusBadges";
@@ -128,17 +128,17 @@ export const AccountsView = memo(function AccountsView({
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (a, { layout }) => {
+        cell: (a) => {
           const self = a.id === currentUserId;
           return (
-            <DataTableActions layout={layout}>
-              <Button variant="outline" size={rowButton(layout)} title="Générer un nouveau mot de passe temporaire" onClick={() => onReset(a)} disabled={pending} leftIcon={<KeyRound className="size-3.5" aria-hidden />}>
+            <DataTableActions>
+              <Button variant="outline" size={ROW_BUTTON} title="Générer un nouveau mot de passe temporaire" onClick={() => onReset(a)} disabled={pending} leftIcon={<KeyRound className="size-3.5" aria-hidden />}>
                 Réinitialiser
               </Button>
               <Button
                 variant="secondary"
-                size={rowButton(layout)}
-                className={layout === "list" ? undefined : "w-[7.5rem]"}
+                size={ROW_BUTTON}
+                {...rowFixedWidth("7.5rem")}
                 title={a.is_active ? "Désactiver le compte" : "Réactiver le compte"}
                 onClick={() => onToggleActive(a)}
                 disabled={pending || (self && a.is_active)}
@@ -146,10 +146,10 @@ export const AccountsView = memo(function AccountsView({
               >
                 {a.is_active ? "Désactiver" : "Réactiver"}
               </Button>
-              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier ${a.username}`} aria-label={`Modifier ${a.username}`} onClick={() => onEdit(a)} disabled={pending}>
+              <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Modifier ${a.username}`} aria-label={`Modifier ${a.username}`} onClick={() => onEdit(a)} disabled={pending}>
                 <Pencil className="size-3.5" aria-hidden />
               </Button>
-              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Supprimer ${a.username}`} aria-label={`Supprimer ${a.username}`} onClick={() => onRemove(a)} disabled={pending || self}>
+              <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Supprimer ${a.username}`} aria-label={`Supprimer ${a.username}`} onClick={() => onRemove(a)} disabled={pending || self}>
                 <Trash2 className="size-3.5 text-danger" aria-hidden />
               </Button>
             </DataTableActions>

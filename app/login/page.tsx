@@ -25,7 +25,7 @@ export default function LoginPage() {
           name="username"
           label="Identifiant"
           icon={<UserRound />}
-          placeholder="ex. s.martin"
+          placeholder="ex. s.trabelsi"
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import type { Department, HotelRoom, Reclamation, Staff } from "@/utils/roomsData";
+import { loadRoster } from "@/lib/server/roster";
 import { can } from "@/lib/permissions";
 import type { Role } from "@/lib/roles";
 
@@ -35,14 +36,16 @@ export async function loadHotelData({
   tickets: withTickets = false,
   departments = false,
   staff = false,
-}: { rooms?: boolean; tickets?: boolean; departments?: boolean; staff?: boolean }) {
+  roster = false,
+}: { rooms?: boolean; tickets?: boolean; departments?: boolean; staff?: boolean; roster?: boolean }) {
   const supabase = createClient(await cookies());
 
-  const [rooms, tickets, departmentRows, staffRows] = await Promise.all([
+  const [rooms, tickets, departmentRows, staffRows, rosterRows] = await Promise.all([
     withRooms ? rows<HotelRoom>("rooms", supabase.from("rooms").select("*").order("room_number", { ascending: true })) : null,
     withTickets ? rows<Reclamation>("tickets", supabase.from("reclamations").select(TICKET_SELECT).order("id", { ascending: true }) as unknown as Result<Reclamation>) : null,
     departments ? rows<Department>("departments", supabase.from("departments").select("*").order("id", { ascending: true })) : null,
     staff ? rows<Staff>("staff", supabase.from("staff").select("*").order("id", { ascending: true })) : null,
+    roster ? loadRoster().catch((err): null => (console.error("Failed to load roster:", err), null)) : null,
   ]);
 
   const failed = [
@@ -50,6 +53,7 @@ export async function loadHotelData({
     withTickets && tickets === null && "tickets",
     departments && departmentRows === null && "departments",
     staff && staffRows === null && "staff",
+    roster && rosterRows === null && "roster",
   ].filter(Boolean);
   if (failed.length) throw new Error(`Could not load ${failed.join(", ")} from the database.`);
 
@@ -59,6 +63,7 @@ export async function loadHotelData({
     reclamationsList: tickets ?? [],
     departmentsList: departmentRows ?? [],
     staffList: staffRows ?? [],
+    rosterEntries: rosterRows ?? [],
   };
 }
 

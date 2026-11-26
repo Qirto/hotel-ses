@@ -1,8 +1,10 @@
 "use server";
 
 import { hotelWallTimeToISO } from "@/lib/datetime";
-import { db, failed, ok, revalidateApp, type Db } from "@/lib/server/actions-kit";
+import { db, failed, ok, refuse, revalidateApp, type Db } from "@/lib/server/actions-kit";
 import { deny } from "@/lib/server/session";
+import { deleteRosterOf, saveRosterShift } from "@/lib/server/roster";
+import type { ShiftType } from "@/lib/constants";
 
 /**
  * Hotel operations. Every action starts with `deny(capability)` (lib/permissions.ts): the caller's
@@ -472,6 +474,24 @@ export async function updateStaffMember(
   return ok();
 }
 
+const ROSTER_SHIFTS = ["MORNING", "EVENING", "NIGHT", "OFF"] as const;
+
+/** Saves one cell of the weekly roster (weekday: 1 = lundi … 7 = dimanche). */
+export async function setRosterShift(staffId: number, weekday: number, shift: string) {
+  const denied = await deny("staff.manage");
+  if (denied) return denied;
+  if (!Number.isInteger(staffId) || !Number.isInteger(weekday) || weekday < 1 || weekday > 7) return refuse("Jour non valide.");
+  if (!(ROSTER_SHIFTS as readonly string[]).includes(shift)) return refuse("Horaire non valide.");
+  try {
+    await saveRosterShift(staffId, weekday, shift as ShiftType);
+  } catch (err) {
+    return failed("save roster shift", err as Error);
+  }
+
+  revalidateApp();
+  return ok();
+}
+
 export async function deleteStaffMember(staffId: number) {
   const denied = await deny("staff.manage");
   if (denied) return denied;
@@ -491,6 +511,9 @@ export async function deleteStaffMember(staffId: number) {
   if (error) {
     return failed("delete staff member", error);
   }
+
+  // Their saved roster goes too; a leftover file would be harmless, so a failure is only logged.
+  await deleteRosterOf(staffId).catch((err) => console.error("Failed to delete roster:", err));
 
   revalidateApp();
   return ok();

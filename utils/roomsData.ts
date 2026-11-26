@@ -1,3 +1,5 @@
+import type { ShiftType } from "@/lib/constants";
+
 export interface HotelRoom {
   id: number;
   room_number: string;
@@ -71,3 +73,10 @@ export interface Reclamation {
   assigned_to?: { full_name: string; role: string };
 }
 
+
+/** One saved roster cell: an employee's shift on a weekday (ISO: 1 = lundi … 7 = dimanche). */
+export interface RosterEntry {
+  staff_id: number;
+  weekday: number;
+  shift: ShiftType;
+}

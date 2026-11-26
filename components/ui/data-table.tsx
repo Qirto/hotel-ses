@@ -1,20 +1,8 @@
 "use client";
 
-import React, {
-  Children,
-  isValidElement,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { Children, isValidElement, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { SpringSelect } from "./spring-select";
-import { useElementWidth } from "@/hooks/useElementWidth";
 import { formatDate } from "@/lib/datetime";
 
 /* -------------------------------------------------------------------------- */
@@ -24,7 +12,7 @@ import { formatDate } from "@/lib/datetime";
 /*  • Row selection with select-all, shift-click ranges and a bulk-action bar  */
 
 /*  • Sorting makes rows glide to their new place instead of jumping           */
-/*  • Under 640px each row stacks into a list item (with a sort menu)         */
+/*  • Narrow containers show a list (CSS container queries, no JS measuring)  */
 /*  • Search, "show more" paging, empty state, keyboard + screen-reader support */
 /*                                                                             */
 /*  One file · deps: react 19, framer-motion, tailwindcss · light + dark.      */
@@ -42,23 +30,24 @@ export interface DataTableColumn<T> {
   header: string;
   /** Value used for sorting + search (default: row[key]) */
   accessor?: (row: T) => Primitive;
-  /** What to show in the cell (default: the accessor value as text). `layout` says
-   *  whether it renders in a table row or in the phone list. */
-  cell?: (row: T, ctx: CellContext) => ReactNode;
+  /** What to show in the cell (default: the accessor value as text). The same markup
+   *  serves the table and the phone list: CSS decides the layout. */
+  cell?: (row: T) => ReactNode;
   align?: "left" | "right" | "center";
   /** Default true */
   sortable?: boolean;
   /** Hotel SES: smallest width this column can be read at, in rem, cell padding included
-   *  (default 0). The table switches to the phone list when the columns' minimums no longer fit,
-   *  so it never scrolls sideways. */
+   *  (default 0). Below the width where the essential columns' minimums fit, the table
+   *  shows the phone list instead, so it never scrolls sideways. */
   minWidth?: number;
   /** Share of the remaining width (default: 1.8 for the primary column, 1 otherwise). */
   grow?: number;
   /** Hotel SES: 1 = essential (default). When the list runs out of width, columns with a
    *  higher number are hidden first (highest first); the phone list always shows them. */
   priority?: number;
-  /** The card title on mobile. Usually your first column */
+  /** The row's name: first line of the phone list item. Usually your first column */
   primary?: boolean;
+  /** Left out of the phone list (still a column in table mode). */
   hideOnMobile?: boolean;
   /** Label in the phone list's details line (default: header; "" for none) */
   mobileLabel?: string;
@@ -66,31 +55,28 @@ export interface DataTableColumn<T> {
   fullWidthOnMobile?: boolean;
 }
 
-/** "table": one row of columns; "list": the phone list (rows stacked: name, details, actions). */
-export type CellContext = { layout: "table" | "list" };
-
 /** The one row-action format of every table: small buttons with short labels
- *  (`rowButton`), then icon buttons (`rowIconButton`: edit, delete) at the far right.
- *  Same size in the table and the phone list. */
-export const rowButton = (_layout: CellContext["layout"]) => "sm" as const;
-export const rowIconButton = (_layout: CellContext["layout"]) => "icon-sm" as const;
+ *  (`ROW_BUTTON`), then icon buttons (`ROW_ICON_BUTTON` with `flex-none`: edit, delete). */
+export const ROW_BUTTON = "sm" as const;
+export const ROW_ICON_BUTTON = "icon-sm" as const;
 
-/** Row buttons: right-aligned in the table. In the phone list, on their own line under
- *  the row's details: labelled buttons wrap on the left, icon buttons (`flex-none`: edit,
- *  delete) stay together on the right. */
-export function DataTableActions({ layout, children }: CellContext & { children: ReactNode }) {
-  if (layout === "list") {
-    const isIcon = (c: ReactNode) => isValidElement<{ className?: string }>(c) && (c.props.className ?? "").split(" ").includes("flex-none");
-    const all = Children.toArray(children);
-    const icons = all.filter(isIcon);
-    return (
-      <div className="flex items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{all.filter((c) => !isIcon(c))}</div>
-        {icons.length > 0 && <div className="flex flex-none items-center gap-1">{icons}</div>}
-      </div>
-    );
-  }
-  return <div className="flex justify-end gap-2">{children}</div>;
+/** Props for a labelled row button that keeps one width in table mode (so the buttons
+ *  line up as a column down the table) and its natural width in the phone list. */
+export const rowFixedWidth = (width: string) => ({ className: "dt-fixed", style: { "--dt-w": width } as React.CSSProperties });
+
+/** Row buttons: labelled buttons, then icon buttons (`flex-none`). Right-aligned on one
+ *  line in table mode; in the phone list, on their own line under the row's details,
+ *  labelled buttons wrapping on the left and icon buttons together on the right. */
+export function DataTableActions({ children }: { children: ReactNode }) {
+  const isIcon = (c: ReactNode) => isValidElement<{ className?: string }>(c) && (c.props.className ?? "").split(" ").includes("flex-none");
+  const all = Children.toArray(children);
+  const icons = all.filter(isIcon);
+  return (
+    <div className="dt-actions">
+      <div className="dt-actions-main">{all.filter((c) => !isIcon(c))}</div>
+      {icons.length > 0 && <div className="dt-actions-icons">{icons}</div>}
+    </div>
+  );
 }
 
 export type SortState = { key: string; dir: "asc" | "desc" } | null;
@@ -119,11 +105,11 @@ export interface DataTableProps<T extends { id: Id }> {
   toolbar?: ReactNode;
   /** Rows shown at first; "Show more" reveals this many each time (default 20, Infinity = all) */
   pageSize?: number;
-  /** Table scroll height in px before the header sticks (default 520) */
-  /** Hotel SES: null = no internal scroll (the page scrolls; sticky header off) */
+  /** Table mode: scroll height in px before the header sticks (default 520).
+   *  Hotel SES: null = no internal scroll (the page scrolls). */
   maxHeight?: number | null;
   density?: "comfortable" | "compact";
-  /** Width below which rows stack into the phone list (default 640) */
+  /** Container width below which the table always shows the phone list (default 640) */
   cardBreakpoint?: number;
   onRowClick?: (row: T) => void;
   emptyState?: ReactNode;
@@ -217,7 +203,59 @@ function SortIcon({ state }: { state: "asc" | "desc" | null }) {
   );
 }
 
-const alignClass = { left: "justify-start text-left", right: "justify-end text-right", center: "justify-center text-center" } as const;
+/* ========================================================================== */
+/*  Layout: CSS container queries (no width measured in JavaScript)           */
+/* ========================================================================== */
+
+/**
+ * The phone list is the base layout (globals.css, `.dt-*`). Each table adds its own
+ * container queries, computed from its columns: from the width where the essential
+ * columns fit (and at least `breakpoint`), rows become a grid; optional columns
+ * (priority > 1) appear as width allows, lowest priority number first. The server's
+ * HTML is therefore right at any width: nothing switches after hydration.
+ */
+function tableCss<T>(scope: string, columns: DataTableColumn<T>[], primary: DataTableColumn<T>, selectable: boolean, breakpoint: number, cellPadY: number, rowMinHeight: number, maxHeight: number | null) {
+  const S = `.${scope}`;
+  const check = selectable ? 44 : 0;
+  const need = (cs: DataTableColumn<T>[]) => check + cs.reduce((sum, c) => sum + (c.minWidth ?? 0) * 16, 0);
+  const tracks = (cs: DataTableColumn<T>[]) =>
+    [selectable ? "44px" : null, ...cs.map((c) => `minmax(${c.minWidth ?? 0}rem, ${c.grow ?? (c === primary ? 1.8 : 1)}fr)`)].filter(Boolean).join(" ");
+  const col = (c: DataTableColumn<T>) => `${S} [data-col=${JSON.stringify(c.key)}]`;
+
+  // Column sets from the fullest to the leanest: optional columns leave highest priority number first.
+  const optional = columns.filter((c) => !c.primary && (c.priority ?? 1) > 1).sort((a, b) => (b.priority ?? 1) - (a.priority ?? 1));
+  const sets = [columns];
+  for (const c of optional) sets.push(sets[sets.length - 1].filter((x) => x !== c));
+  const leanest = sets[sets.length - 1];
+  const at = (cs: DataTableColumn<T>[]) => Math.max(breakpoint, need(cs));
+
+  const table = [
+    `${S} .dt-sortbar{display:none}`,
+    `${S} .dt-grid{display:grid;align-items:center;padding:0;gap:0}`,
+    `${S} .dt-row{min-height:${rowMinHeight}px}`,
+    `${S} .dt-check{display:grid;place-items:center;align-self:stretch}`,
+    `${S} .dt-cell{display:flex;flex:none;max-width:none;padding:${cellPadY}px 12px;font-size:13.5px}`,
+    `${S} .dt-cell.dt-end{justify-content:flex-end;text-align:right}`,
+    `${S} .dt-cell.dt-center{justify-content:center;text-align:center}`,
+    `${S} .dt-label{display:none}`,
+    `${S} .dt-value{width:100%}`,
+    `${S} .dt-hide-list,${S} .dt-empty{display:flex}`,
+    `${S} .dt-actions{justify-content:flex-end;align-items:center}`,
+    `${S} .dt-actions-main{flex:none;flex-wrap:nowrap}`,
+    `${S} .dt-fixed{width:var(--dt-w)}`,
+    maxHeight != null ? `${S} .dt-scroll{max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain}` : "",
+  ].join("");
+
+  // Leanest set first, fullest last: a wider container matches more rules, and the last one wins.
+  const ranges = [...sets]
+    .reverse()
+    .map((cs) => `@container dt (min-width:${at(cs)}px){${S} .dt-grid{grid-template-columns:${tracks(cs)}}${optional.map((c) => `${col(c)}{display:${cs.includes(c) ? "flex" : "none"}}`).join("")}}`)
+    .join("");
+
+  return `@container dt (min-width:${at(leanest)}px){${table}}${ranges}`;
+}
+
+const alignClass = { left: "", right: "dt-end", center: "dt-center" } as const;
 
 /* ========================================================================== */
 /*  DataTable                                                                 */
@@ -248,24 +286,13 @@ export function DataTable<T extends { id: Id }>({
   className = "",
 }: DataTableProps<T>) {
   const reduce = useReducedMotion();
-  const [rootRef, width] = useElementWidth<HTMLDivElement>(960);
-  // Hotel SES: always a list, never scrolling sideways. When the width runs out, optional
-  // columns (priority > 1) drop out, highest number first, until the rest fit. Cards only
-  // on phones, or in the rare case where even the essential columns cannot fit.
-  const listColumns = useMemo(() => {
-    const room = width - (selectable ? 44 : 0);
-    const need = (cs: DataTableColumn<T>[]) => cs.reduce((sum, c) => sum + (c.minWidth ?? 0) * 16, 0);
-    let cs = columns;
-    const optional = columns.filter((c) => !c.primary && (c.priority ?? 1) > 1).sort((a, b) => (b.priority ?? 1) - (a.priority ?? 1));
-    for (const c of optional) {
-      if (need(cs) <= room) break;
-      cs = cs.filter((x) => x !== c);
-    }
-    return need(cs) <= room ? cs : null;
-  }, [columns, width, selectable]);
-  const stacked = width < cardBreakpoint || listColumns === null;
-  /** Table mode with a height cap: the body is its own vertical scroller. */
-  const scrollsY = !stacked && maxHeight != null;
+  // Scope for this table's container queries (useId is stable between server and client).
+  const scope = `dt-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const primary = columns.find((c) => c.primary) ?? columns[0];
+  const css = useMemo(
+    () => tableCss(scope, columns, primary, selectable, cardBreakpoint, density === "compact" ? 8 : 14, density === "compact" ? 44 : 60, maxHeight),
+    [scope, columns, primary, selectable, cardBreakpoint, density, maxHeight],
+  );
 
   const [query, setQuery] = useState("");
   const [innerSort, setInnerSort] = useState<SortState>(defaultSort);
@@ -313,16 +340,7 @@ export function DataTable<T extends { id: Id }>({
 
   useEffect(() => setLimit(pageSize), [query, pageSize]);
   const visible = processed.slice(0, limit);
-
-  const cols = stacked ? columns.filter((c) => !c.hideOnMobile) : (listColumns ?? columns);
-  const primary = columns.find((c) => c.primary) ?? columns[0];
   const sortable = columns.filter((c) => c.sortable !== false);
-
-  // Every row is its own grid; minmax(<length>, <fr>) tracks resolve identically in
-  // each row, so columns line up without a fixed width anywhere.
-  const tracks = [selectable ? "44px" : null, ...cols.map((c) => `minmax(${c.minWidth ?? 0}rem, ${c.grow ?? (c === primary ? 1.8 : 1)}fr)`)]
-    .filter(Boolean)
-    .join(" ");
 
   /* ------------------------------- selection ------------------------------- */
   const allSelected = processed.length > 0 && processed.every((r) => selected.has(r.id));
@@ -357,8 +375,6 @@ export function DataTable<T extends { id: Id }>({
   };
 
   const spring = reduce ? { duration: 0 } : ({ type: "spring", duration: 0.55, bounce: 0.04 } as const);
-  const rowPad = density === "compact" ? "py-2" : "py-3.5";
-  const rowMin = density === "compact" ? "min-h-[44px]" : "min-h-[60px]";
 
   /* -------------------------------- toolbar -------------------------------- */
   const selectionBar = (
@@ -422,14 +438,15 @@ export function DataTable<T extends { id: Id }>({
 
   /* ---------------------------------- cells --------------------------------- */
   const renderCell = (row: T, col: DataTableColumn<T>): ReactNode => {
-    if (col.cell) return col.cell(row, { layout: stacked ? "list" : "table" });
+    if (col.cell) return col.cell(row);
     const v = read(row, col);
     return v == null ? <span className="text-neutral-400">—</span> : String(v instanceof Date ? formatDate(v) : v); // Hotel SES: dd/MM/yyyy, hotel time
   };
 
   /* ------------------------------ render: header ---------------------------- */
-  const header = stacked ? (
-    <div className="flex items-center gap-3 pb-3">
+  // Phone list: a sort menu (the list has no column headers). Hidden in table mode.
+  const sortBar = (
+    <div className="dt-sortbar mb-3 flex items-center gap-3">
       {selectable && <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />}
       <SpringSelect
         aria-label="Trier par"
@@ -438,8 +455,8 @@ export function DataTable<T extends { id: Id }>({
         value={sort?.key ?? ""}
         onChange={(key) => setSort(key ? { key, dir: sort?.dir ?? "desc" } : null)}
         options={[
-          { value: "", label: "Tri : ordre par défaut" },
-          ...sortable.map((c) => ({ value: c.key, label: `Tri : ${c.header}` })),
+          { value: "", label: "Tri : ordre par défaut" },
+          ...sortable.map((c) => ({ value: c.key, label: `Tri : ${c.header}` })),
         ]}
       />
       <button
@@ -452,30 +469,33 @@ export function DataTable<T extends { id: Id }>({
         <SortIcon state={sort?.dir ?? null} />
       </button>
     </div>
-  ) : (
+  );
+
+  // Table mode: column headers. Hidden in the phone list.
+  const header = (
     <div
       role="row"
       className={cx(
-        "sticky top-0 z-10 grid items-center border-b bg-white/90 text-[12px] font-medium backdrop-blur dark:bg-surface/90",
+        "dt-head dt-grid sticky top-0 z-10 border-b bg-white/90 text-[12px] font-medium backdrop-blur dark:bg-surface/90",
         hairline,
         scrolled && "shadow-[0_8px_16px_-12px_rgba(0,0,0,0.25)]",
       )}
-      style={{ gridTemplateColumns: tracks }}
     >
       {selectable && (
-        <div role="columnheader" className="grid h-11 place-items-center">
+        <div role="columnheader" className="dt-check grid h-11 place-items-center">
           <Checkbox checked={allSelected} indeterminate={!allSelected && someSelected} onToggle={toggleAll} label="Sélectionner toutes les lignes" />
         </div>
       )}
-      {cols.map((c) => {
+      {columns.map((c) => {
         const state = sort?.key === c.key ? sort.dir : null;
         const can = c.sortable !== false;
         return (
           <div
             key={c.key}
             role="columnheader"
+            data-col={c.key}
             aria-sort={state === "asc" ? "ascending" : state === "desc" ? "descending" : can ? "none" : undefined}
-            className={cx("flex h-11 min-w-0 items-center px-3", alignClass[c.align ?? "left"])}
+            className={cx("flex h-11 min-w-0 items-center px-3", c.align === "right" ? "justify-end text-right" : c.align === "center" ? "justify-center text-center" : "justify-start text-left")}
           >
             {can ? (
               <button
@@ -501,14 +521,11 @@ export function DataTable<T extends { id: Id }>({
   );
 
   /* ------------------------------- render: rows ------------------------------ */
+  // One markup for both layouts: the phone list by default (name, a line of
+  // "label value" details, full-width cells such as actions), a grid row in table mode.
   const rowEls = visible.map((row, index) => {
     const isSel = selected.has(row.id);
     const label = getRowLabel(row);
-    const common = {
-      role: "row" as const,
-      "aria-selected": selectable ? isSel : undefined,
-      "aria-rowindex": index + 2,
-    };
     const interactive = onRowClick
       ? {
           tabIndex: 0,
@@ -524,69 +541,6 @@ export function DataTable<T extends { id: Id }>({
         }
       : {};
 
-    if (stacked) {
-      // Phone list item: name (primary cell) on top, a wrapping line of "label value"
-      // details, then full-width cells (actions) on their own line.
-      const rest = cols.filter((c) => c !== primary);
-      const details = rest.filter((c) => !c.fullWidthOnMobile);
-      const wide = rest.filter((c) => c.fullWidthOnMobile);
-      const filled = (c: DataTableColumn<T>) => {
-        const value = renderCell(row, c);
-        return value == null || value === false ? null : value;
-      };
-      return (
-        <motion.div
-          key={row.id}
-          layout={reduce ? false : "position"}
-          initial={false}
-          exit={{ opacity: 0, transition: { duration: 0.15 } }}
-          transition={spring}
-          {...common}
-          {...interactive}
-          className={cx(
-            "flex flex-col gap-2 border-b bg-white px-4 py-3 transition-colors duration-150 last:border-b-0 dark:bg-surface",
-            hairline,
-            isSel ? "bg-neutral-50 dark:bg-white/[0.045]" : "[@media(hover:hover)]:hover:bg-neutral-50/70 dark:[@media(hover:hover)]:hover:bg-white/[0.025]",
-            onRowClick && cx("cursor-pointer", focus),
-          )}
-        >
-          <div className="flex items-start gap-3">
-            {selectable && (
-              <div className="pt-0.5">
-                <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Sélectionner ${label}`} />
-              </div>
-            )}
-            <div role="cell" className="min-w-0 flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100">
-              {renderCell(row, primary)}
-            </div>
-          </div>
-          {details.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12.5px]">
-              {details.map((c) => {
-                const value = filled(c);
-                if (value == null) return null;
-                const name = c.mobileLabel ?? c.header;
-                return (
-                  <div key={c.key} role="cell" className="flex min-w-0 max-w-full items-center gap-1.5">
-                    {name && <span className={muted}>{name}</span>}
-                    <span className="min-w-0 text-neutral-800 [overflow-wrap:anywhere] dark:text-neutral-200">{value}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {wide.map((c) => {
-            const value = filled(c);
-            return value == null ? null : (
-              <div key={c.key} role="cell" className="min-w-0">
-                {value}
-              </div>
-            );
-          })}
-        </motion.div>
-      );
-    }
-
     return (
       <motion.div
         key={row.id}
@@ -594,36 +548,45 @@ export function DataTable<T extends { id: Id }>({
         initial={false}
         exit={{ opacity: 0, transition: { duration: 0.15 } }}
         transition={spring}
-        {...common}
+        role="row"
+        aria-selected={selectable ? isSel : undefined}
+        aria-rowindex={index + 2}
         {...interactive}
         className={cx(
-          "grid items-center border-b bg-white transition-colors duration-150 last:border-b-0 dark:bg-surface",
+          "dt-row dt-grid border-b bg-white transition-colors duration-150 last:border-b-0 dark:bg-surface",
           hairline,
-          rowMin,
           isSel ? "bg-neutral-50 dark:bg-white/[0.045]" : "[@media(hover:hover)]:hover:bg-neutral-50/70 dark:[@media(hover:hover)]:hover:bg-white/[0.025]",
           onRowClick && cx("cursor-pointer", focus),
         )}
-        style={{ gridTemplateColumns: tracks }}
       >
         {selectable && (
-          <div role="cell" className="grid place-items-center">
+          <div role="cell" className="dt-check">
             <Checkbox checked={isSel} onToggle={(e) => toggleRow(row.id, index, e)} label={`Sélectionner ${label}`} />
           </div>
         )}
-        {cols.map((c) => (
-          <div
-            key={c.key}
-            role="cell"
-            className={cx(
-              "flex min-w-0 items-center px-3 text-[13.5px]",
-              rowPad,
-              alignClass[c.align ?? "left"],
-              c === primary ? "font-medium text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300",
-            )}
-          >
-            <div className="w-full min-w-0">{renderCell(row, c)}</div>
-          </div>
-        ))}
+        {columns.map((c) => {
+          const value = renderCell(row, c);
+          const isPrimary = c === primary;
+          const name = isPrimary || c.fullWidthOnMobile ? "" : (c.mobileLabel ?? c.header);
+          return (
+            <div
+              key={c.key}
+              role="cell"
+              data-col={c.key}
+              className={cx(
+                "dt-cell min-w-0",
+                alignClass[c.align ?? "left"],
+                isPrimary ? "dt-primary font-medium text-neutral-900 dark:text-neutral-100" : "text-neutral-700 dark:text-neutral-300",
+                c.fullWidthOnMobile && "dt-wide",
+                c.hideOnMobile && "dt-hide-list",
+                (value == null || value === false) && "dt-empty",
+              )}
+            >
+              {name && <span className={cx("dt-label shrink-0", muted)}>{name}</span>}
+              <div className="dt-value min-w-0 [overflow-wrap:anywhere]">{value}</div>
+            </div>
+          );
+        })}
       </motion.div>
     );
   });
@@ -633,7 +596,7 @@ export function DataTable<T extends { id: Id }>({
       {emptyState ?? (
         <>
           <p className="text-[14px] font-medium text-neutral-900 dark:text-neutral-100">Aucun résultat</p>
-          <p className={`text-[13px] ${muted}`}>{query ? `Aucun résultat pour « ${query} ».` : "Rien à afficher pour le moment."}</p>
+          <p className={`text-[13px] ${muted}`}>{query ? `Aucun résultat pour « ${query} ».` : "Rien à afficher pour le moment."}</p>
           {query && (
             <button
               type="button"
@@ -649,7 +612,8 @@ export function DataTable<T extends { id: Id }>({
   );
 
   return (
-    <div ref={rootRef} className={cx("w-full text-neutral-700 antialiased dark:text-neutral-300", className)}>
+    <div className={cx("dt w-full text-neutral-700 antialiased dark:text-neutral-300", scope, className)}>
+      <style>{css}</style>
       {/* toolbar / selection bar (same height so nothing jumps). Hotel SES: omitted when
           there is nothing to put in it (no search, tools or selection), e.g. when the
           page already filters the rows in its own toolbar. */}
@@ -661,29 +625,17 @@ export function DataTable<T extends { id: Id }>({
         </div>
       )}
 
+      {sortBar}
+
       <div
         className={cx("overflow-hidden rounded-2xl bg-white dark:bg-surface", ring)}
         style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 24px 48px -32px rgba(0,0,0,0.2)" }}
       >
-        {stacked && header}
-        {/* Hotel SES: only a height-capped table is its own vertical scroller (and may
-            contain its scroll). Uncapped, it must let vertical wheel/touch scrolling
-            pass to the page: containing it there froze the page under the cursor. */}
-        <motion.div
-          layoutScroll
-          onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}
-          className={cx(scrollsY && "overflow-y-auto overscroll-contain")}
-          style={scrollsY ? { maxHeight } : undefined}
-          tabIndex={scrollsY ? 0 : undefined}
-          aria-label={scrollsY ? `${ariaLabel} (défilant)` : undefined}
-        >
-          <div
-            role="table"
-            aria-label={ariaLabel}
-            aria-rowcount={processed.length + 1}
-            aria-colcount={cols.length + (selectable ? 1 : 0)}
-          >
-            {!stacked && header}
+        {/* Hotel SES: only a height-capped table (table mode, `maxHeight`) is its own
+            vertical scroller; uncapped, wheel and touch scrolling pass to the page. */}
+        <motion.div layoutScroll onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="dt-scroll">
+          <div role="table" aria-label={ariaLabel} aria-rowcount={processed.length + 1} aria-colcount={columns.length + (selectable ? 1 : 0)}>
+            {header}
             <div role="rowgroup" className="relative">
               <AnimatePresence initial={false} mode="popLayout">
                 {rowEls}
@@ -717,4 +669,3 @@ export function DataTable<T extends { id: Id }>({
 }
 
 export default DataTable;
-

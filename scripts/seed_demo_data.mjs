@@ -5,23 +5,17 @@
  *   node scripts/seed_demo_data.mjs --reset   first delete ALL tickets, residents and staff
  *
  * Deterministic (fixed random seed). Times are generated in hotel time (Africa/Tunis,
- * UTC+1, no DST) and stored as UTC. Reads NEXT_PUBLIC_SUPABASE_URL and
- * NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from .env.local or .env.
+ * UTC+1, no DST) and stored as UTC. Writes with the secret key (SUPABASE_SECRET_KEY in
+ * .env.local): the access rules refuse writes without a signed-in role.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
+import { adminClient } from "./accounts_lib.mjs";
+import { ensureRosterBucket, startingWeek, writeWeek } from "./roster_storage.mjs";
 import { FIRST_NAMES, LAST_NAMES } from "./tunisian_names_data.mjs";
 
 /* ───────────── setup ───────────── */
 
-const envFile = existsSync(".env.local") ? ".env.local" : ".env";
-const env = Object.fromEntries(
-  readFileSync(envFile, "utf8")
-    .split(/\r?\n/)
-    .filter((l) => /^[A-Z0-9_]+=/.test(l))
-    .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).replace(/^"|"$/g, "")])
-);
-const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+const supabase = adminClient();
+const env = process.env;
 const RESET = process.argv.includes("--reset");
 
 // mulberry32: small, fast, deterministic PRNG
@@ -161,6 +155,11 @@ async function main() {
   );
   const staff = await must("insert staff", supabase.from("staff").insert(staffRows).select("id, role, department"));
   console.log(`Personnel : ${staff.length}`);
+
+  /* weekly roster: the starting pattern, saved in Storage (scripts/roster_storage.mjs) */
+  await ensureRosterBucket(supabase);
+  for (const [index, s] of staff.entries()) await writeWeek(supabase, s.id, startingWeek(index, s.role));
+  console.log(`Planning : ${staff.length} semaines`);
   const byRole = (roles) => staff.filter((s) => roles.includes(s.role));
   const receptionists = byRole(["receptionist"]);
 

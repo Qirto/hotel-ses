@@ -16,7 +16,7 @@ Everyone signs in with a personal account (username + password). The role of the
 | `/requests` | Requests list with filters | all |
 | `/requests/[id]` | One request: edit, or read-only without the right | all |
 | `/staff` | Staff directory | rh, admin |
-| `/staff/shifts` | Weekly roster | rh, admin |
+| `/staff/shifts` | Weekly roster (saved) | rh, admin |
 | `/staff/services` | Services (departments) | rh, admin |
 | `/analytics` | Rooms and requests charts; room trends (gm); headcount (rh) | all |
 | `/admin/accounts` | Accounts | admin |
@@ -27,6 +27,8 @@ Everyone signs in with a personal account (username + password). The role of the
 Home after sign-in: `/dashboard` for reception, direction and admin; `/staff` for HR. A page the role may not open redirects to its home.
 
 **Details as URLs.** From a list, `/rooms/3077` and `/requests/291` open as a modal over the page (Back closes it); a refresh or a shared link shows the same detail as a full page (Next.js parallel and intercepting routes, `app/(app)/@modal`).
+
+**Saved roster.** The weekly roster (`/staff/shifts`) is saved in Supabase Storage, in a private bucket `hotel-data` with one JSON file per employee (`lib/server/roster.ts`). Only the server reads and writes it, with the secret key, after checking `staff.manage`. No table or migration is involved.
 
 **Filters in the URL.** Search, floor, block, status, service, role and sort live in the query string (`/rooms?floor=3&status=DIRTY`), so refresh, Back and shared links keep them (`hooks/useUrlFilters.ts`).
 
@@ -172,7 +174,7 @@ npm run dev                  # http://localhost:3000
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
-| `SUPABASE_SECRET_KEY` | Server only: account management (Supabase → Project settings → API keys → secret key). Put it in `.env.local` (gitignored) and the host's environment, **never** in a committed file and never with a `NEXT_PUBLIC_` prefix |
+| `SUPABASE_SECRET_KEY` | Server only: account management and the saved roster (Supabase → Project settings → API keys → secret key). Put it in `.env.local` (gitignored) and the host's environment, **never** in a committed file and never with a `NEXT_PUBLIC_` prefix |
 
 ### Database
 
@@ -213,7 +215,8 @@ Demo accounts, one per role: `npm run seed:accounts`. Their passwords go to `dem
 | `npm run build` | Production build (includes the type check) |
 | `npm run start` | Serve the production build |
 | `npm run seed` | Add any missing rooms of the hotel plan (`scripts/room_layout.js`) |
-| `npm run seed:demo` | Demo staff, guests and ~90 days of requests (additive; `--reset` to start over) |
+| `npm run seed:demo` | Demo staff and their roster, guests and ~90 days of requests (additive; `--reset` to start over). Needs the secret key |
+| `node scripts/seed_roster.mjs` | Give every employee without a saved week the starting roster pattern (never overwrites) |
 | `npm run account:create` | Create one account |
 | `npm run seed:accounts` | Demo accounts, one per role |
 | `node scripts/tunisian_names.mjs` | Rename existing staff, guests and heads of service with Tunisian names, in place |
@@ -226,7 +229,7 @@ Demo accounts, one per role: `npm run seed:accounts`. Their passwords go to `dem
 | Components | easyui.site (copied into `components/ui`), shared views in `components/features` |
 | Theme | easyui monochrome tokens, dark and light, defined once in `app/globals.css` |
 | Icons | lucide, mapped per service and issue type in `lib/icons.tsx` |
-| Lists | One `DataTable` everywhere: columns on desktop, a stacked list on phones (name, details, actions) |
+| Lists | One `DataTable` everywhere: columns where they fit, a list (name, details, actions) where they don't. Decided by CSS container queries, so the server's HTML is already right and nothing switches after loading |
 | Navigation | Sidebar on desktop with an « Administration » group; bottom bar on phones, with « Plus » past five entries |
 | Language | French with French typography (’ and a narrow no-break space before `: ; ! ?`) |
 | Accessibility | WCAG AA contrast in both themes, skip link, reduced motion respected |
@@ -245,14 +248,6 @@ Demo accounts, one per role: `npm run seed:accounts`. Their passwords go to `dem
 ## Legal
 
 `/privacy` and `/tos` describe what the app does today: the data it stores, Tunisian data-protection law (loi organique n° 2004-63, INPDP), the session cookie and browser storage. Keep them in step when that changes; `scripts/test_compliance_endpoints.js` checks the essentials.
-
-## Known limitations
-
-| Issue | Risk | Fix |
-| --- | --- | --- |
-| `.env` and `.env.production` are tracked in git | Old passcodes (no longer used) remain in the history | Remove them from git; keep values in `.env.local` and the host |
-| Phones render a table first, then switch to the list | A brief layout change on first load | Pick the layout with CSS breakpoints instead of a measured width |
-| The weekly roster is not saved | Changes stay on the device | Store shifts in the database |
 
 ## License
 

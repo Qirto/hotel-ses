@@ -84,7 +84,7 @@ export function AccountFormSheet({
           await onSubmit({ username: normalizeUsername(username), displayName: displayName.trim(), role, staffId: staffId ? Number(staffId) : null });
         }}
       >
-        <Field label="Identifiant" htmlFor={`${id}-username`} hint={editing ? undefined : "Minuscules, chiffres, point ou tiret ; ex. s.martin"}>
+        <Field label="Identifiant" htmlFor={`${id}-username`} hint={editing ? undefined : "Minuscules, chiffres, point ou tiret ; ex. s.trabelsi"}>
           <div className="relative">
             <AtSign className={INPUT_ICON} aria-hidden />
             <TextInput
@@ -94,7 +94,7 @@ export function AccountFormSheet({
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="s.martin"
+              placeholder="s.trabelsi"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               className="pl-9 read-only:opacity-70"

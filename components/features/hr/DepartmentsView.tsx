@@ -4,7 +4,7 @@ import { memo, useMemo } from "react";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Department, Staff } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
-import { DataTable, DataTableActions, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, ROW_ICON_BUTTON, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { FilterBar, SearchInput } from "@/components/features/Filters";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
@@ -91,12 +91,12 @@ export const DepartmentsView = memo(function DepartmentsView({
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (d, { layout }) => (
-          <DataTableActions layout={layout}>
-            <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier ${d.name}`} aria-label={`Modifier ${d.name}`} onClick={() => onEdit(d)} disabled={pending}>
+        cell: (d) => (
+          <DataTableActions>
+            <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Modifier ${d.name}`} aria-label={`Modifier ${d.name}`} onClick={() => onEdit(d)} disabled={pending}>
               <Pencil className="size-3.5" aria-hidden />
             </Button>
-            <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Supprimer ${d.name}`} aria-label={`Supprimer ${d.name}`} onClick={() => onRemove(d)} disabled={pending}>
+            <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Supprimer ${d.name}`} aria-label={`Supprimer ${d.name}`} onClick={() => onRemove(d)} disabled={pending}>
               <Trash2 className="size-3.5 text-danger" aria-hidden />
             </Button>
           </DataTableActions>

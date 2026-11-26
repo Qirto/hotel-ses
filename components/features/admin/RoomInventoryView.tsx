@@ -5,7 +5,7 @@ import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { DoorOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import type { HotelRoom } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
-import { DataTable, DataTableActions, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, ROW_ICON_BUTTON, type DataTableColumn } from "@/components/ui/data-table";
 import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { ToneBadge } from "@/components/features/StatusBadges";
@@ -81,12 +81,12 @@ export const RoomInventoryView = memo(function RoomInventoryView({
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (r, { layout }) => (
-          <DataTableActions layout={layout}>
-            <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier la chambre ${r.room_number}`} aria-label={`Modifier la chambre ${r.room_number}`} onClick={() => onEdit(r)} disabled={pending}>
+        cell: (r) => (
+          <DataTableActions>
+            <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Modifier la chambre ${r.room_number}`} aria-label={`Modifier la chambre ${r.room_number}`} onClick={() => onEdit(r)} disabled={pending}>
               <Pencil className="size-3.5" aria-hidden />
             </Button>
-            <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Supprimer la chambre ${r.room_number}`} aria-label={`Supprimer la chambre ${r.room_number}`} onClick={() => onRemove(r)} disabled={pending}>
+            <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Supprimer la chambre ${r.room_number}`} aria-label={`Supprimer la chambre ${r.room_number}`} onClick={() => onRemove(r)} disabled={pending}>
               <Trash2 className="size-3.5 text-danger" aria-hidden />
             </Button>
           </DataTableActions>

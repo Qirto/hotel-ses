@@ -12,7 +12,7 @@ export const PASSWORD_MIN_LENGTH = 10;
 
 const AUTH_EMAIL_DOMAIN = "staff.hotel-ses.local";
 
-/** "S.Martin " -> "s.martin". */
+/** "S.Trabelsi " -> "s.trabelsi". */
 export const normalizeUsername = (value: string) => value.trim().toLowerCase();
 
 export const isValidUsername = (value: string) => USERNAME_PATTERN.test(value);

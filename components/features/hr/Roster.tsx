@@ -3,7 +3,7 @@
 import { memo, useMemo } from "react";
 import { useUrlFilters } from "@/hooks/useUrlFilters";
 import { CalendarDays } from "lucide-react";
-import type { Staff } from "@/utils/roomsData";
+import type { RosterEntry, Staff } from "@/utils/roomsData";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
@@ -16,31 +16,29 @@ import { roleLabel } from "./staff";
 export type Roster = Record<number, Record<string, ShiftType>>;
 type OnShiftChange = (staffId: number, day: string, shift: ShiftType) => void;
 
-const WEEKDAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+export const WEEKDAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const SHIFT_TYPES: ShiftType[] = ["MORNING", "EVENING", "NIGHT", "OFF"];
 const SHIFT_OPTIONS = SHIFT_TYPES.map((s) => ({ value: s, label: SHIFT_LABELS[s].label }));
 
 const ROSTER_FILTERS = { q: "", service: "ALL" };
 
-/** Seeded weekly pattern (client-side only, not persisted). */
-export function initialRoster(staff: readonly Staff[]): Roster {
+/** The saved roster (staff_roster rows) by employee and weekday name. */
+export function rosterFromEntries(entries: readonly RosterEntry[]): Roster {
   const roster: Roster = {};
-  staff.forEach((s, index) => {
-    roster[s.id] = {};
-    WEEKDAYS.forEach((day, d) => {
-      if ((index + d) % 7 === 0 || (index + d) % 7 === 6) roster[s.id][day] = "OFF";
-      else if (s.role === "receptionist" || s.role === "housekeeper") roster[s.id][day] = d % 2 === 0 ? "MORNING" : "EVENING";
-      else if (s.role === "security_officer" || s.role === "maintenance") roster[s.id][day] = d % 3 === 0 ? "NIGHT" : "MORNING";
-      else roster[s.id][day] = "MORNING";
-    });
-  });
+  for (const e of entries) {
+    const day = WEEKDAYS[e.weekday - 1];
+    if (day) (roster[e.staff_id] ??= {})[day] = e.shift;
+  }
   return roster;
 }
+
+/** An employee's shift on a day; a day with nothing planned is a day off. */
+export const shiftOf = (roster: Roster, staffId: number, day: string): ShiftType => roster[staffId]?.[day] ?? "OFF";
 
 /**
  * HR "Shifts" sub-tab: shift totals and the weekly roster. The roster is the
  * shared DataTable (seven fluid day columns; the phone list when they no longer
- * fit). The roster state itself is owned by the portal.
+ * fit). The roster itself is saved (staff_roster) and held by the staff layout.
  */
 export const ShiftsView = memo(function ShiftsView({
   staff,
@@ -62,11 +60,12 @@ export const ShiftsView = memo(function ShiftsView({
       (s) => (department === "ALL" || s.department === department) && (!q || s.full_name.toLowerCase().includes(q) || roleLabel(s.role).toLowerCase().includes(q))
     );
   }, [staff, department, filters.q]);
+  // Every current employee and day, so totals match what the table shows.
   const totals = useMemo(() => {
     const counts: Record<ShiftType, number> = { MORNING: 0, EVENING: 0, NIGHT: 0, OFF: 0 };
-    Object.values(roster).forEach((days) => Object.values(days).forEach((s) => counts[s]++));
+    for (const s of staff) for (const day of WEEKDAYS) counts[shiftOf(roster, s.id, day)]++;
     return counts;
-  }, [roster]);
+  }, [staff, roster]);
 
   const columns = useMemo<DataTableColumn<Staff>[]>(
     () => [
@@ -88,9 +87,9 @@ export const ShiftsView = memo(function ShiftsView({
         header: day,
         sortable: false,
         minWidth: 7.25,
-        accessor: (m) => SHIFT_LABELS[roster[m.id]?.[day] ?? "MORNING"].label,
-        cell: (m, { layout }) => (
-          <ShiftSelect member={m} day={day} shift={roster[m.id]?.[day] ?? "MORNING"} onChange={onShiftChange} compact={layout === "table"} />
+        accessor: (m) => SHIFT_LABELS[shiftOf(roster, m.id, day)].label,
+        cell: (m) => (
+          <ShiftSelect member={m} day={day} shift={shiftOf(roster, m.id, day)} onChange={onShiftChange} compact />
         ),
       })),
     ],
@@ -117,7 +116,7 @@ export const ShiftsView = memo(function ShiftsView({
 
       <Panel
         title="Planning hebdomadaire"
-        description="Planifiez les horaires de la semaine. Les modifications restent sur cet appareil et ne sont pas enregistrées."
+        description="Planning type de la semaine. Chaque changement est enregistré et visible par les ressources humaines."
         icon={<CalendarDays />}
       >
         <FilterBar className="mb-4">

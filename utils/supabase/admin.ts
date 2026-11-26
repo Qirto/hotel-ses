@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Supabase client with the secret key: bypasses row-level security and can manage
  * Auth users. Server only (the "server-only" import fails the build if a client
- * component ever imports this). Used for account management and nothing else.
+ * component ever imports this). Used for account management and the saved roster
+ * (lib/server/roster.ts), each behind a role check.
  *
  * SUPABASE_SECRET_KEY lives in .env.local (gitignored) and the host's environment,
  * never in the committed .env.

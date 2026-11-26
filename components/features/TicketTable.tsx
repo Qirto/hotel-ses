@@ -3,7 +3,7 @@
 import type { TicketActionsRender } from "@/components/features/TicketActions";
 import { memo, useMemo, type ReactNode } from "react";
 import { ClipboardList, Pencil } from "lucide-react";
-import { DataTable, DataTableActions, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, ROW_ICON_BUTTON, type DataTableColumn } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import type { Reclamation } from "@/utils/roomsData";
 import { categoryIcon, departmentIcon } from "@/lib/icons";
@@ -139,14 +139,14 @@ export const TicketTable = memo(function TicketTable({
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (t, { layout }) => {
-          const node = actions?.(t, layout);
+        cell: (t) => {
+          const node = actions?.(t);
           if (!node && !onEdit) return null;
           return (
-            <DataTableActions layout={layout}>
+            <DataTableActions>
               {node}
               {onEdit && (
-                <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title="Modifier la demande" aria-label={`Modifier la demande ${t.id}`} onClick={() => onEdit(t)}>
+                <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title="Modifier la demande" aria-label={`Modifier la demande ${t.id}`} onClick={() => onEdit(t)}>
                   <Pencil className="size-3.5" aria-hidden />
                 </Button>
               )}

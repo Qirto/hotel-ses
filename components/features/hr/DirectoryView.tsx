@@ -4,7 +4,7 @@ import { memo, useMemo } from "react";
 import { Building2, Pencil, Power, Trash2, UserCheck, UserMinus, UserPlus, UserRound, Users, UserX } from "lucide-react";
 import type { Staff } from "@/utils/roomsData";
 import { Button } from "@/components/ui/button";
-import { DataTable, DataTableActions, rowButton, rowIconButton, type DataTableColumn } from "@/components/ui/data-table";
+import { DataTable, DataTableActions, ROW_BUTTON, ROW_ICON_BUTTON, type DataTableColumn, rowFixedWidth } from "@/components/ui/data-table";
 import { EmptyState, Panel } from "@/components/features/Panel";
 import { Kpi, KpiGrid } from "@/components/features/Kpi";
 import { FilterBar, SearchInput, SelectField } from "@/components/features/Filters";
@@ -127,22 +127,22 @@ export const DirectoryView = memo(function DirectoryView({
         fullWidthOnMobile: true,
         mobileLabel: "",
         accessor: () => "",
-        cell: (s, { layout }) => {
-          const size = rowButton(layout);
+        cell: (s) => {
+          const size = ROW_BUTTON;
           const onShift = s.shift_status === "ON_SHIFT";
           return (
-            <DataTableActions layout={layout}>
+            <DataTableActions>
               <Button variant="outline" size={size} title="Déclarer absent" onClick={() => onMarkAbsent(s)} disabled={pending} leftIcon={<UserMinus className="size-3.5" aria-hidden />}>
                 Absent
               </Button>
               {/* One width for both labels (« Commencer » is the longer): the buttons line up as columns down the list. */}
-              <Button variant="secondary" size={size} className={layout === "list" ? undefined : "w-[7.25rem]"} title={onShift ? "Terminer le service" : "Commencer le service"} onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-3.5" aria-hidden />}>
+              <Button variant="secondary" size={size} {...rowFixedWidth("7.25rem")} title={onShift ? "Terminer le service" : "Commencer le service"} onClick={() => onToggleShift(s)} disabled={pending} leftIcon={<Power className="size-3.5" aria-hidden />}>
                 {onShift ? "Terminer" : "Commencer"}
               </Button>
-              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Modifier ${s.full_name}`} onClick={() => onEdit(s)} disabled={pending} aria-label={`Modifier ${s.full_name}`}>
+              <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Modifier ${s.full_name}`} onClick={() => onEdit(s)} disabled={pending} aria-label={`Modifier ${s.full_name}`}>
                 <Pencil className="size-3.5" aria-hidden />
               </Button>
-              <Button variant="ghost" size={rowIconButton(layout)} className="flex-none" title={`Supprimer ${s.full_name}`} onClick={() => onRemove(s)} disabled={pending} aria-label={`Supprimer ${s.full_name}`}>
+              <Button variant="ghost" size={ROW_ICON_BUTTON} className="flex-none" title={`Supprimer ${s.full_name}`} onClick={() => onRemove(s)} disabled={pending} aria-label={`Supprimer ${s.full_name}`}>
                 <Trash2 className="size-3.5 text-danger" aria-hidden />
               </Button>
             </DataTableActions>
