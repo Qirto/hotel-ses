@@ -21,16 +21,13 @@ import { TicketsView } from "@/components/features/views/TicketsView";
 import { UrgentTicketsPanel } from "@/components/features/views/UrgentTicketsPanel";
 import { RoomStatusPanel } from "@/components/features/charts/RoomStatusChart";
 import { TicketsByDepartmentChart } from "@/components/features/charts/TicketsByDepartmentChart";
-import { HousekeepingControl } from "@/components/features/room/HousekeepingControl";
-import { StayControl } from "@/components/features/room/StayControl";
 import { usePortalState } from "@/hooks/usePortalState";
-import { useCleaningCycle } from "@/hooks/useCleaningCycle";
 import { useRealtimeRefresh } from "@/hooks/useRealtimeRefresh";
+import { useRoomControls } from "@/hooks/useRoomControls";
 import { useTicketMutations } from "@/hooks/useTicketMutations";
 import { isUrgentOpenTicket } from "@/lib/tickets";
-import { roomStatusCounts, STAY_MESSAGE, STAY_RESULT, type StayState } from "@/lib/rooms";
+import { roomStatusCounts } from "@/lib/rooms";
 import { percent, plural } from "@/lib/format";
-import { updateRoomHeadcount, updateRoomStayState } from "@/app/actions";
 
 interface Props {
   rooms: HotelRoom[];
@@ -62,33 +59,7 @@ function ReceptionPortalView({ rooms, staffList = NO_STAFF, departmentsList = NO
   const ticketMutations = useTicketMutations(p, "Réception");
   const ticketActions = useTicketActions({ pending: isPending, onAcknowledge: ticketMutations.acknowledge, onResolve: ticketMutations.resolve });
   const ticketEditor = useTicketEditor(ticketMutations, staffList, isPending);
-  const cycleCleaning = useCleaningCycle(p);
-  const setStayState = useCallback(
-    (room: HotelRoom, state: StayState) =>
-      run(async () => {
-        const res = await updateRoomStayState(room.id, state);
-        if (res.success) {
-          patchRoom(room.id, STAY_RESULT[state]);
-          flash("success", `Chambre ${room.room_number} : ${STAY_MESSAGE[state]}.`);
-        } else flash("danger", "Impossible de mettre à jour le statut du séjour.");
-      }),
-    [run, patchRoom, flash]
-  );
-
-  // Guest count: shown at once, put back if the server refuses.
-  const setHeadcount = useCallback(
-    (room: HotelRoom, adults: number, children: number) =>
-      run(async () => {
-        const before = { adult_count: room.adult_count, child_count: room.child_count };
-        patchRoom(room.id, { adult_count: adults, child_count: children });
-        const res = await updateRoomHeadcount(room.id, adults, children);
-        if (!res.success) {
-          patchRoom(room.id, before);
-          flash("danger", `Impossible de mettre à jour le nombre de clients de la chambre ${room.room_number}.`);
-        }
-      }),
-    [run, patchRoom, flash]
-  );
+  const roomControls = useRoomControls(p);
 
   /* ───────────── front desk sheets (room typed by hand) ───────────── */
   const [dispatchOpen, setDispatchOpen] = useState(false);
@@ -177,14 +148,7 @@ function ReceptionPortalView({ rooms, staffList = NO_STAFF, departmentsList = NO
         p={p}
         tickets={ticketMutations}
         ticketActions={ticketActions}
-        controls={
-          p.selectedRoom && (
-            <div className="flex flex-col gap-4">
-              <StayControl room={p.selectedRoom} pending={isPending} onChange={setStayState} onHeadcount={setHeadcount} />
-              <HousekeepingControl room={p.selectedRoom} pending={isPending} onCycle={cycleCleaning} />
-            </div>
-          )
-        }
+        controls={roomControls}
       />
 
       <Fab label="Créer la demande" onClick={() => setDispatchOpen(true)} />

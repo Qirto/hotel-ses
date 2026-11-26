@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getPortalRole } from "@/lib/server/session";
+import { getSession } from "@/lib/server/session";
 import { SettingsView } from "@/components/features/settings/SettingsView";
 
 export const metadata: Metadata = { title: "Paramètres · Hotel SES" };
 
 /** Settings for whoever is signed in (any portal). The proxy also guards this route. */
 export default async function SettingsPage() {
-  const role = await getPortalRole();
-  if (!role) redirect("/login");
-  return <SettingsView role={role} />;
+  const session = await getSession();
+  if (!session) redirect("/login");
+  return <SettingsView role={session.role} username={session.username} displayName={session.displayName} />;
 }

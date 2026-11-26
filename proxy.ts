@@ -1,23 +1,40 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/middleware";
-import { isPortalRole, PORTALS, ROLE_COOKIE } from "@/lib/portals";
+import { canOpen, isPortalRole, PORTALS } from "@/lib/portals";
 
 const under = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
 
+/** Where a signed-in account must change its temporary password. */
+const PASSWORD_PAGE = "/compte/mot-de-passe";
+
+/**
+ * Every request: refresh the Supabase session, verify it (getClaims checks the JWT
+ * signature) and gate the routes by role. Pages and server actions check again on
+ * their own; this only keeps people out of screens they cannot use.
+ */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const role = request.cookies.get(ROLE_COOKIE)?.value;
-  // A portal only for its own role.
-  const portal = Object.values(PORTALS).find((p) => under(pathname, p.path));
-  if (portal && role !== portal.role) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-  // Pages for any signed-in portal (not tied to one role).
-  if (under(pathname, "/settings") && !isPortalRole(role)) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  const { supabase, response, redirect } = createClient(request);
 
-  return createClient(request);
+  const { data } = await supabase.auth.getClaims();
+  const app = (data?.claims?.app_metadata ?? {}) as Record<string, unknown>;
+  const role = isPortalRole(app.role) ? app.role : null;
+  const mustChangePassword = role !== null && app.must_change_password === true;
+
+  // Signed-in: the login page sends you to your space.
+  if (pathname === "/login") return role ? redirect(mustChangePassword ? PASSWORD_PAGE : PORTALS[role].path) : response();
+
+  // A temporary password is changed before anything else.
+  if (mustChangePassword && !under(pathname, PASSWORD_PAGE)) return redirect(PASSWORD_PAGE);
+
+  // A portal: its own role, or the admin.
+  const portal = Object.values(PORTALS).find((p) => under(pathname, p.path));
+  if (portal && !canOpen(role, portal.role)) return redirect(role ? PORTALS[role].path : "/login");
+
+  // Pages for any signed-in account.
+  if ((under(pathname, "/settings") || under(pathname, "/compte")) && !role) return redirect("/login");
+
+  return response();
 }
 
 export const config = {
@@ -25,4 +42,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|serwist/|manifest.webmanifest|offline|icons|splash|.*\\.(?:svg|png|jpg|jpeg|gif|webp|webmanifest)$).*)",
   ],
 };
-

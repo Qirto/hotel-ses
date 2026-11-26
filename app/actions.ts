@@ -1,33 +1,19 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { isPortalRole, PORTALS, ROLE_COOKIE, type PortalRole } from "@/lib/portals";
 import { hotelWallTimeToISO } from "@/lib/datetime";
+import { db, failed, ok, revalidatePortals, type Db } from "@/lib/server/actions-kit";
+import { deny } from "@/lib/server/session";
+
+/**
+ * Hotel operations. Every action starts with `deny([...roles])`: the caller's role
+ * comes from the verified session, the admin is allowed everywhere, and the database
+ * rules (supabase/migrations_accounts.sql) enforce the same split again.
+ * Sign-in lives in app/auth-actions.ts, account and room inventory in app/admin/actions.ts.
+ */
 
 // =====================================================================
 // SHARED HELPERS (not exported: only exported async functions are server actions)
 // =====================================================================
-
-/** Supabase client bound to this request's cookies. */
-async function db() {
-  return createClient(await cookies());
-}
-
-/** Standard success result; `data` is the written row when the caller needs it. */
-function ok<T = undefined>(data?: T) {
-  return { success: true as const, data: data as T, error: undefined };
-}
-
-/** Logs a failed write and returns the standard failure result. */
-function failed(what: string, error: { message: string }) {
-  console.error(`Failed to ${what}:`, error);
-  return { success: false as const, error: error.message };
-}
-
-type Db = Awaited<ReturnType<typeof db>>;
 
 /** First staff member with `column = value` (present today unless `presentOnly` is false), or null. */
 async function findStaffId(supabase: Db, column: "role" | "department", value: string, presentOnly = true): Promise<number | null> {
@@ -39,65 +25,6 @@ async function findStaffId(supabase: Db, column: "role" | "department", value: s
 
 /** Who to assign when nobody from the department is present (keyed by department code). */
 const FALLBACK_ROLE: Record<string, string> = { TECHNICAL: "maintenance", HOUSEKEEPING: "governance" };
-
-/** Portal pages are dynamic; this refreshes their client router cache after a write. */
-function revalidatePortals() {
-  for (const portal of Object.values(PORTALS)) revalidatePath(portal.path);
-}
-
-// =====================================================================
-// AUTHENTICATION & ROLE ACCESS CONTROL ACTIONS
-// =====================================================================
-
-/** Department passcodes. Fallbacks match .env; to be replaced by per-staff sign-in. */
-const PASSCODES: Record<PortalRole, string> = {
-  reception: process.env.PASSCODE_RECEPTION || "1111",
-  rh: process.env.PASSCODE_RH || "2222",
-  gm: process.env.PASSCODE_GM || "3333",
-};
-
-const ROLE_COOKIE_OPTIONS = { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" } as const;
-
-/** Signs the browser into a portal: sets the role cookie and refreshes that portal. */
-async function setRoleCookie(role: PortalRole) {
-  (await cookies()).set(ROLE_COOKIE, role, ROLE_COOKIE_OPTIONS);
-  revalidatePath(PORTALS[role].path);
-}
-
-/** Role for a passcode, or null. (Typing the role name is also accepted, as before.) */
-function roleForPasscode(passcode: string): PortalRole | null {
-  const code = passcode.trim();
-  if (!code) return null;
-  return (Object.keys(PASSCODES) as PortalRole[]).find((role) => code === PASSCODES[role] || code.toLowerCase() === role) ?? null;
-}
-
-export type SignInState = { error: string } | null;
-
-/**
- * Login form action (`<form action>` via useActionState). Works before the page
- * hydrates: the browser POSTs the form and follows a 303 to the portal, so the
- * passcode never ends up in the URL.
- */
-export async function signInWithForm(_prev: SignInState, formData: FormData): Promise<SignInState> {
-  const passcode = String(formData.get("passcode") ?? "");
-  if (!passcode.trim()) return { error: "Veuillez saisir votre code d’accès." };
-  const role = roleForPasscode(passcode);
-  if (!role) return { error: "Code d’accès non valide. Veuillez vérifier votre saisie." };
-  await setRoleCookie(role);
-  redirect(PORTALS[role].path);
-}
-
-export async function restorePersistedSession(role: PortalRole) {
-  if (!isPortalRole(role)) return { success: false, error: "Espace non valide." } as const;
-  await setRoleCookie(role);
-  return { success: true, redirectUrl: PORTALS[role].path, role } as const;
-}
-
-export async function logoutRole() {
-  (await cookies()).delete(ROLE_COOKIE);
-  revalidatePath("/login");
-  return { success: true, redirectUrl: "/login" };
-}
 
 // =====================================================================
 // RECEPTION ACTIONS
@@ -112,6 +39,8 @@ export async function createRapidReclamation(data: {
   priority?: "EMERGENCY" | "HIGH" | "STANDARD";
   residentId?: number | null;
 }) {
+  const denied = await deny(["reception", "rh", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
   // tickets keep the department code the form sends (the same codes as departments and staff)
   const targetDepartment = data.department;
@@ -163,6 +92,8 @@ export async function createHistoricalReclamation(data: {
   resolvedAt?: string | null;
   isConfidential?: boolean;
 }) {
+  const denied = await deny(["reception", "rh", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
 
   // form values are hotel wall-clock times ("YYYY-MM-DDTHH:mm"); the server runs in UTC
@@ -192,6 +123,8 @@ export async function updateRoomStayState(
   roomId: number,
   stayState: "OCCUPIED" | "VACANT_DIRTY" | "RESERVED"
 ) {
+  const denied = await deny(["reception"]);
+  if (denied) return denied;
   const supabase = await db();
 
   let updateData: { is_occupied: boolean; cleaning_status?: "DIRTY" | "CLEAN" } = {
@@ -222,6 +155,8 @@ export async function updateRoomStayState(
 // =====================================================================
 
 export async function acknowledgeReclamation(reclamationId: number, staffId?: number) {
+  const denied = await deny(["reception", "rh", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase
@@ -243,6 +178,8 @@ export async function acknowledgeReclamation(reclamationId: number, staffId?: nu
 
 /** Marks a ticket resolved. The guest's original description is kept as it is. */
 export async function resolveReclamation(reclamationId: number) {
+  const denied = await deny(["reception", "rh", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase
@@ -266,6 +203,8 @@ export async function updateReclamation(
   reclamationId: number,
   data: { department: string; category: string; priority: string; description: string; assignedStaffId: number | null }
 ) {
+  const denied = await deny(["reception", "gm"]);
+  if (denied) return denied;
   if (!data.department.trim() || !data.category.trim()) return { success: false as const, error: "Service et problème sont obligatoires." };
   if (!(PRIORITIES as readonly string[]).includes(data.priority)) return { success: false as const, error: "Priorité non valide." };
   const supabase = await db();
@@ -288,6 +227,8 @@ export async function updateReclamation(
 
 /** Deletes a request for good (entered by mistake, duplicate). */
 export async function deleteReclamation(reclamationId: number) {
+  const denied = await deny(["reception", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
   const { error } = await supabase.from("reclamations").delete().eq("id", reclamationId);
   if (error) return failed("delete reclamation", error);
@@ -304,6 +245,8 @@ export async function cycleRoomCleaning(
   roomId: number,
   nextStatus: "DIRTY" | "CLEANING" | "INSPECTING" | "CLEAN"
 ) {
+  const denied = await deny(["reception", "rh", "gm"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase
@@ -320,6 +263,8 @@ export async function cycleRoomCleaning(
 }
 
 export async function updateRoomHeadcount(roomId: number, adultCount: number, childCount: number) {
+  const denied = await deny(["reception"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase
@@ -343,6 +288,8 @@ export async function updateRoomHeadcount(roomId: number, adultCount: number, ch
 // =====================================================================
 
 export async function toggleStaffShift(staffId: number, currentShift: string) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const nextShift = currentShift === "ON_SHIFT" ? "OFF_SHIFT" : "ON_SHIFT";
@@ -375,6 +322,8 @@ type ShiftStatus = (typeof SHIFT_STATUSES)[number];
  * With nobody present in that department, the requests stay assigned and are counted.
  */
 export async function markStaffAbsentAndRedistribute(staffId: number) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { data: member, error: readError } = await supabase
@@ -429,6 +378,8 @@ export async function undoStaffAbsence(
   substituteId: number | null,
   movedTicketIds: number[]
 ) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
   const shift: ShiftStatus = (SHIFT_STATUSES as readonly string[]).includes(previous.shift) ? (previous.shift as ShiftStatus) : "OFF_SHIFT";
 
@@ -457,6 +408,8 @@ export async function createStaffMember(data: {
   skill_tags?: string[];
   shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
 }) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase.from("staff").insert([
@@ -491,6 +444,8 @@ export async function updateStaffMember(
     shift_status?: "ON_SHIFT" | "OFF_SHIFT" | "ON_BREAK";
   }
 ) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const updatePayload: Record<string, unknown> = {};
@@ -518,6 +473,8 @@ export async function updateStaffMember(
 }
 
 export async function deleteStaffMember(staffId: number) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   // Clear references in reclamations before deleting (requests keep their history)
@@ -555,6 +512,8 @@ function departmentCode(name: string) {
 
 /** Creates a department. Its code (stored on staff and requests) comes from the name and never changes. */
 export async function createDepartment(data: { name: string; description?: string; head_of_department?: string }) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const name = data.name.trim();
   const code = departmentCode(name);
   if (!code) return { success: false as const, error: "Le nom du service est obligatoire." };
@@ -596,6 +555,8 @@ export async function updateDepartment(
     head_of_department?: string;
   }
 ) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const updatePayload: Record<string, unknown> = {
@@ -621,6 +582,8 @@ export async function updateDepartment(
 
 /** Deletes a department, refused while employees are still attached to it. */
 export async function deleteDepartment(departmentId: number) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { data: dept, error: readError } = await supabase.from("departments").select("code").eq("id", departmentId).single();
@@ -651,6 +614,8 @@ export async function deleteDepartment(departmentId: number) {
 // =====================================================================
 
 export async function anonymizeStaffRecord(staffId: number) {
+  const denied = await deny(["rh"]);
+  if (denied) return denied;
   const supabase = await db();
 
   const { error } = await supabase

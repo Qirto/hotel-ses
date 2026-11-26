@@ -6,15 +6,16 @@ Built with Next.js 16, React 19, Supabase and the [easyui](https://easyui.site) 
 
 ## Portals
 
-Staff sign in with a department passcode and land in their own portal.
+Each staff member signs in with a personal account (username + password) and lands in the portal of their role. The admin opens every portal.
 
-| Portal | Route | Who | Tabs |
+| Portal | Route | Role | Tabs |
 | --- | --- | --- | --- |
-| Reception | `/reception` | Front desk | Overview, Rooms, Tickets, Stats |
-| General Manager | `/gm` | Management | Dashboard, Rooms, Tickets, Analytics |
-| Human Resources | `/rh` | HR | Staff & Shifts, Rooms, Tickets, Analytics |
+| Reception | `/reception` | `reception` | Overview, Rooms, Tickets, Stats |
+| General Manager | `/gm` | `gm` | Dashboard, Rooms, Tickets, Analytics |
+| Human Resources | `/rh` | `rh` | Staff (directory, shifts, services), Rooms, Tickets, Analytics |
+| Administration | `/admin` | `admin` | Accounts, Rooms (plan + inventory), Tickets, Staff & services, Portals |
 
-Other pages: `/login`, `/offline`, `/privacy`, `/tos`.
+Other pages: `/login`, `/compte/mot-de-passe` (password change), `/settings`, `/offline`, `/privacy`, `/tos`.
 
 ### What each portal can do
 
@@ -29,6 +30,11 @@ Other pages: `/login`, `/offline`, `/privacy`, `/tos`.
 | Resolve a ticket | yes | yes | |
 | Room analytics (rush hour, repeat problems) | yes | yes | yes |
 | Manage staff, shifts and absences | | | yes |
+| Edit, reassign or delete a ticket | yes | yes | |
+| Manage services (departments) | | | yes |
+| Manage accounts and the room inventory | admin only | | |
+
+The admin can do everything above. Each action checks the caller's role on the server (`deny()` in `lib/server/session.ts`), and the database rules check it again.
 
 ## How it works
 
@@ -46,7 +52,7 @@ flowchart LR
 
 | Step | Where | What happens |
 | --- | --- | --- |
-| 1 | `proxy.ts` | Sends visitors without the matching role cookie to `/login` |
+| 1 | `proxy.ts` | Refreshes and verifies the Supabase session; sends visitors without the right role to `/login` (or their own portal) |
 | 2 | `app/<portal>/page.tsx` | Loads rooms, staff, residents, departments and tickets on the server |
 | 3 | `app/components/*Portal.tsx` | Renders the portal from shared views in `components/features` |
 | 4 | `app/actions.ts` | Every change (dispatch, resolve, check-in, shifts) is a server action |
@@ -174,11 +180,25 @@ npm run dev                  # http://localhost:3000
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
-| `PASSCODE_RECEPTION` | Passcode for the Reception portal |
-| `PASSCODE_RH` | Passcode for the HR portal |
-| `PASSCODE_GM` | Passcode for the GM portal |
+| `SUPABASE_SECRET_KEY` | Server only: account management (Supabase → Project settings → API keys → secret key). Put it in `.env.local` (gitignored) and the host's environment, **never** in the committed `.env` |
 
-Set your own passcodes. Never commit real values.
+### Accounts
+
+| Item | Detail |
+| --- | --- |
+| Sign-in | Username + password (Supabase Auth). Usernames map to an internal address `<username>@staff.hotel-ses.local`; no email is ever sent |
+| Roles | `reception`, `rh`, `gm`, `admin`, stored in the signed session (`app_metadata.role`, writable only with the secret key) and mirrored in `profiles` |
+| New account | Created with a temporary password shown once; the person sets their own at first sign-in |
+| Forgotten password | The admin resets it (new temporary password) from Administration → Comptes |
+| Disable | The admin disables an account (sign-in refused) and can re-enable it; the last active admin cannot be removed |
+
+First administrator, once, after the migration:
+
+```bash
+npm run account:create -- --username a.admin --role admin --name "Prénom Nom"
+```
+
+Demo accounts (one per role) for presentations: `npm run seed:accounts`. Their temporary passwords go to `demo-accounts.local.txt` (gitignored), never to the terminal.
 
 ### Database setup
 
@@ -190,6 +210,8 @@ Run these in the Supabase SQL editor, in order:
 | 2 | `supabase/migrations_roles_upgrade.sql` | Guest counts, staff presence, confidential flag, SLA deadline |
 | 3 | `supabase/migrations_department_crud.sql` | `departments` table |
 | 4 | `supabase/migrations_expand_departments.sql` | All hotel departments and roles for staff |
+| 5 | `supabase/migrations_accounts.sql` | `profiles` (accounts) and access rules by role; anonymous visitors get nothing |
+| 6 | `supabase/migrations_realtime.sql` | Live updates: adds rooms, requests, staff and services to the realtime publication |
 
 `npm run seed` re-seeds the rooms from a script instead of SQL.
 
@@ -201,6 +223,9 @@ Run these in the Supabase SQL editor, in order:
 | `npm run build` | Production build (includes type check) |
 | `npm run start` | Serve the production build |
 | `npm run seed` | Add any missing rooms of the hotel plan (scripts/room_layout.js) to Supabase |
+| `npm run seed:demo` | Demo staff and tickets (additive; `--reset` to start over) |
+| `npm run account:create` | Create one account (first admin) |
+| `npm run seed:accounts` | Demo accounts, one per role |
 
 ## Design
 
@@ -229,10 +254,7 @@ These are open and should be fixed before production use with real guest data.
 
 | Issue | Risk | Fix |
 | --- | --- | --- |
-| The role cookie is not signed or `httpOnly` | Anyone can set it and open any portal | Supabase Auth or a signed, `httpOnly` session |
-| Row-level security policies allow everything | The public key can read and write all tables | Policies tied to the signed-in user and role |
-| Server actions do not check the role | Any caller can run any action | Verify the session inside every action |
-| `.env` files are tracked in git | Keys and passcodes are in the history | Remove them, rotate the key and passcodes |
+| `.env` files are tracked in git | The old passcodes (no longer used) are in the history | Remove `.env` / `.env.production` from git; keep secrets in `.env.local` and the host |
 
 ## License
 

@@ -104,13 +104,13 @@ export default function PrivacyPolicyPage() {
               </h3>
               <ul>
                 <li>
-                  <strong>Nom du cookie :</strong> <code>hotel_role</code>
+                  <strong>Nom du cookie :</strong> <code>sb-…-auth-token</code> (session Supabase)
                 </li>
                 <li>
-                  <strong>Finalité :</strong> enregistre l’espace authentifié du service (<code>reception</code>, <code>rh</code>, <code>gm</code>) afin d’appliquer la protection des pages dans le middleware serveur (<code>proxy.ts</code>).
+                  <strong>Finalité :</strong> maintient la session du compte personnel connecté ; le rôle du compte (réception, RH, direction, administrateur), signé par le serveur, détermine les espaces et les actions autorisés.
                 </li>
                 <li>
-                  <strong>Durée de conservation :</strong> 7 jours (ou suppression immédiate lors d’une déconnexion explicite).
+                  <strong>Durée de conservation :</strong> durée de la session, renouvelée tant que le compte est utilisé (suppression immédiate lors d’une déconnexion explicite).
                 </li>
                 <li>
                   <strong>Exemption légale :</strong> strictement nécessaire à la sécurité des espaces au sens de l’article 5(3) de la directive ePrivacy ; aucun consentement préalable n’est requis.

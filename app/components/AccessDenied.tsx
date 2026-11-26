@@ -40,7 +40,7 @@ export default function AccessDenied({ requiredRole, currentRole }: Props) {
             leftIcon={<LogOut className="size-4" aria-hidden />}
             className="w-full justify-center"
           >
-            Se connecter avec un autre code d’accès
+            Se connecter avec un autre compte
           </Button>
         </>
       }

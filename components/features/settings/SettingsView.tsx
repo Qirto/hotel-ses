@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, KeyRound, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import { ArrowLeft, AtSign, KeyRound, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { GhostIconButton } from "@/components/app/AppShell";
 import { Panel } from "@/components/features/Panel";
 import { Segmented } from "@/components/features/Forms";
-import { PORTALS, type PortalRole } from "@/lib/portals";
+import { PORTALS, ROLE_LABEL, type PortalRole } from "@/lib/portals";
 import { signOutToLogin } from "@/lib/session";
 import { setThemePreference, THEME_OPTIONS, useThemePreference, type ThemePreference } from "@/lib/theme";
 
@@ -20,10 +20,9 @@ const THEME_CHOICES = THEME_OPTIONS.map((o) => ({ ...o, icon: THEME_ICONS[o.valu
 
 /**
  * Settings page: per-device preferences and the signed-in account.
- * Sections are Panels of SettingRows, so new settings (and per-staff account
- * management, once personal sign-in exists) slot in without new layout.
+ * Sections are Panels of SettingRows, so new settings slot in without new layout.
  */
-export function SettingsView({ role }: { role: PortalRole }) {
+export function SettingsView({ role, username, displayName }: { role: PortalRole; username: string; displayName: string }) {
   const portal = PORTALS[role];
   const theme = useThemePreference();
 
@@ -45,20 +44,25 @@ export function SettingsView({ role }: { role: PortalRole }) {
           </SettingRow>
         </Panel>
 
-        <Panel title="Compte" description="Session ouverte sur cet appareil." icon={<UserRound />}>
+        <Panel title="Compte" description="Votre compte personnel." icon={<UserRound />}>
           <div className="flex flex-col divide-y divide-border">
-            <SettingRow label="Espace">
-              <span className="text-sm text-fg">{portal.name}</span>
+            <SettingRow label="Nom">
+              <span className="text-sm text-fg">{displayName}</span>
             </SettingRow>
-            <SettingRow label="Mode de connexion">
-              <span className="inline-flex items-center gap-1.5 text-sm text-fg">
-                <KeyRound className="size-4 text-fg-muted" aria-hidden /> Code d’accès partagé du service
+            <SettingRow label="Identifiant">
+              <span className="inline-flex items-center gap-1.5 font-mono text-sm text-fg">
+                <AtSign className="size-4 text-fg-muted" aria-hidden /> {username}
               </span>
             </SettingRow>
+            <SettingRow label="Rôle" description="Fixé par l’administrateur.">
+              <span className="text-sm text-fg">{ROLE_LABEL[role]}</span>
+            </SettingRow>
+            <SettingRow label="Mot de passe" description="Changez-le régulièrement, et tout de suite si vous pensez qu’il est connu.">
+              <ButtonLink href="/compte/mot-de-passe" variant="outline" size="touch" leftIcon={<KeyRound className="size-4" aria-hidden />}>
+                Changer le mot de passe
+              </ButtonLink>
+            </SettingRow>
           </div>
-          <Alert tone="info" className="mt-4">
-            Des comptes personnels sont prévus : chaque collaborateur se connectera avec son propre identifiant et son code PIN, qu’il pourra gérer ici.
-          </Alert>
           <div className="mt-4 flex justify-end">
             <Button type="button" variant="secondary" size="touch" onClick={() => void signOutToLogin()} leftIcon={<LogOut className="size-4" aria-hidden />}>
               Se déconnecter

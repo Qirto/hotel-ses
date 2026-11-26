@@ -1,11 +1,10 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { LogOut, Settings } from "lucide-react";
 import { Sidebar, useSidebar, type SidebarItem, type SidebarSection } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { rememberRole } from "@/lib/remembered-role";
 import { signOutToLogin } from "@/lib/session";
 import { HOTEL_NAME, PORTALS, type Portal, type PortalRole, type PortalTone } from "@/lib/portals";
 import { ConnectionBanner } from "./ConnectionBanner";
@@ -40,7 +39,6 @@ interface AppShellProps {
  */
 export default function AppShell({ role, items, headerActions, children }: AppShellProps) {
   const portal = PORTALS[role];
-  useEffect(() => rememberRole(role), [role]);
 
   // Latest values behind refs so the callbacks below never change identity.
   const itemsRef = useRef(items);
