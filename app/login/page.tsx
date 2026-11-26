@@ -3,8 +3,9 @@
 import React, { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CircleAlert, CircleCheck, Eye, EyeOff, KeyRound, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, KeyRound, RefreshCw, WifiOff } from "lucide-react";
 import { restorePersistedSession, signInWithForm, type SignInState } from "@/app/actions";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { clearCachesAndReload, forgetPersistedRole } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
@@ -98,17 +99,11 @@ export default function LoginPage() {
             </div>
 
             {errorMessage && (
-              <p id="passcode-error" role="alert" className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-subtle px-3 py-2.5 text-sm text-danger">
-                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <Alert id="passcode-error" tone="danger">
                 {errorMessage}
-              </p>
+              </Alert>
             )}
-            {successRole && (
-              <p role="status" className="flex items-start gap-2 rounded-lg border border-success/30 bg-success-subtle px-3 py-2.5 text-sm text-success">
-                <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
-                Signed in. Opening your workspace.
-              </p>
-            )}
+            {successRole && <Alert tone="success">Signed in. Opening your workspace.</Alert>}
 
             <Button
               type="submit"

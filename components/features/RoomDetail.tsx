@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, CircleCheck, ClipboardPlus, Clock, History, ListChecks, Repeat, Timer } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AnimatedTabs } from "@/components/ui/animated-tabs";
 import { ResponsiveSheet } from "@/components/app/ResponsiveSheet";
@@ -24,7 +25,7 @@ type TabId = "overview" | "open" | "history" | "patterns";
  *  - `logForm`: optional form, opened from the "Log issue" footer button
  */
 export function RoomDetail({
-  room,
+  room: selected,
   tickets,
   onClose,
   controls,
@@ -40,6 +41,22 @@ export function RoomDetail({
 }) {
   const [tab, setTab] = useState<TabId>("overview");
   const [logging, setLogging] = useState(false);
+
+  // Controlled like every other drawer: the sheet stays mounted and keeps the
+  // last room on screen while it animates out, instead of vanishing mid-close.
+  const isOpen = selected != null;
+  const [shown, setShown] = useState(selected);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (selected && selected !== shown) setShown(selected);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      // fresh view on every open
+      setTab("overview");
+      setLogging(false);
+    }
+  }
+  const room = selected ?? shown;
   const logButton = useRef<HTMLButtonElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const wasLogging = useRef(false);
@@ -51,11 +68,8 @@ export function RoomDetail({
     wasLogging.current = logging;
   }, [logging]);
 
-  const close = () => {
-    setTab("overview");
-    setLogging(false);
-    onClose();
-  };
+  // state resets on the next open, so the closing sheet doesn't flash another view
+  const close = onClose;
 
   const roomTickets = useMemo(
     () =>
@@ -71,6 +85,8 @@ export function RoomDetail({
 
   if (!room) return null;
   const head = roomHeadline(room, ticketStatsByRoom(roomTickets).get(room.id) ?? undefined);
+  const occupancyLabel = room.is_occupied ? "Occupied" : "Vacant";
+  const cleaningLabel = CLEANING_LABEL[room.cleaning_status];
 
   const tabs = [
     { id: "overview", label: "Overview" },
@@ -79,43 +95,19 @@ export function RoomDetail({
     { id: "patterns", label: "Patterns" },
   ];
 
-  // Logging is an action, not a view: a footer button swaps the body to the form.
-  if (logging && logForm) {
-    return (
-      <ResponsiveSheet
-        open
-        onOpenChange={(o) => !o && close()}
-        size="lg"
-        title={`Log issue · Room ${room.room_number}`}
-        description="Create a ticket now, or record a past incident."
-      >
-        <div className="flex flex-col gap-5">
-          <Button
-            ref={backButton}
-            type="button"
-            variant="ghost"
-            size="touch"
-            onClick={() => setLogging(false)}
-            leftIcon={<ArrowLeft className="size-4" aria-hidden />}
-            className="-ml-2 self-start"
-          >
-            Back to room
-          </Button>
-          {logForm}
-        </div>
-      </ResponsiveSheet>
-    );
-  }
+  // Logging is an action, not a view: a footer button swaps the body to the form
+  // inside the same drawer.
+  const showLog = logging && Boolean(logForm);
 
   return (
     <ResponsiveSheet
-      open
+      open={isOpen}
       onOpenChange={(o) => !o && close()}
       size="lg"
-      title={`Room ${room.room_number}`}
-      description={`Floor ${room.floor} · ${blockLabel(room.block)}`}
+      title={showLog ? `Log issue · Room ${room.room_number}` : `Room ${room.room_number}`}
+      description={showLog ? "Create a ticket now, or record a past incident." : `Floor ${room.floor} · ${blockLabel(room.block)}`}
       footer={
-        logForm ? (
+        logForm && !showLog ? (
           <Button
             ref={logButton}
             type="button"
@@ -130,112 +122,137 @@ export function RoomDetail({
         ) : undefined
       }
     >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap gap-2">
-          <ToneBadge tone={head.tone}>{head.label}</ToneBadge>
-          <ToneBadge tone={room.is_occupied ? "info" : "success"}>{room.is_occupied ? "Occupied" : "Vacant"}</ToneBadge>
-          <ToneBadge tone={CLEANING_TONE[room.cleaning_status]}>{CLEANING_LABEL[room.cleaning_status]}</ToneBadge>
-        </div>
+      <motion.div
+        key={showLog ? "log" : "room"}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+        className="flex flex-col gap-5"
+      >
+        {showLog ? (
+          <>
+            <Button
+              ref={backButton}
+              type="button"
+              variant="ghost"
+              size="touch"
+              onClick={() => setLogging(false)}
+              leftIcon={<ArrowLeft className="size-4" aria-hidden />}
+              className="-ml-2 self-start"
+            >
+              Back to room
+            </Button>
+            {logForm}
+          </>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {/* the headline repeats a status below when nothing more urgent applies: show it only when it adds something */}
+              {head.label !== occupancyLabel && head.label !== cleaningLabel && <ToneBadge tone={head.tone}>{head.label}</ToneBadge>}
+              <ToneBadge tone={room.is_occupied ? "info" : "success"}>{occupancyLabel}</ToneBadge>
+              <ToneBadge tone={CLEANING_TONE[room.cleaning_status]}>{cleaningLabel}</ToneBadge>
+            </div>
 
-        <AnimatedTabs
-          tabs={tabs}
-          activeTab={tab}
-          onChange={(id) => setTab(id as TabId)}
-          renderContent={false}
-          tabsContainerClassName="no-scrollbar w-full max-w-full self-stretch overflow-x-auto [&>button]:flex-1 [&>button]:justify-center"
-        />
+            <AnimatedTabs
+              tabs={tabs}
+              activeTab={tab}
+              onChange={(id) => setTab(id as TabId)}
+              renderContent={false}
+              tabsContainerClassName="no-scrollbar w-full max-w-full self-stretch overflow-x-auto [&>button]:flex-1 [&>button]:justify-center"
+            />
 
-        {tab === "overview" && (
-          <div className="flex flex-col gap-5">
-            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={<ListChecks />} label="Tickets" value={analytics?.totalTickets ?? 0} />
-              <Stat icon={<Clock />} label="Open" value={analytics?.openTickets ?? 0} />
-              <Stat icon={<CircleCheck />} label="Resolved" value={analytics?.resolvedTickets ?? 0} />
-              <Stat
-                icon={<Timer />}
-                label="Avg fix"
-                value={analytics?.avgResolutionMinutes != null ? `${Math.round(analytics.avgResolutionMinutes)} min` : "–"}
-              />
-            </dl>
-            {room.is_occupied && (room.adult_count || room.child_count) ? (
-              <p className="text-sm text-fg-secondary">
-                Guests: {plural(room.adult_count ?? 0, "adult")}, {plural(room.child_count ?? 0, "child", "children")}
-              </p>
-            ) : null}
-            {controls}
-          </div>
-        )}
-
-        {tab === "open" &&
-          (open.length === 0 ? (
-            <EmptyState icon={<CircleCheck />} title="No open tickets" description="Everything reported for this room is resolved." />
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {open.map((t) => (
-                <TicketCard key={t.id} ticket={t} actions={ticketActions?.(t)} />
-              ))}
-            </ul>
-          ))}
-
-        {tab === "history" &&
-          (roomTickets.length === 0 ? (
-            <EmptyState icon={<History />} title="No history yet" description="Tickets logged for this room will appear here." />
-          ) : (
-            <ol className="relative flex flex-col gap-4 border-l border-border pl-5">
-              {roomTickets.map((t) => {
-                const d = formatIncidentDate(t.created_at);
-                return (
-                  <li key={t.id} className="relative">
-                    <span
-                      className={`absolute -left-[1.6rem] top-1.5 size-2.5 rounded-full ring-4 ring-surface ${isOpenTicket(t) ? "bg-warning" : "bg-success"}`}
-                      aria-hidden
-                    />
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-medium">{t.category}</span>
-                      <TicketStatusBadge status={t.status} />
-                    </div>
-                    {t.description && <p className="mt-1 text-sm text-fg-secondary">{t.description}</p>}
-                    <p className="mt-1 text-xs text-fg-muted">
-                      {d.full} · {departmentLabel(t.department)}
-                    </p>
-                  </li>
-                );
-              })}
-            </ol>
-          ))}
-
-        {tab === "patterns" && (
-          <div className="flex flex-col gap-5">
-            <div className="rounded-lg border border-border bg-surface-raised p-4">
-              <p className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="size-4 text-fg-muted" aria-hidden /> Rush hour
-              </p>
-              {analytics?.rushHour ? (
-                <>
-                  <p className="mt-2 text-xl font-semibold tabular-nums">{analytics.rushHour.hourRange}</p>
-                  <p className="mt-1 text-sm text-fg-muted">
-                    Peak of {plural(analytics.rushHour.count, "ticket")} on {analytics.rushHour.date};{" "}
-                    {plural(analytics.rushHour.totalForHourOfDay, "ticket")} in this hour overall.
+            {tab === "overview" && (
+              <div className="flex flex-col gap-5">
+                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Stat icon={<ListChecks />} label="Tickets" value={analytics?.totalTickets ?? 0} />
+                  <Stat icon={<Clock />} label="Open" value={analytics?.openTickets ?? 0} />
+                  <Stat icon={<CircleCheck />} label="Resolved" value={analytics?.resolvedTickets ?? 0} />
+                  <Stat
+                    icon={<Timer />}
+                    label="Avg fix"
+                    value={analytics?.avgResolutionMinutes != null ? `${Math.round(analytics.avgResolutionMinutes)} min` : "–"}
+                  />
+                </dl>
+                {room.is_occupied && (room.adult_count || room.child_count) ? (
+                  <p className="text-sm text-fg-secondary">
+                    Guests: {plural(room.adult_count ?? 0, "adult")}, {plural(room.child_count ?? 0, "child", "children")}
                   </p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-fg-muted">Not enough history yet.</p>
-              )}
-            </div>
-            <div>
-              <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-                <Repeat className="size-4 text-fg-muted" aria-hidden /> Most repeated problems
-              </p>
-              {analytics && analytics.topProblems.length > 0 ? (
-                <ProblemBars problems={analytics.topProblems} />
-              ) : (
-                <p className="text-sm text-fg-muted">No repeated problems.</p>
-              )}
-            </div>
-          </div>
-        )}
+                ) : null}
+                {controls}
+              </div>
+            )}
 
-      </div>
+            {tab === "open" &&
+              (open.length === 0 ? (
+                <EmptyState icon={<CircleCheck />} title="No open tickets" description="Everything reported for this room is resolved." />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {open.map((t) => (
+                    <TicketCard key={t.id} ticket={t} actions={ticketActions?.(t)} />
+                  ))}
+                </ul>
+              ))}
+
+            {tab === "history" &&
+              (roomTickets.length === 0 ? (
+                <EmptyState icon={<History />} title="No history yet" description="Tickets logged for this room will appear here." />
+              ) : (
+                <ol className="relative flex flex-col gap-4 border-l border-border pl-5">
+                  {roomTickets.map((t) => {
+                    const d = formatIncidentDate(t.created_at);
+                    return (
+                      <li key={t.id} className="relative">
+                        <span
+                          className={`absolute -left-[1.6rem] top-1.5 size-2.5 rounded-full ring-4 ring-surface ${isOpenTicket(t) ? "bg-warning" : "bg-success"}`}
+                          aria-hidden
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">{t.category}</span>
+                          <TicketStatusBadge status={t.status} />
+                        </div>
+                        {t.description && <p className="mt-1 text-sm text-fg-secondary">{t.description}</p>}
+                        <p className="mt-1 text-xs text-fg-muted">
+                          {d.full} · {departmentLabel(t.department)}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ))}
+
+            {tab === "patterns" && (
+              <div className="flex flex-col gap-5">
+                <div className="rounded-lg border border-border bg-surface-raised p-4">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <Clock className="size-4 text-fg-muted" aria-hidden /> Rush hour
+                  </p>
+                  {analytics?.rushHour ? (
+                    <>
+                      <p className="mt-2 text-xl font-semibold tabular-nums">{analytics.rushHour.hourRange}</p>
+                      <p className="mt-1 text-sm text-fg-muted">
+                        Peak of {plural(analytics.rushHour.count, "ticket")} on {analytics.rushHour.date};{" "}
+                        {plural(analytics.rushHour.totalForHourOfDay, "ticket")} in this hour overall.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm text-fg-muted">Not enough history yet.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-3 flex items-center gap-2 text-sm font-medium">
+                    <Repeat className="size-4 text-fg-muted" aria-hidden /> Most repeated problems
+                  </p>
+                  {analytics && analytics.topProblems.length > 0 ? (
+                    <ProblemBars problems={analytics.topProblems} />
+                  ) : (
+                    <p className="text-sm text-fg-muted">No repeated problems.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
     </ResponsiveSheet>
   );
 }

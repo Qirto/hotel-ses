@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactNode } from "react";
-import { CircleCheck, CircleX, History, Send } from "lucide-react";
+import { History, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SpringSelect, type SpringSelectProps } from "@/components/ui/spring-select";
 import { DEFAULT_PRESETS, DISPATCH_DEPARTMENTS, PRESET_ISSUES } from "@/lib/constants";
@@ -79,25 +79,6 @@ export function Segmented<V extends string>({
         })}
       </div>
     </fieldset>
-  );
-}
-
-/**
- * Result message look. Shown through `NoticeOutlet` (components/app/notice),
- * which wraps it in a polite `role="status"` live region.
- */
-export function Notice({ tone, children }: { tone: "success" | "danger"; children: ReactNode }) {
-  const Icon = tone === "success" ? CircleCheck : CircleX;
-  return (
-    <p
-      className={cn(
-        "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm",
-        tone === "success" ? "border-success/30 bg-success-subtle text-success" : "border-danger/30 bg-danger-subtle text-danger"
-      )}
-    >
-      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
-      <span>{children}</span>
-    </p>
   );
 }
 

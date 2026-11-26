@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { MD_UP, useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
-import { NoticeOutlet } from "./notice";
 
 interface ResponsiveSheetProps {
   open: boolean;
@@ -52,7 +51,6 @@ export function ResponsiveSheet({
           {description && <SheetDescription className="text-fg-muted">{description}</SheetDescription>}
         </SheetHeader>
         <SheetBody className="px-4 py-4 md:px-6">
-          <NoticeOutlet className="mb-4" />
           {children}
         </SheetBody>
         {footer && <SheetFooter className="border-border px-4 md:px-6">{footer}</SheetFooter>}
