@@ -77,10 +77,11 @@ export function AnchoredPopover({
     const r = a.getBoundingClientRect();
     s.right = "auto";
     s.bottom = "auto";
-    s.maxHeight = "";
     s.minWidth = matchWidth ? `${Math.min(r.width, vw - MARGIN * 2)}px` : "";
     const w = p.offsetWidth; // offset* ignores the scale animation
-    const h = p.offsetHeight;
+    // Natural height without lifting the current cap: clearing max-height to measure
+    // would leave nothing to scroll for a moment and reset the list to its top.
+    const h = p.scrollHeight + (p.offsetHeight - p.clientHeight);
 
     const below = vh - r.bottom - GAP - MARGIN;
     const above = r.top - GAP - MARGIN;
@@ -104,10 +105,15 @@ export function AnchoredPopover({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(place);
     };
+    // Scrolling the page or a sheet moves the trigger; scrolling the list itself does not.
+    const onScroll = (e: Event) => {
+      if (popRef.current?.contains(e.target as Node)) return;
+      schedule();
+    };
     const ro = new ResizeObserver(schedule);
     if (popRef.current) ro.observe(popRef.current);
     window.addEventListener("resize", schedule);
-    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("scroll", onScroll, true);
 
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
@@ -127,7 +133,7 @@ export function AnchoredPopover({
       cancelAnimationFrame(frame);
       ro.disconnect();
       window.removeEventListener("resize", schedule);
-      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("scroll", onScroll, true);
       document.removeEventListener("pointerdown", onDown, true);
       window.removeEventListener("keydown", onKey, true);
     };

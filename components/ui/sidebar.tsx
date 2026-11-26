@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { ChevronRight, PanelLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -198,6 +199,9 @@ function Panel({
   const [hoverBox, setHoverBox] = React.useState<{ y: number; h: number } | null>(null);
   const [hovering, setHovering] = React.useState(false);
   const [tip, setTip] = React.useState<{ label: string; x: number; y: number } | null>(null);
+  // The tooltip portal mounts after hydration (no <body> on the server).
+  const [portalReady, setPortalReady] = React.useState(false);
+  React.useEffect(() => setPortalReady(true), []);
   const [open, setOpen] = React.useState<Set<string>>(
     () =>
       new Set(
@@ -424,25 +428,31 @@ function Panel({
         {footer && <div className="shrink-0 space-y-1 border-t border-border p-2">{footer}</div>}
       </div>
 
-      <AnimatePresence>
-        {collapsed && tip && (
-          <div
-            key="tip"
-            className="pointer-events-none fixed z-[60] -translate-y-1/2"
-            style={{ left: tip.x, top: tip.y }}
-          >
-            <motion.div
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-neutral-900"
-            >
-              {tip.label}
-            </motion.div>
-          </div>
+      {/* Hotel SES: in a portal on <body>. Inside the animated sidebar, the tooltip's z-index
+          only counted within the sidebar's own stacking context, so page content covered it. */}
+      {portalReady &&
+        createPortal(
+          <AnimatePresence>
+            {collapsed && tip && (
+              <div
+                key="tip"
+                className="pointer-events-none fixed z-[60] -translate-y-1/2"
+                style={{ left: tip.x, top: tip.y }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 }}
+                  className="whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-neutral-900"
+                >
+                  {tip.label}
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </SidebarContext.Provider>
   );
 }
