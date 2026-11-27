@@ -25,8 +25,8 @@ export function AuthLayout({ title, description, children }: { title: string; de
         </section>
 
         <footer className="mt-6 text-center text-xs text-fg-muted">
-          <p>
-            Réservé au personnel autorisé. Un cookie de session strictement nécessaire maintient votre connexion.{" "}
+          <p>Réservé au personnel de l’hôtel</p>
+          <p className="mt-1">
             <Link href="/privacy" className="underline underline-offset-2 hover:text-fg">
               Confidentialité
             </Link>{" "}

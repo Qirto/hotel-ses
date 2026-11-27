@@ -32,10 +32,10 @@ export default function PrivacyPolicyPage() {
           <h2>1. Responsable du traitement</h2>
           <div className="legal-callout">
             <p>
-              <strong>Responsable </strong> {HOTEL_NAME}, Hammamet, Tunisie
+              <strong>Responsable :</strong> {HOTEL_NAME}, Hammamet, Tunisie
             </p>
             <p>
-              <strong>Contact </strong> <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
+              <strong>Contact :</strong> <a href={`mailto:${CONTACT}`}>{CONTACT}</a>
             </p>
           </div>
           <p>
@@ -48,18 +48,18 @@ export default function PrivacyPolicyPage() {
           <h2>2. Données enregistrées</h2>
           <ul>
             <li>
-              <strong>Comptes </strong> identifiant, nom affiché, rôle, employé rattaché, date de dernière connexion. Le mot de passe est conservé sous forme chiffrée par le service
-              d’authentification  personne, administrateur compris, ne peut le lire.
+              <strong>Comptes :</strong> identifiant, nom affiché, rôle, employé rattaché, date de dernière connexion. Le mot de passe est conservé sous forme chiffrée par le service
+              d’authentification : personne, administrateur compris, ne peut le lire.
             </li>
             <li>
-              <strong>Personnel </strong> nom, fonction, service, numéro de téléphone professionnel, statut de service (en service, hors service, absent), heure de début du service,
+              <strong>Personnel :</strong> nom, fonction, service, numéro de téléphone professionnel, statut de service (en service, hors service, absent), heure de début du service,
               compétences.
             </li>
             <li>
-              <strong>Clients </strong> nom, téléphone, chambre, dates d’arrivée et de départ, nombre d’adultes et d’enfants dans la chambre.
+              <strong>Clients :</strong> nom, téléphone, chambre, dates d’arrivée et de départ, nombre d’adultes et d’enfants dans la chambre.
             </li>
             <li>
-              <strong>Demandes </strong> chambre, service concerné, problème, détails saisis, priorité, statut, auteur, personne assignée, heures de création, de prise en charge et de
+              <strong>Demandes :</strong> chambre, service concerné, problème, détails saisis, priorité, statut, auteur, personne assignée, heures de création, de prise en charge et de
               résolution.
             </li>
           </ul>
@@ -69,10 +69,10 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2>3. Finalités</h2>
           <ul>
-            <li>traiter les demandes des clients et les transmettre au bon service </li>
-            <li>suivre l’occupation et l’entretien des chambres </li>
-            <li>organiser le personnel (annuaire, horaires, services) </li>
-            <li>mesurer la qualité du service (délais de traitement, demandes par service et par chambre) </li>
+            <li>traiter les demandes des clients et les transmettre au bon service ;</li>
+            <li>suivre l’occupation et l’entretien des chambres ;</li>
+            <li>organiser le personnel (annuaire, horaires, services) ;</li>
+            <li>mesurer la qualité du service (délais de traitement, demandes par service et par chambre) ;</li>
             <li>sécuriser l’accès à l’outil (comptes personnels, rôles).</li>
           </ul>
         </section>
@@ -81,11 +81,11 @@ export default function PrivacyPolicyPage() {
           <h2>4. Qui y a accès</h2>
           <ul>
             <li>
-              <strong>Le personnel de l’hôtel</strong>, selon son rôle (réception, ressources humaines, direction, administrateur)  chacun ne voit et ne modifie que ce que son rôle permet,
+              <strong>Le personnel de l’hôtel</strong>, selon son rôle (réception, ressources humaines, direction, administrateur) : chacun ne voit et ne modifie que ce que son rôle permet,
               règle appliquée par la base de données elle-même. Le détail figure dans les <Link href="/tos">conditions d’utilisation</Link>.
             </li>
             <li>
-              <strong>Nos prestataires techniques</strong>, pour le compte de l’hôtel  Supabase (base de données et authentification) et Vercel (hébergement de l’application).
+              <strong>Nos prestataires techniques</strong>, pour le compte de l’hôtel : Supabase (base de données et authentification) et Vercel (hébergement de l’application).
             </li>
           </ul>
           <p>Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
@@ -98,13 +98,13 @@ export default function PrivacyPolicyPage() {
             <h3>Cookie de session (strictement nécessaire)</h3>
             <ul>
               <li>
-                <strong>Nom </strong> <code>sb-…-auth-token</code> (Supabase)
+                <strong>Nom :</strong> <code>sb-…-auth-token</code> (Supabase)
               </li>
               <li>
-                <strong>Rôle </strong> garder votre compte connecté entre deux pages.
+                <strong>Rôle :</strong> garder votre compte connecté entre deux pages.
               </li>
               <li>
-                <strong>Durée </strong> supprimé à la déconnexion  sinon 400 jours au plus.
+                <strong>Durée :</strong> supprimé à la déconnexion ; sinon 400 jours au plus.
               </li>
             </ul>
             <h3>Stockage local du navigateur</h3>
@@ -113,10 +113,10 @@ export default function PrivacyPolicyPage() {
                 <strong>Thème choisi</strong> (clair, sombre ou système), sur cet appareil uniquement.
               </li>
               <li>
-                <strong>Bandeau d’installation</strong>  la date à laquelle vous l’avez fermé, pour ne pas le réafficher pendant 7 jours.
+                <strong>Bandeau d’installation</strong> : la date à laquelle vous l’avez fermé, pour ne pas le réafficher pendant 7 jours.
               </li>
               <li>
-                <strong>Application installée</strong>  les fichiers de l’application (pas vos données), pour un démarrage rapide et une page hors connexion.
+                <strong>Application installée</strong> : les fichiers de l’application (pas vos données), pour un démarrage rapide et une page hors connexion.
               </li>
             </ul>
           </div>
@@ -126,13 +126,13 @@ export default function PrivacyPolicyPage() {
           <h2>6. Conservation</h2>
           <ul>
             <li>
-              <strong>Comptes </strong> jusqu’à leur suppression par l’administrateur. Un compte désactivé reste enregistré mais ne peut plus se connecter.
+              <strong>Comptes :</strong> jusqu’à leur suppression par l’administrateur. Un compte désactivé reste enregistré mais ne peut plus se connecter.
             </li>
             <li>
-              <strong>Personnel </strong> jusqu’à la suppression de l’employé par les ressources humaines.
+              <strong>Personnel :</strong> jusqu’à la suppression de l’employé par les ressources humaines.
             </li>
             <li>
-              <strong>Clients et demandes </strong> conservés pour l’historique des chambres et les analyses. Hotel SES ne les supprime pas automatiquement  une demande se supprime depuis
+              <strong>Clients et demandes :</strong> conservés pour l’historique des chambres et les analyses. Hotel SES ne les supprime pas automatiquement : une demande se supprime depuis
               l’application, et toute autre suppression se demande au contact ci-dessus.
             </li>
           </ul>
@@ -141,9 +141,9 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2>7. Sécurité</h2>
           <ul>
-            <li>comptes personnels, mot de passe temporaire à changer dès la première connexion </li>
-            <li>droits vérifiés par le serveur et par la base de données pour chaque action, selon le rôle </li>
-            <li>connexions chiffrées (HTTPS) </li>
+            <li>comptes personnels, mot de passe temporaire à changer dès la première connexion ;</li>
+            <li>droits vérifiés par le serveur et par la base de données pour chaque action, selon le rôle ;</li>
+            <li>connexions chiffrées (HTTPS) ;</li>
             <li>désactivation immédiate d’un compte par l’administrateur.</li>
           </ul>
         </section>

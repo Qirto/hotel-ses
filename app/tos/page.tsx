@@ -5,7 +5,7 @@ import { HOTEL_NAME } from "@/lib/roles";
 
 export const metadata: Metadata = {
   title: "Conditions d’utilisation | Hotel SES",
-  description: "Règles d’utilisation de Hotel SES par le personnel de l’hôtel  comptes, rôles, confidentialité et traçabilité.",
+  description: "Règles d’utilisation de Hotel SES par le personnel de l’hôtel : comptes, rôles, confidentialité et traçabilité.",
 };
 
 /* Keep in step with the app: roles and what they may do come from lib/permissions.ts. */
@@ -29,17 +29,17 @@ export default function TermsOfServicePage() {
           <h2>1. Comptes personnels</h2>
           <ul>
             <li>
-              <strong>Un compte par personne </strong> chaque membre du personnel reçoit de l’administrateur un identifiant et un mot de passe temporaire. Le compte est personnel  il ne se
+              <strong>Un compte par personne :</strong> chaque membre du personnel reçoit de l’administrateur un identifiant et un mot de passe temporaire. Le compte est personnel : il ne se
               prête pas et ne se partage pas, même entre collègues d’un même service.
             </li>
             <li>
-              <strong>Premier accès </strong> le mot de passe temporaire doit être remplacé à la première connexion. Aucune page n’est accessible avant ce changement.
+              <strong>Premier accès :</strong> le mot de passe temporaire doit être remplacé à la première connexion. Aucune page n’est accessible avant ce changement.
             </li>
             <li>
-              <strong>Mot de passe oublié </strong> seul l’administrateur peut en générer un nouveau. Il est temporaire, lui aussi.
+              <strong>Mot de passe oublié :</strong> seul l’administrateur peut en générer un nouveau. Il est temporaire, lui aussi.
             </li>
             <li>
-              <strong>Fin de contrat ou absence longue </strong> l’administrateur désactive le compte. Un compte désactivé ne peut plus se connecter.
+              <strong>Fin de contrat ou absence longue :</strong> l’administrateur désactive le compte. Un compte désactivé ne peut plus se connecter.
             </li>
           </ul>
         </section>
@@ -49,19 +49,19 @@ export default function TermsOfServicePage() {
           <p>Le rôle du compte, fixé par l’administrateur, détermine les pages et les actions disponibles. Le serveur vérifie chaque action, indépendamment de l’écran affiché.</p>
           <ul>
             <li>
-              <strong>Réception </strong> tableau de bord de la réception, plan des chambres, arrivées, départs et nombre de clients, cycle de ménage, création des demandes et des incidents
+              <strong>Réception :</strong> tableau de bord de la réception, plan des chambres, arrivées, départs et nombre de clients, cycle de ménage, création des demandes et des incidents
               passés, prise en charge, résolution, modification et suppression des demandes, analyses des chambres et des demandes.
             </li>
             <li>
-              <strong>Ressources humaines </strong> personnel (annuaire, horaires, services), consultation des chambres et des demandes, création de demandes, cycle de ménage, analyses des
+              <strong>Ressources humaines :</strong> personnel (annuaire, horaires, services), consultation des chambres et des demandes, création de demandes, cycle de ménage, analyses des
               effectifs.
             </li>
             <li>
-              <strong>Direction </strong> tableau de bord de direction, chambres et cycle de ménage, création, résolution, modification et suppression des demandes, analyses, dont les
+              <strong>Direction :</strong> tableau de bord de direction, chambres et cycle de ménage, création, résolution, modification et suppression des demandes, analyses, dont les
               tendances par chambre.
             </li>
             <li>
-              <strong>Administrateur </strong> l’ensemble des fonctions ci-dessus, plus la gestion des comptes et du parc des chambres.
+              <strong>Administrateur :</strong> l’ensemble des fonctions ci-dessus, plus la gestion des comptes et du parc des chambres.
             </li>
           </ul>
         </section>
@@ -70,14 +70,14 @@ export default function TermsOfServicePage() {
           <h2>3. Bon usage</h2>
           <ul>
             <li>
-              <strong>Postes partagés </strong> utilisez « Se déconnecter » avant de quitter un poste de la réception ou un appareil commun.
+              <strong>Postes partagés :</strong> utilisez « Se déconnecter » avant de quitter un poste de la réception ou un appareil commun.
             </li>
             <li>
-              <strong>Exactitude </strong> enregistrez les demandes, les arrivées, les départs et l’état des chambres au moment où ils ont lieu. Un incident découvert après coup s’enregistre
+              <strong>Exactitude :</strong> enregistrez les demandes, les arrivées, les départs et l’état des chambres au moment où ils ont lieu. Un incident découvert après coup s’enregistre
               comme « Incident passé », avec sa date réelle.
             </li>
             <li>
-              <strong>Incident de sécurité </strong> un accès suspect, un mot de passe divulgué ou un appareil perdu se signale sans délai à l’administrateur, qui réinitialise ou désactive le
+              <strong>Incident de sécurité :</strong> un accès suspect, un mot de passe divulgué ou un appareil perdu se signale sans délai à l’administrateur, qui réinitialise ou désactive le
               compte.
             </li>
           </ul>
@@ -97,10 +97,10 @@ export default function TermsOfServicePage() {
 
         <section>
           <h2>5. Traçabilité</h2>
-          <p>Hotel SES conserve, pour le suivi du service </p>
+          <p>Hotel SES conserve, pour le suivi du service :</p>
           <ul>
-            <li>l’auteur de chaque demande, la personne assignée, et les heures de création, de prise en charge et de résolution </li>
-            <li>la dernière connexion de chaque compte </li>
+            <li>l’auteur de chaque demande, la personne assignée, et les heures de création, de prise en charge et de résolution ;</li>
+            <li>la dernière connexion de chaque compte ;</li>
             <li>l’heure de début du service de chaque employé.</li>
           </ul>
           <p>
