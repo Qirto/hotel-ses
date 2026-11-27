@@ -33,3 +33,7 @@ next-env.d.ts
 
 # local account files (demo passwords)
 *.local.txt
+
+# AI agent skills installed per machine (npx skills add …), not app code
+/.agents/
+/skills-lock.json
